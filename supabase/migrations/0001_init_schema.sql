@@ -1,0 +1,2 @@
+-- Initial Sugbo Now schema.
+-- Add profiles, locations, schedule_entries, alerts, and daily_briefs here.
