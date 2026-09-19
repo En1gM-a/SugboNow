@@ -56,6 +56,14 @@ sugbo-now/
 ├── package.json                 # optional root shortcuts and dev tooling only
 ├── .gitignore
 ├── .editorconfig
+├── .github/                     # CI, Dependabot, PR template, CODEOWNERS, ruleset
+│   ├── workflows/ci.yml
+│   ├── rulesets/protect-main.json
+│   ├── CODEOWNERS
+│   ├── dependabot.yml
+│   └── pull_request_template.md
+├── scripts/
+│   └── apply-github-security.ps1
 ├── docs/
 │   ├── api-contract.md          # source of truth: frontend <-> backend
 │   ├── data-model.md
@@ -98,6 +106,7 @@ sugbo-now/
     ├── .env.example
     ├── package.json
     ├── tsconfig.json
+    ├── vitest.config.ts
     ├── src/
     │   ├── server.ts            # starts HTTP server + scheduler
     │   ├── app.ts               # Express app (importable for tests)
@@ -206,6 +215,15 @@ cd backend && npm run dev      # http://localhost:4000/api/health
 # terminal 2
 cd frontend && npm run dev     # http://localhost:5173
 ```
+
+### 6. Verify before a pull request
+
+```bash
+npm run build
+npm --prefix backend test
+```
+
+The GitHub Actions workflow runs these checks automatically for pushes and pull requests targeting `main` or `dev`.
 
 Vite proxies `/api` to `http://localhost:4000`, so no CORS setup is needed in development.
 
@@ -336,10 +354,30 @@ Full request and response shapes live in [`docs/api-contract.md`](docs/api-contr
 
 ## Git Workflow
 
-- `main`: always working, protected. `dev`: integration branch.
-- Branch names: `frontend/<feature>`, `backend/<feature>`, `docs/<topic>`
-- Small PRs, at least one review, squash-merge into `dev`.
+- `main`: protected release branch. `dev`: integration branch.
+- Branch names: `frontend/<feature>`, `backend/<feature>`, `docs/<topic>`.
+- Create a branch and open a pull request for each change; keep PRs small and squash-merge them.
+- CI builds both apps and runs backend tests on pull requests and pushes to `main` or `dev`.
+- CODEOWNERS automatically requests the relevant reviewers. It coordinates review requests only; it does not restrict folder access.
 - Commit style: `feat(frontend): add alert card`, `fix(backend): dedupe tomtom incidents`
+
+### Repository security setup
+
+The repository includes security automation in `.github/`:
+
+- `workflows/ci.yml`: builds the frontend and backend, then runs backend tests.
+- `dependabot.yml`: opens weekly dependency update pull requests.
+- `CODEOWNERS`: requests reviews for the appropriate areas.
+- `rulesets/protect-main.json`: defines pull-request and branch-protection rules for `main` and `dev`.
+
+After publishing the repository to GitHub and confirming CI has run once, an administrator applies the settings with:
+
+```powershell
+gh auth login
+powershell -ExecutionPolicy Bypass -File .\scripts\apply-github-security.ps1 -Repo En1gM-a/sugbo-now
+```
+
+Rulesets are available for public repositories on GitHub Free. Private repositories require a GitHub plan that supports rulesets.
 
 ## Code Conventions
 
@@ -371,8 +409,9 @@ Full request and response shapes live in [`docs/api-contract.md`](docs/api-contr
 
 | Name | Role | Area |
 | --- | --- | --- |
-| _TBD_ | _TBD_ | _Frontend_ |
-| _TBD_ | _TBD_ | _Backend_ |
-| _TBD_ | _TBD_ | _Data / Supabase_ |
+| [@En1gM-a](https://github.com/En1gM-a) | Lead reviewer / Backend | Backend, Supabase, repository security |
+| [@Rouge999xx](https://github.com/Rouge999xx) | Backend developer | Backend, Supabase |
+| [@gnthril](https://github.com/gnthril) | Frontend developer | Frontend |
+| [@Tiamporado](https://github.com/Tiamporado) | Frontend developer | Frontend |
 
 *Course project for Software Development 1.*

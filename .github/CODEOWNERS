@@ -1,0 +1,15 @@
+# Reviewers listed here are automatically requested on pull requests that touch these paths.
+# List 2+ people per area so nobody ends up as the only person who can review their own work.
+
+*                        @En1gM-a
+
+/frontend/               @En1gM-a @gnthril @Tiamporado
+/backend/                @Rouge999xx @En1gM-a
+/supabase/               @Rouge999xx @En1gM-a
+
+# The API contract is shared, so both sides review it.
+/docs/api-contract.md    @En1gM-a @gnthril @Rouge999xx
+
+# Security-sensitive: CI, rulesets, dependency automation.
+/.github/                @En1gM-a
+/scripts/                @En1gM-a
