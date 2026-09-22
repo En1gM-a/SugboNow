@@ -86,16 +86,23 @@ if (-not (Test-Path $rulesetFile)) {
   exit 1
 }
 
-$existing = Invoke-Gh @('api', "repos/$Repo/rulesets", '--jq', '.[] | select(.name=="protect-main") | .id')
-$id = if ($existing.Ok) { $existing.Output } else { '' }
+$rulesetName = 'protect-main'
+$existing = Invoke-Gh @('api', "repos/$Repo/rulesets")
+$id = ''
+if ($existing.Ok) {
+  $matchingRuleset = @($existing.Output | ConvertFrom-Json | Where-Object { $_.name -eq $rulesetName }) | Select-Object -First 1
+  if ($matchingRuleset) {
+    $id = [string]$matchingRuleset.id
+  }
+}
 
 if ($id) {
   $r = Invoke-Gh @('api', '-X', 'PUT', "repos/$Repo/rulesets/$id", '--input', $rulesetFile)
-  $label = "Ruleset 'protect-main' updated"
+  $label = "Ruleset '$rulesetName' updated"
 }
 else {
   $r = Invoke-Gh @('api', '-X', 'POST', "repos/$Repo/rulesets", '--input', $rulesetFile)
-  $label = "Ruleset 'protect-main' created"
+  $label = "Ruleset '$rulesetName' created"
 }
 
 if ($r.Ok) {
