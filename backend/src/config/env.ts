@@ -11,7 +11,11 @@ const envSchema = z.object({
   TOMTOM_API_KEY: z.string().optional(),
   GNEWS_API_KEY: z.string().optional(),
   AI_API_KEY: z.string().optional(),
-  CRON_ENABLED: z.coerce.boolean().default(false),
+  // Parsed as a string: z.coerce.boolean() treats "false" as true.
+  CRON_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
   TZ: z.string().default("Asia/Manila"),
 });
 
