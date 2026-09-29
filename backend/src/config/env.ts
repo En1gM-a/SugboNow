@@ -11,6 +11,13 @@ const envSchema = z.object({
   TOMTOM_API_KEY: z.string().optional(),
   GNEWS_API_KEY: z.string().optional(),
   AI_API_KEY: z.string().optional(),
+  WEATHER_API_KEY: z.string().optional(),
+  // SunStar has no API key — this is a public RSS feed, not an authenticated
+  // API. Defaults to the Cebu collection; still overridable per-environment.
+  SUNSTAR_RSS_URL: z
+    .string()
+    .url()
+    .default("https://www.sunstar.com.ph/api/v1/collections/cebu.rss"),
   // Parsed as a string: z.coerce.boolean() treats "false" as true.
   CRON_ENABLED: z
     .enum(["true", "false"])
