@@ -6,3 +6,6 @@ coverage/
 *.tsbuildinfo
 *.log
 .DS_Store
+
+# Claude Code session handoff: personal per-project switch
+.claude/handoff.local.json
