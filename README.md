@@ -64,8 +64,11 @@ sugbo-now/
 │   └── pull_request_template.md
 ├── scripts/
 │   └── apply-github-security.ps1
+├── tools/
+│   └── claude-handoff/          # optional Claude Code session handoff (see docs/claude-handoff.md)
 ├── docs/
 │   ├── api-contract.md          # source of truth: frontend <-> backend
+│   ├── claude-handoff.md        # setup + usage guide for the Claude Code handoff
 │   ├── data-model.md
 │   └── data-sources.md
 ├── supabase/
@@ -378,6 +381,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\apply-github-security.ps1 -Re
 ```
 
 Rulesets are available for public repositories on GitHub Free. Private repositories require a GitHub plan that supports rulesets.
+
+### Claude Code session handoff (optional)
+
+If you use Claude Code, install the session handoff once: `node tools/claude-handoff/install.mjs`. Instead of auto-compacting, a session that reaches 35% context writes a handoff prompt and continues in a fresh session. Setup, the `/handoff on|off|status` skill, and instructions for agents are in [`docs/claude-handoff.md`](docs/claude-handoff.md).
 
 ## Code Conventions
 
