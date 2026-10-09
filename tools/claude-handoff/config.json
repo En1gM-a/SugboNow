@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "thresholdPercent": 35,
+  "reminderPercent": 50,
+  "contextWindowTokens": 200000,
+  "handoffFile": ".claude/handoff/NEXT_SESSION.md",
+  "launch": {
+    "model": null,
+    "inheritPermissionMode": true,
+    "extraArgs": [],
+    "dryRun": false
+  },
+  "guard": {
+    "maxChainLength": 15,
+    "maxLaunchesPerHour": 4,
+    "minMinutesBetweenLaunches": 5
+  }
+}
