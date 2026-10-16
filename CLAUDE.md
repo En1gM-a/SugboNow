@@ -17,6 +17,8 @@ They communicate only through the REST contract in `docs/api-contract.md`.
 
 **Golden rule:** browser users must never trigger calls to external data providers. Scheduled backend jobs fetch external sources, normalize and deduplicate data, then write it to Supabase. The REST API reads from Supabase.
 
+**One approved exception:** `POST /api/lgu-posts/refresh`. After sign-in, the backend (never the browser) checks the user's subscribed LGU Facebook page for new posts, throttled to one check per page per `FB_REFRESH_INTERVAL_MINUTES` with one check per page at a time, falling back to saved posts on failure. Do not add other user-triggered external calls without the team's agreement.
+
 ## Technology
 
 - Frontend: React, TypeScript, Vite, Tailwind CSS, React Router, TanStack Query, Supabase Auth, Leaflet, MSW.
