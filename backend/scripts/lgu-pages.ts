@@ -1,4 +1,4 @@
-// Pages for the local Facebook test tools (fb:latest, fb:demo).
+// Pages for the local Facebook test page (npm run fb:demo).
 // Mirrors the lgu_sources rows from supabase/migrations/0004_optimize_lgu_tables.sql;
 // the database stays the source of truth for the app itself.
 

@@ -235,13 +235,11 @@ Vite proxies `/api` to `http://localhost:4000`, so no CORS setup is needed in de
 
 ### Try the LGU Facebook scraper
 
-Two read-only test tools show the 2 latest posts from a chosen mayor's page. They need Chromium (step 4) but no `.env`, database, or sign-in, and they save nothing.
+A read-only local test page shows the 2 latest posts from a chosen mayor's page, with photos and video thumbnails. It needs Chromium (step 4) but no `.env`, database, or sign-in, and it saves nothing.
 
 ```bash
 cd backend
-npm run fb:demo                    # web page at http://localhost:4100 (shows photos and video thumbnails)
-npm run fb:latest                  # terminal: asks which mayor
-npm run fb:latest -- mandaue_city  # terminal, no prompt
+npm run fb:demo    # then open http://localhost:4100
 ```
 
 ---
