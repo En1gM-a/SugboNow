@@ -46,6 +46,8 @@ This repo is a **monorepo with two fully independent apps**: `frontend/` and `ba
 
 **Golden rule:** users never trigger external API calls. Cron jobs fetch on a schedule and write to Supabase; the REST API only reads from the database. This keeps us inside free-tier quotas and keeps the app fast.
 
+**One deliberate exception: official LGU Facebook posts.** After sign-in the frontend calls `POST /api/lgu-posts/refresh`, and the backend (never the browser) checks the user's subscribed mayor/governor page with headless Chromium, saving only posts it hasn't seen. Each page is checked at most once per `FB_REFRESH_INTERVAL_MINUTES` (default 10) no matter how many users sign in, one check per page runs at a time, and failures fall back to saved posts. `FB_SCRAPE_ENABLED=false` turns it off. See `docs/api-contract.md`.
+
 ---
 
 ## Project Structure
@@ -173,6 +175,7 @@ npm install
 
 cd ../backend
 npm install
+npx playwright install chromium   # headless browser for the LGU Facebook check (~120 MB, user cache)
 ```
 
 This creates the local dependency directories that are intentionally ignored by Git:
