@@ -149,6 +149,22 @@ Then stop and wait for my answer.
 4. Run the relevant build/test commands after changes.
 5. Report what changed, what was verified, and anything still needed from the user.
 
+## Reporting on pull requests
+
+Whenever you are asked about PRs (listing, reviewing, summarizing, or merging them), be **verbose**. A one-line table of titles is not enough. This applies equally when a subagent gathers the information: never relay an agent's summary as-is; check it against `gh` output and expand it to the format below.
+
+For **each** PR, include:
+
+- **Link, title, author, branch → base, draft status, last updated.**
+- **What it changes:** a few sentences in plain language, plus the files or areas touched (`frontend/`, `backend/`, `supabase/`, `docs/`, `.github/`). For dependency PRs, list every package with its from → to version and flag major-version bumps.
+- **CI:** the result of the `frontend` and `backend` checks, with failures named.
+- **Mergeability:** mergeable, behind `main`, or conflicting (name the conflicting files), and whether the `protect-main` ruleset still blocks it (needs a non-author approval, up-to-date branch, resolved threads).
+- **Review state:** approvals, requested changes, and open review comments.
+- **Dependencies and risks:** PRs that must merge first (for example, a migration before the code that uses it), breaking changes, database or security impact.
+- **Recommendation:** merge, needs changes, or needs a teammate's review, and why.
+
+After the per-PR detail, end with a short overall summary: what can merge now, what is blocked, and what is needed from the user. When you take action on PRs, report each one's outcome (merged, approved, rebased, skipped, and why).
+
 ## Claude Code skills
 
 Project skills live in `.claude/skills/` and load automatically in this repository. See `docs/claude-code-skills.md` for what each one does and its setup requirements.
