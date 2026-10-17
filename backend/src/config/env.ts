@@ -23,6 +23,15 @@ const envSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((value) => value === "true"),
+  // Kill switch for the sign-in-triggered Facebook check. When false, the
+  // refresh endpoint serves saved posts only.
+  FB_SCRAPE_ENABLED: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((value) => value === "true"),
+  // Minimum minutes between Facebook checks of the same page, however many
+  // users sign in.
+  FB_REFRESH_INTERVAL_MINUTES: z.coerce.number().int().min(1).default(10),
   TZ: z.string().default("Asia/Manila"),
 });
 
