@@ -11,3 +11,6 @@ __pycache__/
 # Claude Code: generated graphify output and per-developer settings
 graphify-out/
 .claude/settings.local.json
+
+# Claude Code session handoff: personal per-project switch
+.claude/handoff.local.json

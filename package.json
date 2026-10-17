@@ -9,6 +9,6 @@
     "build": "npm --prefix frontend run build && npm --prefix backend run build"
   },
   "devDependencies": {
-    "concurrently": "^10.0.5"
+    "concurrently": "^10.0.6"
   }
 }
