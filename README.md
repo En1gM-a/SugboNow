@@ -34,8 +34,9 @@ This repo is a **monorepo with two fully independent apps**: `frontend/` and `ba
  ────────────────        ────────────────────────                 ────────            ────────
  TomTom Traffic ──┐
  GNews ───────────┤      jobs/ ─► integrations/ ─► normalize
- SunStar (scrape)─┤                  + dedupe ──────────────────► alerts
- Open-Meteo ──────┘                                                 │
+ SunStar (RSS) ───┤                  + dedupe ──────────────────► alerts
+ Cebu Daily News ─┤                                                 │
+ WeatherAPI.com ──┘ ────────────────────────────────────────────► weather_snapshots
                                                                     ▼
                           matching ─► leaveTime ─► brief (AI) ──► daily_briefs
                                                                     │
@@ -119,7 +120,7 @@ sugbo-now/
     │   ├── middleware/          # auth (verify Supabase JWT), errorHandler, validate
     │   ├── routes/              # health, alerts, brief, locations, schedule
     │   ├── services/            # alerts, matching, leaveTime, brief, ai
-    │   ├── integrations/        # tomtom, gnews, sunstar, weather (one file per source)
+    │   ├── integrations/        # tomtom, weatherapi, gnews, sunstar, cebuDailyNews, facebook (one file per source)
     │   ├── jobs/                # scheduler + one job per source + generateBriefs
     │   ├── schemas/             # Zod schemas for request bodies
     │   ├── types/index.ts
@@ -258,7 +259,7 @@ Frontend and backend teammates should never be blocked on each other.
 
 The frontend then runs completely on fixtures. Flip the flag to `false` when the real API is ready.
 
-**Backend without the frontend.** Test endpoints with Postman, Bruno, or the VS Code *REST Client* extension. Set `CRON_ENABLED=false` while developing routes so jobs don't burn API quota.
+**Backend without the frontend.** Test endpoints with Postman, Bruno, or the VS Code *REST Client* extension. Set `CRON_ENABLED=false` while developing routes so jobs don't burn API quota, and fill the database on demand with one job at a time: `npm run job -- list`, then e.g. `npm run job -- ingestWeather` (inside `backend/`; real jobs write to Supabase).
 
 **Ownership.** Frontend PRs should only touch `frontend/`, backend PRs only `backend/`. Cross-cutting changes (`docs/`, `supabase/`) get a note in the PR description.
 
@@ -282,11 +283,17 @@ The frontend then runs completely on fixtures. Flip the flag to `false` when the
 | `PORT` | Server port (default `4000`) |
 | `FRONTEND_ORIGIN` | Allowed CORS origin (e.g. `http://localhost:5173`) |
 | `SUPABASE_URL` | Supabase project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | **Secret.** Server-side only |
-| `TOMTOM_API_KEY` | TomTom developer key |
-| `GNEWS_API_KEY` | GNews key |
-| `AI_API_KEY` | Key for the LLM provider used for briefs |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Secret.** Server-side only. Used for jobs and shared data |
+| `SUPABASE_ANON_KEY` | Anon (publishable) key, same as the frontend's. Requests for a user's own data use it with the user's token, so Row Level Security applies |
+| `TOMTOM_API_KEY` | TomTom developer key. Traffic job is skipped when blank |
+| `GNEWS_API_KEY` | GNews key. News search job is skipped when blank |
+| `WEATHER_API_KEY` | WeatherAPI.com key. Weather job is skipped when blank |
+| `AI_API_KEY` | Key for the LLM provider used for briefs (not chosen yet; briefs are rule-based meanwhile) |
+| `SUNSTAR_RSS_URL` | SunStar feed (default: the local-news feed, filtered to Cebu) |
+| `CDN_RSS_URL` | Cebu Daily News feed (default: the Latest News category feed) |
 | `CRON_ENABLED` | `true` to run scheduled jobs |
+| `FB_SCRAPE_ENABLED` | `false` turns off the sign-in Facebook check |
+| `FB_REFRESH_INTERVAL_MINUTES` | Minimum minutes between Facebook checks of one page (default `10`) |
 | `TZ` | `Asia/Manila` |
 
 ---
@@ -297,16 +304,18 @@ Quotas below were current when this README was written. Re-check each provider's
 
 | Data | Source | Key needed | Free tier / notes |
 | --- | --- | --- | --- |
-| Traffic incidents and flow | [TomTom Traffic API](https://developer.tomtom.com) | Yes | 2,500 free non-tile requests/day, 50,000 tile requests/day |
-| News | [GNews](https://gnews.io) | Yes | 100 requests/day, 10 articles per request, non-commercial use |
-| Local news and advisories | SunStar Cebu (scraped) | No | Check `robots.txt` and terms first; look for an RSS feed before scraping HTML |
-| Weather | [Open-Meteo](https://open-meteo.com) | No | Free for non-commercial use, hourly rain and forecast data by coordinates |
+| Traffic incidents | [TomTom Traffic API](https://developer.tomtom.com) | Yes | 2,500 free non-tile requests/day |
+| Weather, forecast, warnings | [WeatherAPI.com](https://www.weatherapi.com) | Yes | 100,000 calls/month |
+| News | [GNews](https://gnews.io) | Yes | 100 requests/day, about 1 request/second, non-commercial use |
+| Local news and advisories | SunStar (RSS) | No | Local-news feed, filtered to Cebu stories |
+| Local news and advisories | Cebu Daily News / CDN Digital (RSS) | No | "Latest News" category feed, filtered to Cebu stories |
+| Class suspensions and LGU advisories | Official mayors'/governor's Facebook pages | No | Read on sign-in with headless Chromium, throttled |
 
-Cebu City reference point: `10.3157, 123.8854` (lat, lng). Use a bounding box around Metro Cebu for TomTom incident queries.
+Details, quotas and normalization rules for each source are in [`docs/data-sources.md`](docs/data-sources.md). Cebu City reference point: `10.3157, 123.8854` (lat, lng).
 
-**Weather alternative:** OpenWeatherMap (free key required) if Open-Meteo doesn't meet our needs. As far as we know, PAGASA has no official public developer API, so typhoon and rainfall advisories would come from news/scraping later.
+**PAGASA** (typhoon signals) needs a formal request letter for API access; until then typhoon and signal news comes in through the news sources.
 
-**Power, water, and flood advisories** are mostly announced through news and social pages (for example Visayan Electric and MCWD notices). For v1, extract these from GNews/SunStar articles by keyword (brownout, water interruption, flood, closure) and let the AI classify them. A `manual` alert source is also available so the team can add advisories by hand for demos.
+**Alerts vs news.** Articles and Facebook posts are classified by keyword (English, Cebuano and Tagalog). Only disruptions become alerts: class suspensions, major weather, floods, road blockages, traffic, and power or water interruptions (ranked lowest). Everything else is stored as plain news for `/api/news`. A `manual` alert source is also available so the team can add advisories by hand for demos.
 
 **Scraping etiquette:** identify our user-agent, keep requests infrequent, cache results, store only headline, snippet, and link, and always link back to the source.
 
@@ -318,13 +327,14 @@ All schedules use `timezone: 'Asia/Manila'`.
 
 | Job | Schedule | Quota check |
 | --- | --- | --- |
-| `ingestTraffic` | Every 15 min, 05:00–22:00 | About 68 runs/day, well under 2,500 |
-| `ingestWeather` | Hourly | No key, no quota concern |
-| `ingestNews` | Every 3 hours | Max 3 queries, so 24 calls/day, under 100 |
-| `scrapeSunstar` | Every 30–60 min | Be polite, cache aggressively |
+| `ingestTraffic` | Every 15 min, 05:00–22:45 | 72 runs/day, well under 2,500 |
+| `ingestWeather` | Hourly at :05 | 9 areas, about 6,500 calls/month, under 100,000 |
+| `ingestNews` | Every 3 hours at :20 | 3 queries, so 24 calls/day, under 100 |
+| `ingestSunstar` | Every 30 min | Be polite, cache aggressively |
+| `ingestCebuDailyNews` | Every 30 min (offset 15 min) | Be polite, cache aggressively |
 | `generateBriefs` | Daily, 05:30 | One brief per user with a schedule that day |
 
-Every job writes normalized rows into `alerts` with a unique `fingerprint` so re-runs never create duplicates.
+Every job writes normalized rows into `alerts` with a unique `fingerprint` so re-runs never create duplicates; the weather job also replaces each area's row in `weather_snapshots`. Jobs run only when `CRON_ENABLED=true`; `npm run job -- <name>` (inside `backend/`) runs one immediately.
 
 ---
 
@@ -335,10 +345,15 @@ Full request and response shapes live in [`docs/api-contract.md`](docs/api-contr
 | Method | Route | Purpose |
 | --- | --- | --- |
 | GET | `/api/health` | Liveness check |
-| GET | `/api/alerts` | Active alerts (filter by type, area, severity) |
-| GET | `/api/brief/today` | Today's personalized brief for the signed-in user |
+| GET / PATCH | `/api/profile` | The signed-in user's profile (name, home city, followed mayor, commute) |
+| GET | `/api/areas`, `/api/lgu-sources` | Picker lists: Metro Cebu areas, mayors/governor to follow |
 | GET / POST / PUT / DELETE | `/api/locations` | Saved places (home, school, work, other) |
 | GET / POST / PUT / DELETE | `/api/schedule` | Recurring schedule entries |
+| GET | `/api/alerts` | Active and upcoming alerts (filter by type, severity, area, distance, or near your places) |
+| GET | `/api/news` | Latest Cebu news |
+| GET | `/api/weather` | Current weather and 24-hour forecast per area |
+| GET | `/api/brief/today` | Today's personalized brief with leave times |
+| POST / GET | `/api/lgu-posts/refresh`, `/api/lgu-posts/latest` | The followed mayor's latest Facebook posts |
 
 ---
 
@@ -354,8 +369,10 @@ Full request and response shapes live in [`docs/api-contract.md`](docs/api-contr
 
 **Row Level Security:** users can read and write only their own rows in `profiles`, `locations`, `schedule_entries`, and `daily_briefs`. `alerts` are readable by any signed-in user. Only the backend (service role) writes `alerts` and `daily_briefs`.
 
-**Alert types:** `traffic`, `weather`, `flood`, `closure`, `power`, `water`, `advisory`, `news`
-**Alert sources:** `tomtom`, `gnews`, `sunstar`, `open-meteo`, `manual`
+**Alert types:** `advisory`, `weather`, `flood`, `closure`, `traffic`, `power`, `water` (plus `news` for stories that aren't alerts)
+**Alert sources:** `tomtom`, `weatherapi`, `facebook`, `sunstar`, `cebudailynews`, `gnews`, `manual`
+
+`weather_snapshots` (latest conditions and forecast per Metro Cebu area) and the LGU tables (`lgu_sources`, `lgu_posts`) are described in [`docs/data-model.md`](docs/data-model.md).
 
 ---
 
