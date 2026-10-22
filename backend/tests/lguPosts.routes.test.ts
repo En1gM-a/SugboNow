@@ -1,7 +1,7 @@
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createApp } from '../src/app.js';
+import { createApp, type AppServices } from '../src/app.js';
 import type { LguPostsService } from '../src/services/lguPosts.service.js';
 import type { LguPostRow, LguSource } from '../src/types/index.js';
 
@@ -40,7 +40,7 @@ async function start(service: Partial<LguPostsService>) {
   const app = createApp({
     frontendOrigin: 'http://localhost:5173',
     verifyToken: async (token) => (token === 'good-token' ? 'user-1' : null),
-    lguPostsService: service as LguPostsService,
+    services: { lguPosts: service as LguPostsService } as AppServices,
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
   });
   server = app.listen(0);

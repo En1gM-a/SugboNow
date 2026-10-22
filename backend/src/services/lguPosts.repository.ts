@@ -40,6 +40,7 @@ export function createLguPostsRepository(db: SupabaseClient): LguPostsRepository
         share_count: post.shareCount,
         view_count: post.viewCount,
         content_hash: post.contentHash,
+        category: post.category ?? null,
         raw: post.raw,
       }));
       // Already-saved posts are skipped, so only new rows come back.

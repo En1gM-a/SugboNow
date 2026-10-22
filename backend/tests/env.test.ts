@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const requiredEnv = {
   SUPABASE_URL: 'https://example.supabase.co',
   SUPABASE_SERVICE_ROLE_KEY: 'service-role-key',
+  SUPABASE_ANON_KEY: 'anon-key',
 };
 
 async function loadEnv(overrides: Record<string, string>) {
@@ -45,5 +46,20 @@ describe('env configuration', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     await loadEnv({ CRON_ENABLED: 'yes' });
     expect(exit).toHaveBeenCalledWith(1);
+  });
+
+  it('treats a blank API key as missing so its job is skipped', async () => {
+    const env = await loadEnv({ AI_API_KEY: '', TOMTOM_API_KEY: '  ', GNEWS_API_KEY: ' abc123 ' });
+    expect(env.AI_API_KEY).toBeUndefined();
+    expect(env.TOMTOM_API_KEY).toBeUndefined();
+    expect(env.GNEWS_API_KEY).toBe('abc123');
+  });
+
+  it('requires the Supabase anon key', async () => {
+    const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await loadEnv({ SUPABASE_ANON_KEY: '' });
+    expect(exit).toHaveBeenCalledWith(1);
+    expect(JSON.stringify(error.mock.calls)).toContain('SUPABASE_ANON_KEY');
   });
 });
