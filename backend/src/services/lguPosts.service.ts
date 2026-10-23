@@ -3,9 +3,12 @@
 // A refresh checks the signed-in user's subscribed LGU page at most once per
 // interval, however many users sign in, and only one check per page runs at a
 // time. New posts are inserted; posts already saved are left untouched.
+// Posts announcing disruptions (class suspensions, floods, closures, …) are
+// also saved as alerts.
 
 import type { Logger } from "../utils/logger";
-import type { LguPostRow, LguSource, ScrapedFbPost } from "../types";
+import type { LguPostRow, LguSource, NewAlert, ScrapedFbPost } from "../types";
+import { categorizeLguPost, lguPostToAlert } from "./lguAlerts";
 
 export interface LguPostsRepository {
   getSubscribedSlug(userId: string): Promise<string | null>;
@@ -43,6 +46,8 @@ export interface LguPostsServiceOptions {
   logger: Logger;
   scrapeEnabled: boolean;
   refreshIntervalMs: number;
+  // Saves alerts made from posts; omitted in tests that don't need it.
+  saveAlerts?: (alerts: NewAlert[]) => Promise<unknown>;
   postsPerFetch?: number;
   now?: () => Date;
 }
@@ -78,12 +83,31 @@ export function createLguPostsService(options: LguPostsServiceOptions) {
     return false;
   }
 
+  // An alert failure is logged but doesn't fail the refresh: the posts are saved.
+  async function saveAlertsFor(source: LguSource, posts: ScrapedFbPost[]): Promise<void> {
+    if (!options.saveAlerts) return;
+    const alerts = posts
+      .map((post) => lguPostToAlert(post, source, now()))
+      .filter((alert): alert is NewAlert => alert !== null);
+    if (alerts.length === 0) return;
+    try {
+      await options.saveAlerts(alerts);
+    } catch (error) {
+      logger.warn("Could not save alerts from LGU posts", {
+        slug: source.slug,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   async function check(source: LguSource): Promise<{ status: RefreshStatus; newPosts: number }> {
     lastAttempt.set(source.id, now().getTime());
     try {
-      const posts = await scrape(source.fb_page_url as string, postsPerFetch);
+      const scraped = await scrape(source.fb_page_url as string, postsPerFetch);
+      const posts = scraped.map((post) => ({ ...post, category: categorizeLguPost(post) }));
       const newPosts = await repo.insertNewPosts(source.id, posts);
       await repo.markFetched(source.id, now());
+      await saveAlertsFor(source, posts);
       logger.info("Checked LGU Facebook page", { slug: source.slug, seen: posts.length, newPosts });
       return { status: "refreshed", newPosts };
     } catch (error) {

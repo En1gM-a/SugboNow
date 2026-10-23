@@ -1,7 +1,8 @@
 // Requires a Supabase access token: `Authorization: Bearer <token>`.
-// Sets res.locals.userId for downstream handlers.
+// Sets res.locals.userId and res.locals.accessToken for downstream handlers.
 
-import type { RequestHandler } from "express";
+import type { RequestHandler, Response } from "express";
+import type { RequestUser } from "../types";
 
 // Returns the user's id for a valid token, or null.
 export type VerifyToken = (token: string) => Promise<string | null>;
@@ -16,6 +17,12 @@ export function createRequireAuth(verifyToken: VerifyToken): RequestHandler {
       return;
     }
     res.locals.userId = userId;
+    res.locals.accessToken = token;
     next();
   };
+}
+
+// The signed-in user for a request that passed createRequireAuth.
+export function requestUser(res: Response): RequestUser {
+  return { id: res.locals.userId as string, accessToken: res.locals.accessToken as string };
 }
