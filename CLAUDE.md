@@ -29,9 +29,9 @@ They communicate only through the REST contract in `docs/api-contract.md`.
 ## Current implementation state
 
 - The repository scaffold, dependency manifests, CI, and Supabase foundation are in place.
-- `supabase/migrations/0001_init_schema.sql` creates `profiles`, `locations`, `schedule_entries`, `alerts`, and `daily_briefs`; it also enables RLS, creates ownership policies, and adds profile/update triggers.
-- `supabase/seed.sql` contains development seed data.
-- Frontend and backend feature implementation is still largely to be built. Do not assume that routes, pages, jobs, matching, leave-time calculations, or AI briefs already exist.
+- Migrations `0001`–`0005` in `supabase/migrations/` define the schema: `profiles`, `locations`, `schedule_entries`, `alerts`, `daily_briefs`, `lgu_sources`, `lgu_posts`, `weather_snapshots`, with RLS. `supabase/seed.sql` contains development seed data.
+- The backend implements every endpoint in `docs/api-contract.md` (profile, areas, LGU sources, locations, schedule, alerts, news, weather, today's brief, LGU posts), the ingestion jobs (TomTom, WeatherAPI, GNews, SunStar, Cebu Daily News), matching, rule-based leave times, and a rule-based brief writer behind `services/ai.service.ts` (no AI provider yet).
+- The frontend (owned by the frontend team) has the API client, the LGU post types and one hook (`useLguPosts`); its pages, auth flow, other hooks and the remaining API types are still to be built.
 - Inspect the relevant file before changing it. Treat `README.md` and the files in `docs/` as the project plan and contract.
 
 ## Working locally

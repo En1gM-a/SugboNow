@@ -7,6 +7,7 @@
     "build": "tsc",
     "start": "node dist/src/server.js",
     "test": "vitest run tests",
+    "job": "tsx scripts/run-job.ts",
     "fb:demo": "tsx scripts/fb-demo.ts"
   },
   "dependencies": {
