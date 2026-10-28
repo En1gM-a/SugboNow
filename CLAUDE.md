@@ -31,7 +31,7 @@ They communicate only through the REST contract in `docs/api-contract.md`.
 - The repository scaffold, dependency manifests, CI, and Supabase foundation are in place.
 - Migrations `0001`–`0005` in `supabase/migrations/` define the schema: `profiles`, `locations`, `schedule_entries`, `alerts`, `daily_briefs`, `lgu_sources`, `lgu_posts`, `weather_snapshots`, with RLS. `supabase/seed.sql` contains development seed data.
 - The backend implements every endpoint in `docs/api-contract.md` (profile, areas, LGU sources, locations, schedule, alerts, news, weather, today's brief, LGU posts), the ingestion jobs (TomTom, WeatherAPI, GNews, SunStar, Cebu Daily News), matching, rule-based leave times, and a rule-based brief writer behind `services/ai.service.ts` (no AI provider yet).
-- The frontend (owned by the frontend team) has the API client, the LGU post types and one hook (`useLguPosts`); its pages, auth flow, other hooks and the remaining API types are still to be built.
+- The frontend (owned by the frontend team) has the API client, the LGU post types and one hook (`useLguPosts`); its pages, auth flow, other hooks and the remaining API types are still to be built. The spec for that work is `docs/handoffs/frontend.md`.
 - Inspect the relevant file before changing it. Treat `README.md` and the files in `docs/` as the project plan and contract.
 
 ## Working locally
@@ -79,6 +79,7 @@ Never commit `.env` files, API keys, Supabase service-role keys, tokens, or `nod
 - `docs/api-contract.md` — frontend/backend API contract.
 - `docs/data-model.md` — data-model documentation.
 - `docs/data-sources.md` — source-specific notes and quotas.
+- `docs/handoffs/` — work handed from one teammate to another. `frontend.md` is the frontend spec (pages, design system, performance and motion rules) with a prompt for AI agents.
 - `supabase/migrations/0001_init_schema.sql` — executable initial database schema.
 
 ## Collaboration and GitHub workflow
