@@ -75,7 +75,8 @@ sugbo-now/
 │   ├── data-model.md
 │   ├── data-sources.md
 │   └── handoffs/
-│       └── frontend.md          # frontend spec + prompt for AI agents
+│       ├── frontend.md          # frontend spec + prompt for AI agents
+│       └── frontend-gsap-lenis.md  # GSAP + Lenis: not used (why, notes for later)
 ├── supabase/
 │   ├── migrations/
 │   │   └── 0001_init_schema.sql
