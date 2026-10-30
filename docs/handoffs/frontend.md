@@ -2,7 +2,7 @@
 
 - **For:** the frontend team (@gnthril, @Tiamporado) and their AI coding agents
 - **From:** @En1gM-a, October 2026
-- **State:** the backend API is finished (PR #25); the first full frontend build is in review (PR #27).
+- **State:** the backend API is finished (PR #25); the frontend is still the scaffold.
 
 This is the spec for SugboNow's frontend: every page, the "Sinulog" design system, the performance budget
 and the motion rules. The API is done, so every page can be built now on mock data (`VITE_USE_MOCKS=true`)
