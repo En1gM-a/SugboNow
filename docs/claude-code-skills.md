@@ -7,13 +7,22 @@ This repository ships project-level [Claude Code](https://claude.com/claude-code
 | `ui-ux-pro-max` | Designing and reviewing frontend UI: layouts, palettes, typography, accessibility, component patterns | Python 3 (its search scripts run with `python`) |
 | `graphify` | Asking questions about how the codebase fits together, via a local knowledge graph | The `graphify` CLI (below) |
 
-Both are third-party skills. They are optional; nobody has to use them to work on the project.
+Both are third-party skills. `graphify` is optional. `ui-ux-pro-max` is one of the three design skills that frontend work always uses (below).
 
 ## ui-ux-pro-max
 
-Installed with [`uipro-cli`](https://www.npmjs.com/package/uipro-cli) (`uipro init --ai claude`). You only need `uipro-cli` to reinstall or update the skill, not to use it.
+The copy in `.claude/skills/` was installed with the older `uipro-cli`. That package is now stale: the CLI is published as [`ui-ux-pro-max-cli`](https://www.npmjs.com/package/ui-ux-pro-max-cli). Frontend developers install the current version in their user folder (below). A skill in your user folder wins over the repo's copy of the same name.
 
 Try it from Claude Code with a request such as "design the dashboard layout for the Cebu Daily Brief". Its suggestions are generic, so check them against this project's stack (React, TypeScript, Tailwind) and conventions in `CLAUDE.md`.
+
+## Frontend design skills
+
+Frontend work always uses three skills: `ui-ux-pro-max`, [Impeccable](https://github.com/pbakaus/impeccable) (`impeccable`) and the [Motion AI Kit](https://motion.dev/docs/ai-kit) (`motion`). `CLAUDE.md` tells Claude Code to invoke all three on every frontend task, even when nobody asks.
+
+Impeccable and Motion aren't shipped in this repo. Each developer installs them, and the current UI UX Pro Max, in their own user folder (`~/.claude/skills/`). The frontend handoff prompt has the agent do this on first use. The commands are under `<skills>` in [`docs/handoffs/frontend.md`](handoffs/frontend.md).
+
+- **Impeccable:** its installer also adds a design hook that checks each UI file the agent edits. Its working files go in `.impeccable/`, which is gitignored.
+- **Motion:** its installer, `npx motion-ai`, only runs in an interactive terminal, so the agent asks you to run it. Choose Global, then Claude Code. It also adds Motion's free docs-search server.
 
 ## graphify
 

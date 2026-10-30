@@ -173,6 +173,8 @@ Project skills live in `.claude/skills/` and load automatically in this reposito
 - `ui-ux-pro-max` — UI/UX design guidance for frontend work. Adapt its suggestions to this project's stack (React, Tailwind) and keep changes in `frontend/`.
 - `graphify` — optional codebase knowledge graph. Requires the `graphify` CLI on the developer's machine.
 
+**Frontend work always uses three design skills: `ui-ux-pro-max`, `impeccable` and `motion`.** Before designing, building, reviewing or fixing anything in `frontend/`, invoke all three, even if the user doesn't mention them. If one is missing, follow the setup under `<skills>` in `docs/handoffs/frontend.md`. It installs them at user level, which is pre-approved because they aren't project dependencies, and asks the user to run any installer you can't. When a skill disagrees with the design, performance or motion rules in that handoff, the handoff wins.
+
 ## graphify (optional)
 
 graphify is an optional per-developer tool (see `docs/claude-code-skills.md`). It builds a local knowledge graph at `graphify-out/`, which is gitignored. Follow these rules only when the `graphify` command is installed and `graphify-out/graph.json` exists; otherwise use normal search and file reads.

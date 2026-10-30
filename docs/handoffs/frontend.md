@@ -2,7 +2,7 @@
 
 - **For:** the frontend team (@gnthril, @Tiamporado) and their AI coding agents
 - **From:** @En1gM-a, October 2026
-- **State of `main`:** the backend API is finished (PR #25); the frontend is still the scaffold.
+- **State:** the backend API is finished (PR #25); the first full frontend build is in review (PR #27).
 
 This is the spec for SugboNow's frontend: every page, the "Sinulog" design system, the performance budget
 and the motion rules. The API is done, so every page can be built now on mock data (`VITE_USE_MOCKS=true`)
@@ -16,12 +16,19 @@ and switched to the real API later.
 
 Or paste the prompt below directly. It is written for Claude Code and works with other agents too.
 
+**Design skills.** The first time, the agent sets up three design skills in your own user folder:
+[UI UX Pro Max](https://uupm.cc), [Impeccable](https://github.com/pbakaus/impeccable) and
+[Motion](https://motion.dev). It installs the first two itself. For Motion, it asks you to run one command,
+because Motion's installer needs a terminal. It also asks you whenever it can't run an installer. Nothing in
+the repo changes. After that, it uses all three on every frontend task, even if you forget to ask. `CLAUDE.md`
+repeats this rule, so it also applies in later sessions that never open this file.
+
 **Reading it yourself.** The prompt doubles as the spec: pages are in `<pages>`, colors and fonts in
 `<design_system>`, speed rules in `<performance>`, animation rules in `<motion>` and finishing details in
 `<polish>`. When they clash, speed comes first, then accessibility, then looks.
 
-Related: data shapes are in [`docs/api-contract.md`](../api-contract.md), and the design skill is in
-`.claude/skills/ui-ux-pro-max/` (see [`docs/claude-code-skills.md`](../claude-code-skills.md)). This is not
+Related: data shapes are in [`docs/api-contract.md`](../api-contract.md), and the design skills are described
+in [`docs/claude-code-skills.md`](../claude-code-skills.md). This is not
 [`docs/claude-handoff.md`](../claude-handoff.md), which is a tool that moves a long Claude Code session into a
 fresh one.
 
@@ -37,7 +44,7 @@ You are a senior frontend engineer and UI designer working on SugboNow, a Cebu d
 - Existing files: src/lib/apiClient.ts (sends the Supabase token), src/lib/supabaseClient.ts, src/hooks/useLguPosts.ts, src/types/api.ts (only LGU post types so far), src/main.tsx (QueryClientProvider already wired). Empty stubs to fill in: src/context/AuthContext.tsx, src/mocks/handlers.ts, src/mocks/browser.ts, src/utils/format.ts. App.tsx is a placeholder.
 - public/mockServiceWorker.js is from MSW 2.15.0, but the msw package is now 3.x. Regenerate it before wiring mocks (inside frontend/: `npx msw init public/ --save`) and use the MSW 3 API.
 - The backend API is finished. Every endpoint and JSON shape is in docs/api-contract.md. Read it before building any page; it is the only source of truth for data.
-- Use the project skill ui-ux-pro-max for every design decision (run its search for components, UX checks, and its pre-delivery checklist), adapted to React + Tailwind. If the Motion skill is available, use it for animation details; the <motion> rules below come first.
+- Design skills: set up and use ui-ux-pro-max, impeccable and motion as described in <skills>, before anything else.
 </context>
 
 <rules>
@@ -47,9 +54,33 @@ You are a senior frontend engineer and UI designer working on SugboNow, a Cebu d
 - Add the missing TypeScript types to src/types/api.ts, mirroring docs/api-contract.md exactly.
 - Build MSW handlers and fixtures (src/mocks/handlers.ts, src/mocks/data/) matching the contract, so every page works with VITE_USE_MOCKS=true. Where the API doesn't offer something yet (marked "mock for now" below), design it with mock data only.
 - Motion (formerly Framer Motion) is pre-approved: add it with `npm --prefix frontend install motion` on your first branch, and import from `motion/react` and `motion/react-m`. Never install or import `framer-motion`.
+- Installing the three skills in <skills> is pre-approved. They go in your user folder (~/.claude/skills), not the project, and they are not dependencies of frontend/.
 - Stop and ask before adding any OTHER npm dependency (e.g. lucide-react for icons, a chart library, a query-cache persister), touching anything outside frontend/, or pushing or opening a PR.
 - Work on one branch per chunk (e.g. frontend/design-system, frontend/auth, frontend/dashboard).
 </rules>
+
+<skills>
+Three design skills are required for all frontend work:
+- ui-ux-pro-max (https://uupm.cc): design-system search, UX rules and the pre-delivery checklist.
+- impeccable (https://github.com/pbakaus/impeccable): critique, audit and polish, plus a detector for generic "AI-looking" UI.
+- motion (https://motion.dev): animation and animation-performance rules.
+
+Setup, first thing in the session (pre-approved, don't ask):
+1. Check your available skills and skip any you already have from your user folder or a plugin. The repo's .claude/skills/ui-ux-pro-max is an old copy, so install the current one anyway unless ~/.claude/skills/ui-ux-pro-max already exists.
+2. Install what's missing at user level, so nothing in the repo changes:
+   - ui-ux-pro-max: `npx --yes -p ui-ux-pro-max-cli uipro init --ai claude --global`
+   - impeccable: `npx --yes impeccable install --providers=claude --scope=global --yes`. This also adds Impeccable's design hook, which checks every UI file you edit.
+   - motion: its installer only runs in an interactive terminal, so you can't run it. Ask the user to run `npx motion-ai` in their own terminal and choose Global, then Claude Code. It also adds Motion's free docs-search server.
+3. ui-ux-pro-max's search scripts need Python 3. If `python --version` fails, ask the user to install Python; don't install it yourself.
+4. New skills usually appear right away. If one doesn't, ask the user to run /reload-skills or start a new session.
+5. If you can't run an installer (it needs a terminal, your permissions block it, or it fails), ask the user to run that command in their own terminal. Carry on with the rules in this prompt until they have.
+
+On every frontend task, invoke all three skills before you design, build, review or fix anything in frontend/, even if the user doesn't mention them. This is the step people forget, so never wait to be asked.
+- ui-ux-pro-max: design decisions, UX checks and its pre-delivery checklist, adapted to React + Tailwind.
+- impeccable: critique and polish your pages, and scan each finished page with its detector while the dev server runs (`npx --yes impeccable detect http://localhost:5173/<route>`). Don't run its init or document commands, and don't create PRODUCT.md or DESIGN.md: this prompt is the product and design brief.
+- motion: anything that moves.
+When a skill disagrees with this prompt, this prompt wins. The <design_system>, <performance> and <motion> rules are decided: don't let a skill change the palette, the fonts or the Sinulog look, or add effects that break the performance budget.
+</skills>
 
 <design_system>
 Theme: "Sinulog". Festive, warm and unmistakably Cebuano, inspired by the Sinulog festival and the Santo Niño. It must look clearly different from our school's colors (CIT-U maroon and gold): a multi-color festival palette, never a two-tone maroon-and-gold look.
@@ -220,16 +251,16 @@ Every page needs loading skeletons, empty states and error states with a Retry b
 </pages>
 
 <steps>
-1. First, build the foundation only: tokens in src/index.css, fonts, the static app shell in index.html, QueryClient defaults, route-level code splitting, MotionConfig + LazyMotion, and the core components (Button with every state, Card, Badge, SeverityBadge, SinulogRibbon, Skeleton, Toast, AppShell with nav). Also write a one-line layout sketch for each page. Then STOP and wait for my approval.
+1. First, set up the skills (<skills>). Then build the foundation only: tokens in src/index.css, fonts, the static app shell in index.html, QueryClient defaults, route-level code splitting, MotionConfig + LazyMotion, and the core components (Button with every state, Card, Badge, SeverityBadge, SinulogRibbon, Skeleton, Toast, AppShell with nav). Also write a one-line layout sketch for each page. Then STOP and wait for my approval.
 2. After approval, build in this order: auth (Login, Sign Up, onboarding) → Dashboard → Cebu News → Mayor FB → Weather → Traffic Map → Profile.
-3. After each page, run the ui-ux-pro-max pre-delivery checklist and a Lighthouse Mobile check, then output: ✅ what was built, files changed, the Lighthouse scores, and how you verified it.
+3. After each page, run the ui-ux-pro-max pre-delivery checklist, an Impeccable critique and detector scan, and a Lighthouse Mobile check, then output: ✅ what was built, files changed, the Lighthouse scores, and how you verified it.
 </steps>
 
 <done_when>
 - `npm --prefix frontend run build` passes, within the <performance> JavaScript budget.
 - Every page renders correctly at 375px and 1440px with VITE_USE_MOCKS=true.
 - Lighthouse Mobile meets the <performance> targets on Login, Dashboard and News.
-- The ui-ux-pro-max checklist passes.
+- The ui-ux-pro-max checklist passes, and Impeccable's detector flags nothing except what this spec requires (such as Open Sans and the ivory background).
 - No files outside frontend/ have changed.
 Stop and report if the build fails twice in a row.
 </done_when>
