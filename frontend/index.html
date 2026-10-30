@@ -1,5 +1,64 @@
 <!doctype html>
 <html lang="en">
-  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Sugbo Now</title></head>
-  <body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#14213D" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="Sugbo Now: Cebu traffic, weather, floods, class suspensions and your leave time, in one daily brief." />
+    <script>
+      // Apply the saved theme (or the system's) before the first paint, so dark mode never flashes light.
+      (function () {
+        var t;
+        try { t = localStorage.getItem('sn-theme'); } catch (e) {}
+        if (t !== 'light' && t !== 'dark') t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', t);
+      })();
+    </script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Fonts apply after the page has loaded, so they never block the first paint or compete with the app's
+         JavaScript. Metric-matched fallback fonts (index.css) keep the swap from shifting text. -->
+    <link id="web-fonts" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Poppins:wght@600;700&display=swap" media="print" />
+    <script>
+      window.addEventListener('load', function () {
+        document.getElementById('web-fonts').media = 'all';
+      });
+    </script>
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Poppins:wght@600;700&display=swap" />
+    </noscript>
+    <title>Sugbo Now</title>
+    <style>
+      /* Static app shell: painted before any JavaScript runs. React replaces #root's content on mount. */
+      .shell-body { margin: 0; background: #fff8ec; font-family: "Open Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+      .shell-header { height: 56px; background: #14213d; display: flex; align-items: center; padding: 0 16px; color: #fff; font: 700 18px/1 Poppins, system-ui, sans-serif; letter-spacing: -0.01em; }
+      .shell-ribbon { height: 4px; background: linear-gradient(90deg, #c8102e, #f5a623, #0e7490, #15803d); }
+      .shell-main { max-width: 1200px; margin: 0 auto; padding: 24px 16px; display: grid; gap: 16px; }
+      .shell-block { background: #fff; border: 1px solid #e7e5e4; border-radius: 16px; }
+      .shell-pulse { background: #f0ebe3; border-radius: 8px; animation: shell-pulse 1.6s ease-in-out infinite; }
+      [data-theme="dark"] .shell-body { background: #0b1220; }
+      [data-theme="dark"] .shell-block { background: #141d33; border-color: #263352; }
+      [data-theme="dark"] .shell-pulse { background: #1f2a44; }
+      @keyframes shell-pulse { 50% { opacity: 0.55; } }
+      @media (prefers-reduced-motion: reduce) { .shell-pulse { animation: none; } }
+      @media (min-width: 1024px) { .shell-grid { grid-template-columns: 2fr 1fr; } .shell-header { height: 64px; } }
+    </style>
+  </head>
+  <body class="shell-body">
+    <div id="root">
+      <div class="shell-header" aria-hidden="true">Sugbo Now</div>
+      <div class="shell-ribbon" aria-hidden="true"></div>
+      <div class="shell-main" aria-busy="true" aria-label="Loading Sugbo Now">
+        <div class="shell-pulse" style="height: 32px; width: 60%"></div>
+        <div class="shell-grid" style="display: grid; gap: 16px">
+          <div class="shell-block" style="height: 260px; padding: 20px"><div class="shell-pulse" style="height: 100%"></div></div>
+          <div class="shell-block" style="height: 260px; padding: 20px"><div class="shell-pulse" style="height: 100%"></div></div>
+        </div>
+        <div class="shell-block" style="height: 120px; padding: 20px"><div class="shell-pulse" style="height: 100%"></div></div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>

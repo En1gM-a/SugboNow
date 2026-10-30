@@ -1,3 +1,247 @@
 @import "tailwindcss";
 
-body { margin: 0; font-family: system-ui, sans-serif; }
+/* dark: utilities follow the app's theme toggle (data-theme on <html>), not only the OS setting. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* Metric-matched fallbacks: text renders at the web font's size before it loads, so the swap doesn't shift layout. */
+@font-face {
+  font-family: "Poppins Fallback";
+  src: local("Arial"), local("Helvetica"), local("Roboto");
+  size-adjust: 112.16%;
+  ascent-override: 93.62%;
+  descent-override: 31.21%;
+  line-gap-override: 8.92%;
+}
+@font-face {
+  font-family: "Open Sans Fallback";
+  src: local("Arial"), local("Helvetica"), local("Roboto");
+  size-adjust: 105.15%;
+  ascent-override: 101.65%;
+  descent-override: 27.86%;
+  line-gap-override: 0%;
+}
+
+/* "Sinulog" design tokens. See docs/handoffs/frontend.md <design_system>.
+   Light values live here; the dark theme overrides them below under [data-theme="dark"]. */
+@theme {
+  --color-sinulog-red: #c8102e;
+  --color-marigold: #f5a623;
+  --color-marigold-soft: #fdf0d5;
+  --color-mactan-sea: #0e7490;
+  --color-mactan-sea-dark: #0b5f76;
+  --color-mactan-sea-soft: #e0f2f6;
+  --color-mactan-navy: #14213d;
+  --color-mactan-navy-light: #22325a;
+  --color-candle-ivory: #fff8ec;
+  --color-surface: #ffffff;
+  --color-line: #e7e5e4;
+  --color-ink: #1c1917;
+  --color-muted: #57534e;
+  --color-skeleton: #f0ebe3;
+  --color-status-high: #b91c1c;
+  --color-status-high-soft: #fde8e8;
+  --color-status-medium: #b45309;
+  --color-status-medium-ink: #7c3a06;
+  --color-status-medium-soft: #fdf0e1;
+  --color-status-low: #475569;
+  --color-status-low-soft: #eef1f5;
+  --color-status-ok: #15803d;
+  --color-status-ok-soft: #e5f4ea;
+  --color-live: #4ade80;
+  /* Text and fills that sit on a colored background, so they can flip with the theme. */
+  --color-on-sea: #ffffff;
+  --color-on-status: #ffffff;
+  --color-on-accent: #1c1917;
+  --color-selected: #14213d;
+  --color-on-selected: #ffffff;
+  --color-chart-temp: #c8102e;
+
+  --font-heading: "Poppins", "Poppins Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Open Sans", "Open Sans Fallback", ui-sans-serif, system-ui, sans-serif;
+
+  /* Two shadow levels only (utilities: shadow-card, shadow-raised). */
+  --shadow-card: 0 1px 2px rgb(28 25 23 / 0.04), 0 1px 3px rgb(28 25 23 / 0.06);
+  --shadow-raised: 0 6px 20px -6px rgb(20 33 61 / 0.18);
+
+  /* Motion tokens (utilities: ease-out, ease-in). */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.32, 0, 0.67, 0);
+  --duration-press: 100ms;
+  --duration-hover: 150ms;
+  --duration-switch: 200ms;
+  --duration-enter: 180ms;
+  --duration-leave: 150ms;
+
+  --animate-page-in: page-in 180ms var(--ease-out) both;
+  --animate-fade-up: fade-up 200ms var(--ease-out) both;
+  --animate-fade-in: fade-in 150ms var(--ease-out) both;
+  --animate-pulse-soft: pulse-soft 1.6s ease-in-out infinite;
+  --animate-toast-in: toast-in 300ms var(--ease-out) both;
+  --animate-sheet-in: sheet-in 300ms var(--ease-out) both;
+  --animate-check-in: check-in 150ms var(--ease-out) both;
+  --animate-candle: candle 1.4s ease-in-out 2;
+
+  @keyframes page-in { from { opacity: 0; transform: translateY(6px); } }
+  @keyframes fade-up { from { opacity: 0; transform: translateY(8px); } }
+  @keyframes fade-in { from { opacity: 0; } }
+  @keyframes pulse-soft { 50% { opacity: 0.55; } }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(16px); } }
+  @keyframes sheet-in { from { opacity: 0; transform: translateY(24px); } }
+  @keyframes check-in { from { opacity: 0; transform: scale(0.85); } }
+  @keyframes candle { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
+  @keyframes live-in { from { opacity: 0; transform: translateY(4px); } }
+  @keyframes live-out { to { opacity: 0; transform: translateY(-4px); } }
+}
+
+/* z-index scale: 0 maps · 10 inside components · 40 nav bars · 50 toasts and the skip link. Dialogs use the top layer. */
+
+@layer base {
+  :root {
+    color-scheme: light;
+    accent-color: var(--color-mactan-sea);
+    caret-color: var(--color-mactan-sea);
+    scrollbar-color: #cfc8bf transparent;
+    /* Rain-chance scale (maps, charts and legends) and the text color on top of it. */
+    --rain-1: #b45309;
+    --rain-2: #3f7f91;
+    --rain-3: #0e7490;
+    --rain-4: #14213d;
+    --rain-on: #ffffff;
+  }
+
+  /* "Sinulog night": a midnight-navy dark theme. Every text pair here meets 4.5:1 or better. */
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    scrollbar-color: #3a4766 transparent;
+    --color-candle-ivory: #0b1220;
+    --color-surface: #141d33;
+    --color-line: #263352;
+    --color-ink: #f3efe7;
+    --color-muted: #b3aca4;
+    --color-skeleton: #1f2a44;
+    --color-mactan-sea: #5cc8de;
+    --color-mactan-sea-dark: #8fdcec;
+    --color-mactan-sea-soft: #10364a;
+    --color-marigold-soft: #3a2c10;
+    --color-status-high: #f87171;
+    --color-status-high-soft: #3a1517;
+    --color-status-medium: #f5a742;
+    --color-status-medium-ink: #fcd34d;
+    --color-status-medium-soft: #3a2610;
+    --color-status-low: #9fb0c8;
+    --color-status-low-soft: #1e2636;
+    --color-status-ok: #4ade80;
+    --color-status-ok-soft: #10301e;
+    --color-on-sea: #0b1220;
+    --color-on-status: #1c1917;
+    --color-selected: #e9e5df;
+    --color-on-selected: #0b1220;
+    --color-chart-temp: #f87171;
+    /* Neutral grays used for tracks, hovers and placeholders, re-mapped to the night palette. */
+    --color-stone-50: #172036;
+    --color-stone-100: #1b2540;
+    --color-stone-200: #2a3655;
+    --color-stone-300: #3a4766;
+    --color-stone-400: #6b7591;
+    --color-stone-500: #9aa3b8;
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35), 0 1px 3px rgb(0 0 0 / 0.25);
+    --shadow-raised: 0 8px 24px -8px rgb(0 0 0 / 0.6);
+    --rain-1: #f5a742;
+    --rain-2: #4d9fb3;
+    --rain-3: #5cc8de;
+    --rain-4: #a5e4f3;
+    --rain-on: #0b1220;
+  }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--color-candle-ivory);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4 { font-family: var(--font-heading); letter-spacing: -0.015em; line-height: 1.25; text-wrap: balance; }
+  p { text-wrap: pretty; }
+  a { text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  table { font-variant-numeric: tabular-nums; }
+  :focus-visible { outline: 2px solid var(--color-mactan-sea); outline-offset: 2px; }
+  ::selection { background: var(--color-marigold-soft); color: var(--color-ink); }
+
+  /* Tailwind v4 resets buttons to the default cursor; every enabled control gets the pointer. */
+  button:not(:disabled), [role="button"], select, summary, label[for], input[type="range"] { cursor: pointer; }
+  /* Removes the double-tap-to-zoom delay on taps. */
+  a, button, input, select, textarea, label, summary { touch-action: manipulation; }
+}
+
+@layer components {
+  .sinulog-ribbon { background: linear-gradient(90deg, #c8102e, #f5a623, #0e7490, #15803d); }
+
+  /* Soft shadow that fades in on hover, via a pseudo-element (never animate box-shadow). */
+  .hover-shadow { position: relative; isolation: isolate; }
+  .hover-shadow::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: var(--shadow-raised);
+    opacity: 0;
+    transition: opacity var(--duration-hover) var(--ease-out);
+    pointer-events: none;
+    z-index: -1;
+  }
+  @media (hover: hover) { .hover-shadow:hover::after { opacity: 1; } }
+
+  /* Below-the-fold list items skip rendering work until scrolled near. */
+  .cv-auto { content-visibility: auto; contain-intrinsic-size: auto 160px; }
+
+  /* High-severity "candle glow": two pulses, then it stops. */
+  .candle-glow { position: relative; isolation: isolate; }
+  .candle-glow::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    box-shadow: 0 0 0 3px rgb(245 166 35 / 0.45), 0 0 18px rgb(245 166 35 / 0.35);
+    opacity: 0;
+    animation: var(--animate-candle);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .scrollbar-none { scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+
+  /* "Show as table" disclosure under charts and maps. */
+  .data-details > summary { list-style: none; }
+  .data-details > summary::-webkit-details-marker { display: none; }
+  .data-details[open] .data-details-chevron { rotate: 180deg; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; }
+  *:active { scale: none !important; }
+  .animate-pulse-soft { animation: none !important; }
+  .candle-glow::before { animation: none; }
+}
+
+/* Leaflet: its own stacking context, so its panes stay below the nav bars and dialogs. */
+.leaflet-container { font-family: var(--font-sans); background: var(--color-skeleton); isolation: isolate; z-index: 0; }
+.leaflet-control-attribution { font-size: 11px; }
+.leaflet-container .leaflet-control-attribution { background: color-mix(in srgb, var(--color-surface) 85%, transparent); color: var(--color-muted); }
+.leaflet-container .leaflet-control-attribution a { color: var(--color-mactan-sea); }
+/* 44px zoom buttons, the minimum touch target, in the theme's colors. */
+.leaflet-bar a,
+.leaflet-touch .leaflet-bar a { width: 44px; height: 44px; line-height: 44px; font-size: 20px; background: var(--color-surface); color: var(--color-ink); border-color: var(--color-line); }
+.leaflet-bar a:hover { background: var(--color-stone-100); }
+.leaflet-tooltip { background: var(--color-surface); color: var(--color-ink); border-color: var(--color-line); }
+.leaflet-tooltip-top::before { border-top-color: var(--color-surface); }
+.leaflet-tooltip-bottom::before { border-bottom-color: var(--color-surface); }
+.leaflet-tooltip-left::before { border-left-color: var(--color-surface); }
+.leaflet-tooltip-right::before { border-right-color: var(--color-surface); }
+/* Dark map: invert the light OpenStreetMap tiles into a night map (a static filter, never animated). */
+[data-theme="dark"] .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.55); }
+.sn-map-label { background: transparent; border: 0; }
