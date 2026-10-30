@@ -14,3 +14,6 @@ graphify-out/
 
 # Claude Code session handoff: personal per-project switch
 .claude/handoff.local.json
+
+# Impeccable design skill: per-developer working files (caches, screenshots, hook state)
+**/.impeccable/
