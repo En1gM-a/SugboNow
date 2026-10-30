@@ -253,7 +253,7 @@ Frontend and backend teammates should never be blocked on each other.
 
 **Contract first.** Any endpoint or response shape is agreed in `docs/api-contract.md` *before* anyone builds it. Changes to that file need a review from one person on each side.
 
-**Handoffs.** Work handed from one side to the other is written up in `docs/handoffs/`. Frontend team: start with [`docs/handoffs/frontend.md`](docs/handoffs/frontend.md). It covers every page, the design system, the performance and motion rules, and has a prompt your AI agent can follow.
+**Handoffs.** Work handed from one side to the other is written up in `docs/handoffs/`. Frontend team: start with [`docs/handoffs/frontend.md`](docs/handoffs/frontend.md). It covers what each page contains and how it's laid out, the design system, and the performance, motion and scrolling rules, and has a prompt your AI agent can follow.
 
 **Frontend without the backend (MSW mocks).**
 1. `cd frontend && npx msw init public/ --save`

@@ -79,7 +79,7 @@ Never commit `.env` files, API keys, Supabase service-role keys, tokens, or `nod
 - `docs/api-contract.md` — frontend/backend API contract.
 - `docs/data-model.md` — data-model documentation.
 - `docs/data-sources.md` — source-specific notes and quotas.
-- `docs/handoffs/` — work handed from one teammate to another. `frontend.md` is the frontend spec (pages, design system, performance and motion rules) with a prompt for AI agents.
+- `docs/handoffs/` — work handed from one teammate to another. `frontend.md` is the frontend spec (page content and layout, design system, performance, motion and scrolling rules) with a prompt for AI agents.
 - `supabase/migrations/0001_init_schema.sql` — executable initial database schema.
 
 ## Collaboration and GitHub workflow
@@ -173,7 +173,7 @@ Project skills live in `.claude/skills/` and load automatically in this reposito
 - `ui-ux-pro-max` — UI/UX design guidance for frontend work. Adapt its suggestions to this project's stack (React, Tailwind) and keep changes in `frontend/`.
 - `graphify` — optional codebase knowledge graph. Requires the `graphify` CLI on the developer's machine.
 
-**Frontend work always uses three design skills: `ui-ux-pro-max`, `impeccable` and `motion`.** Before designing, building, reviewing or fixing anything in `frontend/`, invoke all three, even if the user doesn't mention them. If one is missing, follow the setup under `<skills>` in `docs/handoffs/frontend.md`. It installs them at user level, which is pre-approved because they aren't project dependencies, and asks the user to run any installer you can't. When a skill disagrees with the design, performance or motion rules in that handoff, the handoff wins.
+**Frontend work always uses three design skills: `ui-ux-pro-max`, `impeccable` and `motion`.** Before designing, building, reviewing or fixing anything in `frontend/`, invoke all three, even if the user doesn't mention them. If one is missing, follow the setup under `<skills>` in `docs/handoffs/frontend.md`. It installs them at user level, which is pre-approved because they aren't project dependencies, and asks the user to run any installer you can't. When a skill disagrees with the layout, design, performance, motion or scrolling rules in that handoff, the handoff wins.
 
 ## graphify (optional)
 
