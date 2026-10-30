@@ -79,7 +79,7 @@ Never commit `.env` files, API keys, Supabase service-role keys, tokens, or `nod
 - `docs/api-contract.md` — frontend/backend API contract.
 - `docs/data-model.md` — data-model documentation.
 - `docs/data-sources.md` — source-specific notes and quotas.
-- `docs/handoffs/` — work handed from one teammate to another. `frontend.md` is the frontend spec (pages, design system, performance and motion rules) with a prompt for AI agents. `frontend-gsap-lenis.md` covers GSAP animation and Lenis smooth scrolling.
+- `docs/handoffs/` — work handed from one teammate to another. `frontend.md` is the frontend spec (pages, design system, performance and motion rules) with a prompt for AI agents.
 - `supabase/migrations/0001_init_schema.sql` — executable initial database schema.
 
 ## Collaboration and GitHub workflow

@@ -76,7 +76,7 @@ sugbo-now/
 │   ├── data-sources.md
 │   └── handoffs/
 │       ├── frontend.md          # frontend spec + prompt for AI agents
-│       └── frontend-gsap-lenis.md  # GSAP animation + Lenis smooth scrolling
+│       └── frontend-gsap-lenis.md  # GSAP + Lenis: not used (why, notes for later)
 ├── supabase/
 │   ├── migrations/
 │   │   └── 0001_init_schema.sql
@@ -254,7 +254,7 @@ Frontend and backend teammates should never be blocked on each other.
 
 **Contract first.** Any endpoint or response shape is agreed in `docs/api-contract.md` *before* anyone builds it. Changes to that file need a review from one person on each side.
 
-**Handoffs.** Work handed from one side to the other is written up in `docs/handoffs/`. Frontend team: start with [`docs/handoffs/frontend.md`](docs/handoffs/frontend.md). It covers every page, the design system, the performance and motion rules, and has a prompt your AI agent can follow. For animation and smooth scrolling, add [`docs/handoffs/frontend-gsap-lenis.md`](docs/handoffs/frontend-gsap-lenis.md) (GSAP and Lenis).
+**Handoffs.** Work handed from one side to the other is written up in `docs/handoffs/`. Frontend team: start with [`docs/handoffs/frontend.md`](docs/handoffs/frontend.md). It covers every page, the design system, the performance and motion rules, and has a prompt your AI agent can follow.
 
 **Frontend without the backend (MSW mocks).**
 1. `cd frontend && npx msw init public/ --save`
