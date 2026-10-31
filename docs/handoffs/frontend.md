@@ -23,8 +23,9 @@ repeats this rule, so it also applies in later sessions that never open this fil
 
 **Reading it yourself.** The prompt doubles as the spec: what each page contains and how it's arranged is in
 `<pages>`, the shared app layout in `<layout>`, how it should feel to use in `<interaction>`, colors and type in
-`<design_system>`, speed rules in `<performance>`, animation in `<motion>` and scrolling in `<scrolling>`. When
-they clash, speed comes first, then accessibility, then looks.
+`<design_system>`, icons (including the animated weather icons) in `<icons>`, speed rules in `<performance>`,
+animation in `<motion>` and scrolling in `<scrolling>`. When they clash, speed comes first, then accessibility,
+then looks.
 
 ## What changed after PR 27
 
@@ -39,6 +40,9 @@ they clash, speed comes first, then accessibility, then looks.
   feed items, and the Sinulog colors as accents, with the ribbon used once.
 - **More interactive.** Motion page transitions that slide in the direction you tap, smooth auth transitions,
   sheets and expanders instead of modals, and rules for scrolling.
+- **Friendlier icons.** One icon family (Phosphor), tab icons that fill in with a small pop, and a weather icon
+  that moves when you first see it or when the weather changes (rain falls, the sun's rays turn, lightning
+  flashes), then rests, so it never distracts or keeps a cheap phone busy.
 
 Related: data shapes are in [`docs/api-contract.md`](../api-contract.md), and the design skills are described
 in [`docs/claude-code-skills.md`](../claude-code-skills.md). This is not
@@ -69,7 +73,7 @@ You are a senior frontend engineer and product designer working on SugboNow, a C
 - Build MSW handlers and fixtures (src/mocks/handlers.ts, src/mocks/data/) matching the contract, so every page works with VITE_USE_MOCKS=true. Where the API doesn't offer something yet (marked "mock for now" below), design it with mock data only.
 - Motion (formerly Framer Motion) is pre-approved: add it with `npm --prefix frontend install motion` on your first branch, and import from `motion/react` and `motion/react-m`. Never install or import `framer-motion`.
 - Installing the three skills in <skills> is pre-approved. They go in your user folder (~/.claude/skills), not the project, and they are not dependencies of frontend/.
-- Stop and ask before adding any OTHER npm dependency (e.g. lucide-react for icons, a chart library, a query-cache persister), touching anything outside frontend/, or pushing or opening a PR.
+- Stop and ask before adding any OTHER npm dependency (e.g. an icon package, a chart library, a query-cache persister), touching anything outside frontend/, or pushing or opening a PR.
 - Work on one branch per chunk (e.g. frontend/design-system, frontend/auth, frontend/today).
 </rules>
 
@@ -93,7 +97,7 @@ On every frontend task, invoke all three skills before you design, build, review
 - ui-ux-pro-max: design decisions, UX checks and its pre-delivery checklist, adapted to React + Tailwind.
 - impeccable: critique and polish your pages, and scan each finished page with its detector while the dev server runs (`npx --yes impeccable detect http://localhost:5173/<route>`). Don't run its init or document commands, and don't create PRODUCT.md or DESIGN.md: this prompt is the product and design brief.
 - motion: anything that moves.
-When a skill disagrees with this prompt, this prompt wins. The <layout>, <design_system>, <performance>, <motion> and <scrolling> rules are decided: don't let a skill change the palette, the fonts or the layout, or add effects that break the performance budget.
+When a skill disagrees with this prompt, this prompt wins. The <layout>, <design_system>, <icons>, <performance>, <motion> and <scrolling> rules are decided: don't let a skill change the palette, the fonts or the layout, or add effects that break the performance budget.
 </skills>
 
 <layout>
@@ -153,7 +157,7 @@ Typography: one family, the device's own UI font, so nothing downloads and text 
 - Hierarchy comes from size, weight and space, not from extra colors or boxes.
 
 Shape and depth: radius 8px for cards, sheets and inputs; fully round for chips and avatars. Cards on the grey page get a hairline border and no shadow; one soft shadow is reserved for sheets, menus and toasts.
-Icons: one SVG set as inline components, 20px in content and 24px in the tab bar, one consistent stroke.
+Icons: see <icons>.
 
 Avoid the generic AI-made look (Impeccable's critique and detector check this):
 - Don't build pages out of same-size cards that each have an icon, a heading and a "See all →" link. Give each block the shape its content needs. On Today, separate sections with space and dividers; cards are for feed items.
@@ -164,6 +168,52 @@ UX rules (ui-ux-pro-max): 4.5:1 text contrast, visible focus rings, 44x44px touc
 
 NEVER use the Santo Niño's image, the CIT-U logo or seal, or official Sinulog Festival logos. Original abstract motifs only (e.g. the ribbon art on the login panel and the Mayor page cover).
 </design_system>
+
+<icons>
+Every icon is an inline SVG React component: no icon fonts and no image files.
+
+UI icons:
+- Use Phosphor (MIT). Copy the SVGs you need into src/components/icons/ as components, with Phosphor's license file next to them, instead of installing a package: one consistent family and stroke, and the bundle carries only the icons you use. Use the regular weight everywhere, and the fill weight only for the active tab.
+- Icon sizes are tokens in src/index.css: 20px in content, 24px in the tab bar, and 40px and 64px for the weather icon.
+- Tabs: the active tab's icon switches to the fill weight and pops in from scale 0.85. It's CSS only: Tailwind's starting: variant (@starting-style) on the filled icon, plus a transform transition with a CSS spring from the motion skill (generate-css-easing, duration 0.2, bounce 0.15). The active label also changes color, so the fill is never the only sign.
+- Each alert type always has the same icon, next to its label and in its severity color: flood (Waves), road closure (Barricade), traffic (Car), power interruption (Plug), water interruption (Drop), weather (CloudRain), typhoon (Hurricane), class suspension (Backpack).
+- Icons beside visible text get aria-hidden="true". Icon-only buttons (close, filters, the avatar) get an aria-label and a 44×44px hit area, even when the icon is 20px.
+- No icons in colored rounded squares ("icon tiles"), and no icon above every heading.
+
+Weather icon (src/components/WeatherIcon.tsx):
+- Six parts, drawn in Phosphor's style (its Sun, Moon, Cloud, CloudRain, CloudLightning and CloudFog are a good base): sun, moon, cloud, raindrop, bolt and fog line. Stack them into: clear (the sun, or the moon at night), partly cloudy (the sun or moon behind a cloud), cloudy, fog, rain (2, 3 or 4 drops, by how heavy) and thunderstorm (rain plus the bolt).
+- Colors: outlines at least 3:1 on white (muted works), because the hour strip shows the icon without text. Fills are decoration: the sun and bolt marigold, the cloud and moon white, the drops mactan-sea.
+- Pick the icon from the number at the end of the API's iconUrl, and day or night from its path (".../night/116.png" is partly cloudy at night). Show the cloud when iconUrl is null or its number isn't listed (WeatherAPI's snow and sleet codes don't happen in Cebu). Never display the iconUrl image itself: it's an extra request from the user's phone to WeatherAPI, and it wouldn't match the app.
+  | Icon | WeatherAPI icon numbers |
+  | clear | 113 |
+  | partly cloudy | 116 |
+  | cloudy | 119, 122 |
+  | fog | 143, 248, 260, and 125–161 (haze, smoke, dust) |
+  | rain, 2 drops | 176, 263, 266, 293, 296, 353 |
+  | rain, 3 drops | 299, 302, 356 |
+  | rain, 4 drops | 305, 308, 359 |
+  | thunderstorm | 200, 386, 389 |
+
+When the weather icon moves:
+- Only when it has something to say: when it first scrolls into view (Motion's useInView with once: true), and when a refetch changes the condition (key it by the icon, so it remounts and plays again). Then it rests. The icon is fully visible before it moves, so this fits the "nothing appears on scroll" rule in <scrolling>. An endless loop on an icon distracts (ui-ux-pro-max) and keeps a cheap phone busy for nothing.
+- Only the big one moves: Weather's "Now" (64px) and Today's weather (40px). The hour strip, the "Right now" rail and the rain map show it still.
+- Each plays for about 1 to 3 seconds, slow and gentle:
+  - Rain: each drop falls 6px while fading, then reappears in place, staggered; 3 cycles of 1 s (0.8 s with 4 drops), ease-in.
+  - Thunderstorm: the rain above, and the bolt blinks twice.
+  - Clear: the sun's rays turn 45° (one ray's spacing, so they end as they started), 1.2 s, ease-out. At night, the moon tilts 8° and back, 2 s.
+  - Cloudy, partly cloudy and fog: the cloud or the lines drift 3px sideways and back, twice, 2 s, ease-in-out.
+
+How the weather icon is built:
+- Plain CSS @keyframes on transform and opacity, applied with Tailwind's motion-safe: variant, so reduced-motion users get the still icon with no extra code.
+- Each moving part is its own small <svg> inside an absolutely positioned <span>. Animate the <span>, never a <g> or <path> inside an SVG: the browser runs transform and opacity animations of HTML elements on the compositor, while animations of SVG elements run on the main thread (the motion skill's performance rule). That matters on a cheap phone that is still loading the page.
+- Every keyframe starts and ends on the rest frame. The rest frame looks complete (drops showing, rays in place), because it is also the still icon.
+- Beside the condition text it's decorative (aria-hidden="true"). In the hour strip, give it role="img" and an aria-label such as "Light rain".
+- The six parts and WeatherIcon stay under about 6 KB before gzip.
+
+Other touches:
+- The live dot in the top bar sends out one ring (it scales up and fades, 400 ms) when new data arrives. It never pulses on its own.
+- Empty states: two small line drawings (about 96px) in the icon style and palette: a calm sea and sun for "All clear" and a jeepney for "Add your weekly trips". Other empty states are one sentence and one action. No 3D, blob or stock illustrations.
+</icons>
 
 <performance>
 Performance is the top priority: information must be on screen almost instantly, even on a cheap Android phone on slow mobile data. When a visual idea costs speed, speed wins; accessibility comes second.
@@ -214,7 +264,7 @@ Which tool:
 
 Timing (put the easing and duration tokens in src/index.css):
 - Ease-out cubic-bezier(0.22, 1, 0.36, 1) for entering and hover; ease-in cubic-bezier(0.32, 0, 0.67, 0) for leaving.
-- Press 100 ms; hover and color 150 ms; switches 200 ms; entering 180–220 ms; leaving 120–150 ms; sheets up to 300 ms. Nothing runs longer than 400 ms except the skeleton pulse.
+- Press 100 ms; hover and color 150 ms; switches 200 ms; entering 180–220 ms; leaving 120–150 ms; sheets up to 300 ms. Nothing runs longer than 400 ms except the skeleton pulse and the weather icon's short play in <icons>.
 - Motion springs: { type: "spring", visualDuration: 0.3, bounce: 0 }. Nothing about alerts overshoots; playful bits like the success check may use bounce 0.15 at most.
 - Animate only transform and opacity. Never animate width, height (except the small Motion expanders), top/left, margins, box-shadow, filter or backdrop-filter.
 
@@ -303,7 +353,7 @@ Each page lists its Content (everything PR #27 had, which is correct) and then h
    1. Greeting and date on one small line.
    2. The alert status line: "All clear near your places · Ingat sa dalan!" or "3 high alerts near you" (tapping it scrolls to the alerts section). Class advisories add "Naay klase?".
    3. The next trip, the primary element: "Leave by 6:55 AM" at 32px, then "Classes · Home → School · arrive 7:30" and a "+20 min" delay chip that expands the reasons. Under it, "Later today" rows for the other trips (name and leave time).
-   4. Weather now: temperature, condition, one line of advice from the hourly rain chance ("Rain likely from 9 PM. Bring an umbrella." when an hour in the next 12 reaches 70%; otherwise "No rain expected for the next 12 hours."), and a compact 6-hour rain strip.
+   4. Weather now: the animated weather icon (40px, see <icons>), temperature, condition, one line of advice from the hourly rain chance ("Rain likely from 9 PM. Bring an umbrella." when an hour in the next 12 reaches 70%; otherwise "No rain expected for the next 12 hours."), and a compact 6-hour rain strip.
    5. Today's brief: the first 3 lines, "Read the full brief" (expander), the "AI summary" label, and the note that it's written automatically.
    6. Near your places: 3 alerts as compact rows (severity, type, title, distance), then "See all on the traffic map".
    7. From your mayor: the latest post as a preview (avatar, LGU, time, 2-line caption), linking to /mayor.
@@ -326,9 +376,9 @@ Each page lists its Content (everything PR #27 had, which is correct) and then h
 7. Weather (/weather): "Will it rain where I'm going?"
    Content: an area picker; current conditions (temperature, condition, feels like, rain chance, humidity, wind, observed time); the next 24 hours (temperature and rain chance) with a table alternative; a rain map with an hour slider (per-area temperature and rain %) with a table alternative; weather and flood alerts (GET /api/alerts?type=weather,flood); a "PAGASA forecast & advisories" panel (tonight and tomorrow, thunderstorm advisories for Cebu towns, a 5-day outlook) that is mock for now.
    Layout: one view at a time.
-   - The top shows "Now" for the chosen area: the temperature at 32px, the condition, feels like, and the advice line from Today; rain, humidity and wind as one small row; the area picker as a compact control (a sheet on phones, the left rail list on desktop).
+   - The top shows "Now" for the chosen area: the animated weather icon (64px, see <icons>), the temperature at 32px, the condition, feels like, and the advice line from Today; rain, humidity and wind as one small row; the area picker as a compact control (a sheet on phones, the left rail list on desktop).
    - Below it, tabs: Hourly · Rain map · Advisories.
-     - Hourly: a horizontal hour strip (scroll-snap) with temperature and rain %, then the 24-hour chart and "Show as a table".
+     - Hourly: a horizontal hour strip (scroll-snap) with a still weather icon, temperature and rain %, then the 24-hour chart and "Show as a table".
      - Rain map: the map with the hour slider; Leaflet loads when this tab first opens; on desktop the map spans the center and right columns.
      - Advisories: the weather and flood alerts, then the PAGASA panel (marked "Sample" until the backend provides it) with the 5-day outlook.
    - Desktop right rail (on Hourly): the weather and flood alerts, top 3.
@@ -351,7 +401,7 @@ Every page needs loading skeletons, empty states that teach the next step, and e
 </pages>
 
 <steps>
-1. First, set up the skills (<skills>). Then build the foundation only: tokens in src/index.css, the static app shell in index.html, QueryClient defaults, route-level code splitting, the app shell (top bar, tabs, rails, phone tab bar with hide-on-scroll), MotionConfig + LazyMotion with the page transitions, the auth view transitions, and the core components (Button with every state, Chip, SeverityBadge, feed Card, Avatar, Sheet, Tabs and SegmentedControl, Skeleton, Toast). Also write a one-line layout sketch for each page. Then STOP and wait for my approval.
+1. First, set up the skills (<skills>). Then build the foundation only: tokens in src/index.css, the static app shell in index.html, QueryClient defaults, route-level code splitting, the app shell (top bar, tabs, rails, phone tab bar with hide-on-scroll), MotionConfig + LazyMotion with the page transitions, the auth view transitions, and the core components (Button with every state, Chip, SeverityBadge, feed Card, Avatar, Sheet, Tabs and SegmentedControl, Skeleton, Toast, WeatherIcon). Also write a one-line layout sketch for each page. Then STOP and wait for my approval.
 2. After approval, build in this order: auth (Login, Sign up, onboarding) → Today → News → Mayor → Weather → Traffic → Profile.
 3. After each page, run the ui-ux-pro-max pre-delivery checklist, an Impeccable critique and detector scan, and a Lighthouse Mobile check, then output: ✅ what was built, files changed, the Lighthouse scores, and how you verified it.
 </steps>
@@ -361,6 +411,7 @@ Every page needs loading skeletons, empty states that teach the next step, and e
 - Every page renders correctly at 375px, 768px, 1024px and 1440px with VITE_USE_MOCKS=true, with no horizontal scroll.
 - Every item under "Content" in <pages> is present and reachable.
 - Lighthouse Mobile meets the <performance> targets on Login, Today and News.
+- The weather icon plays only when it first comes into view or its condition changes, then rests; it stays still under reduced motion; and it doesn't repaint on every frame while it plays (Chrome DevTools → Rendering → Paint flashing).
 - The ui-ux-pro-max checklist passes, and Impeccable's detector reports nothing on any page.
 - No files outside frontend/ have changed.
 Stop and report if the build fails twice in a row.
