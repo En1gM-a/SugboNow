@@ -1,0 +1,1212 @@
+<!-- SugboNow design sample: sample data only, no API calls. Icons: Phosphor Icons (MIT), copyright Phosphor Icons. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SugboNow Glass</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400..800&display=swap">
+<style>
+/* Layout: a live Cebu sky on a fixed canvas; glass surfaces float on it. Home page with the sign-in card (a jeepney parked on its road), a sign-up page reached through the jeepney's exhaust smoke, then the app shell with five pages. Sample data only: nothing calls an API */
+:root{
+  --font:"Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --ink:#0E1726; --muted:#465467; --line:rgba(14,23,38,.10); --chip:rgba(14,23,38,.06);
+  --glass:rgba(255,255,255,.74); --glass-solid:#F4F7FB; --glass-line:rgba(255,255,255,.72); --glass-shadow:0 12px 32px -14px rgba(14,23,38,.35);
+  --night:rgba(9,14,28,.74); --night-line:rgba(255,255,255,.10);
+  --blue:#1E5AA8; --mango:#FFC233; --red:#C8102E; --amber:#B45309; --green:#0E7C74;
+  --blur:18px; --page-bg:#1A5DBF; --on-sky:#EEF3FA;
+  --puff:#F7F9FC; --puff-shade:#CCD7E6; --puff-line:#0E1726;
+  color-scheme:light;
+}
+:root[data-mode="light"][data-tone="dark"]{--glass:rgba(255,255,255,.86); --glass-line:rgba(255,255,255,.5)}
+:root[data-mode="dark"]{
+  --ink:#EEF3FA; --muted:#B3BFCE; --line:rgba(255,255,255,.10); --chip:rgba(255,255,255,.08);
+  --glass:rgba(9,14,28,.72); --glass-solid:#111A2B; --glass-line:rgba(255,255,255,.10); --glass-shadow:0 12px 32px -14px rgba(0,0,0,.7);
+  --night:rgba(3,6,14,.8); --blue:#8DB8FF;
+  --puff:#5A6983; --puff-shade:#414E66; --puff-line:#0A0F1C;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--page-bg); color:var(--ink); font:15px/1.55 var(--font); min-height:100vh; padding-left:max(0px, env(safe-area-inset-left, 0px)); padding-right:max(0px, env(safe-area-inset-right, 0px))}
+::selection{background:var(--mango); color:#0E1726}
+button{font:inherit; color:inherit; cursor:pointer}
+button:focus-visible, a:focus-visible, input:focus-visible{outline:2px solid var(--mango); outline-offset:2px}
+h1,h2,h3,p{margin:0}
+#sky{position:fixed; inset:0; width:100%; height:100%; z-index:0; display:block}
+#smoke{position:fixed; inset:0; z-index:80; overflow:hidden; pointer-events:none}
+/* cartoon exhaust: flat puffs with one hard shade and a single bumpy outline. No blur, no gradient, no fade: they pop in and pop away */
+.puff, .puff-ink, .puff-blob{position:absolute; border-radius:50%}
+.puff{background:var(--puff); box-shadow:inset -.16em -.2em 0 var(--puff-shade)}
+.puff-ink{background:var(--puff-line)}
+.puff-blob{border-radius:0}
+.puff-blob svg{display:block; width:100%; height:100%; overflow:visible}
+:root[data-vt="theme"]::view-transition-old(root), :root[data-vt="theme"]::view-transition-new(root){animation:none; mix-blend-mode:normal}
+.act[aria-pressed="true"]{background:var(--mango); border-color:var(--mango); color:#0E1726}
+.glass{background:var(--glass); -webkit-backdrop-filter:blur(var(--blur)) saturate(1.5); backdrop-filter:blur(var(--blur)) saturate(1.5); border:1px solid var(--glass-line); box-shadow:var(--glass-shadow)}
+.night{background:var(--night); -webkit-backdrop-filter:blur(var(--blur)) saturate(1.3); backdrop-filter:blur(var(--blur)) saturate(1.3); border:1px solid var(--night-line); color:#EEF3FA}
+:root[data-lite="on"] .glass{-webkit-backdrop-filter:none; backdrop-filter:none; background:var(--glass-solid)}
+:root[data-lite="on"] .night{-webkit-backdrop-filter:none; backdrop-filter:none; background:#0D1526}
+@media (prefers-reduced-transparency: reduce){ .glass{backdrop-filter:none; -webkit-backdrop-filter:none; background:var(--glass-solid)} .night{backdrop-filter:none; -webkit-backdrop-filter:none; background:#0D1526} }
+.tnum{font-variant-numeric:tabular-nums}
+.sr{position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap}
+/* words rise out of a mask; digits roll on reels (HyperFrames per-word-rise and number-wheel, rebuilt live with Motion) */
+.w{display:inline-block; overflow:hidden; vertical-align:bottom; padding:.08em .05em .16em; margin:-.08em -.05em -.16em}
+.w > span{display:inline-block; transform-origin:0 100%}
+.nw{display:inline-flex; align-items:baseline}
+.nw-d{display:inline-block; height:1em; overflow:hidden}
+.nw-s{display:block}
+.nw-s span{display:block; height:1em; line-height:1}
+
+.demo{position:relative; z-index:20; margin:10px auto 0; width:min(1200px, calc(100% - 24px)); border-radius:16px; padding:8px 10px; display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center; font-size:.82rem}
+.demo b{font-weight:700}
+.demo .grp{display:flex; gap:4px; align-items:center; flex-wrap:wrap}
+.demo .lbl{color:var(--muted); margin-right:2px}
+.chip-btn{border:1px solid var(--line); background:transparent; border-radius:999px; padding:6px 11px; min-height:34px; font-size:.8rem; font-weight:600; transition:background-color .15s, border-color .15s}
+.chip-btn:hover{border-color:var(--muted)}
+.chip-btn[aria-pressed="true"]{background:var(--mango); border-color:var(--mango); color:#0E1726}
+.demo .note{margin-left:auto; color:var(--muted)}
+.icons-panel{position:relative; z-index:20; margin:8px auto 0; width:min(1200px, calc(100% - 24px)); border-radius:16px; padding:14px 12px; display:grid; grid-template-columns:repeat(auto-fill, minmax(84px, 1fr)); gap:14px 8px}
+.icons-panel figure{margin:0; display:grid; justify-items:center; align-content:start; gap:8px; font-size:.75rem; font-weight:600; text-align:center}
+.icons-panel .wi{font-size:52px}
+.icons-panel svg{width:36px; height:36px}
+.icons-panel .wi svg{width:100%; height:100%}
+.icons-panel h3{grid-column:1 / -1; margin:0; font-size:.85rem; font-weight:800}
+
+.stage{position:relative; z-index:1}
+
+/* ---------- home + sign in / sign up ---------- */
+.lnav{position:relative; z-index:2; width:min(1200px, calc(100% - 32px)); margin:14px auto 0; display:flex; align-items:center; justify-content:space-between; gap:12px}
+.brand{display:inline-flex; align-items:center; gap:9px; font-weight:800; font-size:1.1rem; letter-spacing:-.01em}
+.lnav .brand{color:#fff; text-shadow:0 1px 2px rgba(5,10,24,.35)}
+.mark{width:22px; height:22px; border-radius:50%; background:linear-gradient(180deg, var(--mango) 0 52%, #2F7BE0 52% 100%); box-shadow:inset 0 0 0 2px rgba(255,255,255,.85)}
+.screen{position:relative; z-index:1}
+/* shade under the hero copy so white text holds 4.5:1 even over the brightest sky and a passing cloud */
+.screen::before{content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; background:linear-gradient(180deg, rgba(5,10,24,.64), rgba(5,10,24,.6) 58%, rgba(5,10,24,.4))}
+.lgrid{width:min(1200px, calc(100% - 32px)); margin:0 auto; min-height:calc(100vh - 150px); display:grid; gap:28px; align-content:center; padding:24px 0 48px}
+.hero-copy{color:#fff; display:grid; gap:18px; justify-items:start; min-width:0}
+.display{font-size:clamp(2.3rem, 5.6vw, 4.2rem); font-weight:800; line-height:1.04; letter-spacing:-.035em; text-wrap:balance; max-width:13ch}
+.lede{font-size:clamp(1rem, 1.5vw, 1.15rem); color:var(--on-sky); max-width:44ch}
+.facts{color:var(--on-sky); font-size:.9rem}
+.peek{display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px; border-radius:20px; padding:12px 16px}
+.peek-i{display:flex; align-items:center; gap:10px}
+.peek-i small{display:block; font-size:.75rem; line-height:1.3; color:#C3CFDF; font-weight:600}
+.peek-i b{font-size:1.15rem; font-weight:800; letter-spacing:-.01em; line-height:1.25}
+.pi{font-size:36px; line-height:0; flex:none}
+/* both forms share one cell, so the card keeps the taller form's height and never jumps when they swap */
+.auth-card{position:relative; width:100%; max-width:440px; justify-self:center; border-radius:28px; overflow:hidden; display:grid}
+.auth-form.off{visibility:hidden}
+.auth-form{grid-area:1/1; display:grid; gap:12px; align-content:center; padding:30px 28px 26px}
+.auth-form h2{font-size:1.65rem; font-weight:800; letter-spacing:-.02em; line-height:1.15}
+.auth-form h2:focus{outline:none}
+.sub{color:var(--muted); font-size:.92rem; margin-top:-6px}
+.field{display:grid; gap:5px}
+.field label{font-size:.8rem; font-weight:700; color:var(--muted)}
+.field input{font:inherit; color:var(--ink); background:var(--chip); border:1px solid var(--line); border-radius:14px; padding:11px 13px; min-height:46px; width:100%; min-width:0}
+.pw{position:relative}
+.pw input{padding-right:70px}
+.show{position:absolute; right:3px; top:3px; bottom:3px; min-width:60px; border:0; background:transparent; color:var(--blue); font-weight:700; font-size:.82rem; border-radius:10px}
+.primary{position:relative; margin-top:4px; border:0; border-radius:999px; min-height:48px; background:var(--mango); color:#0E1726; font-weight:800; transition:filter .15s, transform .1s}
+.primary:hover{filter:brightness(1.05)}
+.primary:active, .outline:active, .mango-btn:active{transform:scale(.97)}
+.primary .label{transition:opacity .15s}
+.primary .spin{position:absolute; inset:0; margin:auto; width:18px; height:18px; border-radius:50%; border:2.5px solid rgba(14,23,38,.25); border-top-color:#0E1726; opacity:0}
+.primary.busy .label{opacity:0}
+.primary.busy .spin{opacity:1; animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(1turn)}}
+.switch{display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; color:var(--muted); font-size:.9rem}
+.outline{border:1.5px solid currentColor; background:transparent; color:var(--ink); border-radius:999px; padding:8px 18px; min-height:44px; font-weight:800; transition:background-color .15s}
+.outline:hover{background:var(--chip)}
+/* the jeepney only shows up during a switch: it pulls in from the side (behind the glass card on wide screens), stops beside the card, then leaves */
+.lane{position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden}
+.jeep{position:absolute; left:0; top:0; width:150px; height:70px; transform-origin:0 0; visibility:hidden}
+.jeep-shadow{position:absolute; left:10px; right:14px; bottom:0; height:6px; border-radius:50%; background:rgba(0,0,0,.35)}
+.jeep-body{position:absolute; inset:0 0 6px 0; transform-origin:40% 100%}
+.jeep-body svg, .wheel svg{width:100%; height:100%; display:block}
+.wheel{position:absolute; bottom:1px; width:20px; height:20px}
+.w1{left:22px} .w2{left:106px}
+@media (min-width:900px){
+  .lgrid{grid-template-columns:minmax(0,1fr) minmax(360px, 440px); gap:56px; align-items:center}
+  .screen::before{background:linear-gradient(90deg, rgba(5,10,24,.64), rgba(5,10,24,.62) 50%, rgba(5,10,24,.2) 78%, rgba(5,10,24,.06))}
+  .auth-card{justify-self:end}
+}
+@media (max-width:899px){ .lane{z-index:2} }
+
+/* ---------- app ---------- */
+.app{padding:16px 12px 110px}
+.side{display:none}
+.shell{width:min(1200px, 100%); margin:0 auto; display:grid; gap:14px}
+.top{border-radius:22px; padding:14px 16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+.top-title{display:grid; gap:2px; min-width:0; flex:1}
+.top h1{font-size:1.45rem; font-weight:800; letter-spacing:-.015em; line-height:1.15}
+.top h1:focus{outline:none}
+.meta-row{display:flex; gap:8px; align-items:center; flex-wrap:wrap; color:var(--muted); font-size:.85rem}
+.loc{display:inline-flex; align-items:center; gap:4px}
+.loc svg, .wx-chip svg{width:16px; height:16px}
+.top-actions{display:flex; gap:8px; align-items:center}
+.wx-chip{display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border-radius:999px; background:var(--chip); font-weight:700; font-size:.88rem; white-space:nowrap}
+.icon-btn{width:44px; height:44px; border-radius:50%; border:1px solid var(--line); background:var(--chip); display:grid; place-items:center; position:relative}
+.icon-btn svg{width:20px; height:20px}
+.icon-btn.on-sky{background:rgba(9,14,28,.38); border-color:rgba(255,255,255,.22); color:#fff}
+.theme-btn .sun, .theme-btn .moon{position:absolute; inset:0; display:grid; place-items:center; transition:transform .45s cubic-bezier(.22,1,.36,1), opacity .3s}
+.theme-btn .moon{opacity:0; transform:rotate(-90deg) scale(.6)}
+:root[data-mode="dark"] .theme-btn .sun{opacity:0; transform:rotate(90deg) scale(.6)}
+:root[data-mode="dark"] .theme-btn .moon{opacity:1; transform:none}
+.avatar{width:44px; height:44px; border-radius:50%; background:linear-gradient(180deg,#2F7BE0,#1E5AA8); color:#fff; display:grid; place-items:center; font-weight:800}
+.page{display:grid; gap:14px}
+.grid{display:grid; gap:14px; grid-template-columns:1fr}
+.card{border-radius:24px; padding:18px; min-width:0; position:relative; overflow:hidden}
+.card h3{font-size:1rem; font-weight:700; display:flex; align-items:center; justify-content:space-between; gap:8px}
+.muted{color:var(--muted)}
+.small{font-size:.85rem}
+.pill-tag{display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:4px 10px; font-size:.75rem; font-weight:800; white-space:nowrap}
+.sev-high{background:#C8102E; color:#fff}
+.sev-med{background:#B45309; color:#fff}
+.sev-ok{background:#0E7C74; color:#fff}
+.tag-mango{background:var(--mango); color:#0E1726}
+.hero .big{font-size:clamp(2.4rem, 7vw, 3.4rem); font-weight:800; letter-spacing:-.03em; line-height:1}
+.hero .big small{font-size:.42em; font-weight:700; letter-spacing:0; color:#C8D5E6; margin-right:6px; vertical-align:.45em}
+.hero .route{color:#C8D5E6; margin-top:8px}
+.chart{width:100%; height:auto; display:block; margin-top:12px}
+svg [data-pop]{transform-box:fill-box; transform-origin:center}
+.legend{display:flex; gap:14px; font-size:.78rem; color:#C8D5E6; margin-top:6px}
+.legend i{display:inline-block; width:14px; height:3px; border-radius:2px; vertical-align:middle; margin-right:5px}
+.wx-now{display:flex; align-items:center; gap:14px; margin-top:6px}
+.wxi{font-size:64px; line-height:0; flex:none}
+.wxi.big{font-size:92px}
+/* One icon system. Live icons (flat cartoon, one outline) show a condition and loop on one shared beat. Control icons (Phosphor line) are for navigation and buttons and stay still.
+   Every moving part is its own HTML element, so the browser runs the loops on the compositor and nothing repaints */
+.wi{position:relative; display:inline-block; width:1em; height:1em; line-height:0; vertical-align:middle; flex:none; --beat:1.6s}
+.wi span{position:absolute; inset:0; display:block}
+.wi svg{position:absolute; inset:0; width:100%!important; height:100%!important; display:block; overflow:visible}
+.w-shadow.w-shadow{inset:auto 26% 1% 26%; height:7%; border-radius:50%; background:rgba(14,23,38,.24)}
+.w-hop{transform-origin:50% 84%}
+.w-bolt{transform-origin:55% 75%}
+.wx-chip .wi{font-size:22px}
+.hour .wi{font-size:30px}
+@media (prefers-reduced-motion:no-preference){
+  .w-hop{animation:w-hop var(--beat) infinite}
+  .w-shadow{animation:w-shadow var(--beat) infinite}
+  .w-spin{animation:w-spin calc(var(--beat) * 4) linear infinite}
+  .w-spin.two{animation-duration:calc(var(--beat) * 2)}
+  .w-wheel{animation:w-spin var(--beat) linear infinite reverse}
+  .w-peek{animation:w-peek var(--beat) ease-in-out infinite alternate}
+  .w-rock{animation:w-rock var(--beat) ease-in-out infinite alternate}
+  .w-twinkle{animation:w-twinkle var(--beat) ease-in-out infinite}
+  .w-twinkle.b{animation-delay:calc(var(--beat) / -2)}
+  .w-float{animation:w-float var(--beat) ease-in-out infinite alternate}
+  .w-float.b{animation-direction:alternate-reverse}
+  .w-bob{animation:w-bob var(--beat) ease-in-out infinite}
+  .w-drop{animation:w-fall calc(var(--beat) / 2) cubic-bezier(.55,0,1,.45) infinite; animation-delay:calc(var(--n, 0) * var(--beat) / -6)}
+  .w-shake{animation:w-shake calc(var(--beat) * 2) infinite}
+  .w-bolt{animation:w-bolt calc(var(--beat) * 2) infinite}
+  .w-slosh{animation:w-slosh var(--beat) ease-in-out infinite alternate}
+  .w-slosh.b{animation-direction:alternate-reverse}
+  .w-blink{animation:w-blink var(--beat) steps(1) infinite}
+  .w-blink.b{animation-delay:calc(var(--beat) / -2)}
+}
+.wi.still *{animation:none!important}
+@keyframes w-hop{
+  0%,100%{transform:scale(1.1,.9); animation-timing-function:cubic-bezier(.3,.7,.5,1)}
+  10%{transform:translateY(-4%) scale(.94,1.08); animation-timing-function:cubic-bezier(.2,.8,.4,1)}
+  45%{transform:translateY(-24%) scale(1,1); animation-timing-function:cubic-bezier(.6,0,.85,.4)}
+  82%{transform:translateY(-3%) scale(.95,1.07); animation-timing-function:ease-out}
+  90%{transform:scale(1.14,.84); animation-timing-function:ease-in-out}
+}
+@keyframes w-shadow{0%,90%,100%{transform:scale(1.1); opacity:1} 45%{transform:scale(.55); opacity:.45}}
+@keyframes w-spin{to{transform:rotate(1turn)}}
+@keyframes w-peek{from{transform:translateY(7%)} to{transform:translateY(-12%)}}
+@keyframes w-rock{from{transform:rotate(-12deg)} to{transform:rotate(12deg)}}
+@keyframes w-twinkle{0%,100%{transform:scale(.35); opacity:.4} 50%{transform:scale(1.1); opacity:1}}
+@keyframes w-float{from{transform:translate(-4%,1%)} to{transform:translate(4%,-2%)}}
+@keyframes w-bob{0%,100%{transform:translateY(0) scale(1,1)} 50%{transform:translateY(-4%) scale(1.03,.97)}}
+@keyframes w-fall{0%{transform:translateY(-16%); opacity:0} 18%{opacity:1} 72%{transform:translateY(6%); opacity:1} 100%{transform:translateY(14%); opacity:0}}
+@keyframes w-shake{0%,24%,100%{transform:none} 8%{transform:translateX(-3%)} 12%{transform:translateX(3%)} 16%{transform:translateX(-2%)} 20%{transform:translateX(2%)} 62%{transform:translateY(-3%)}}
+@keyframes w-bolt{0%,6%{opacity:0; transform:scale(.7)} 8%{opacity:1; transform:scale(1.12)} 18%{opacity:.25; transform:scale(1)} 24%{opacity:1; transform:scale(1)} 38%,100%{opacity:0; transform:scale(.7)}}
+@keyframes w-slosh{from{transform:translateX(-6%)} to{transform:translateX(6%)}}
+@keyframes w-blink{0%{opacity:1} 50%{opacity:.1}}
+.bell-i{display:grid; place-items:center; transform-origin:50% 8%}
+.badge{position:absolute; top:-4px; right:-4px; min-width:19px; height:19px; padding:0 5px; border-radius:999px; background:#C8102E; color:#fff; font-size:.72rem; font-weight:800; line-height:19px; text-align:center}
+.temp{font-size:2.4rem; font-weight:800; letter-spacing:-.02em; line-height:1}
+.bars{display:grid; grid-template-columns:repeat(6, 1fr); gap:8px; align-items:end; height:76px; margin-top:14px}
+.bar{display:grid; gap:4px; justify-items:center; font-size:.72rem; color:var(--muted); height:100%; align-content:end}
+.bar i{width:100%; max-width:26px; border-radius:8px 8px 4px 4px; background:linear-gradient(180deg, #5AA2F5, #1E5AA8); display:block; transform-origin:50% 100%}
+.list{display:grid; margin-top:8px}
+.row-item{display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:12px; align-items:center; padding:11px 0; border-top:1px solid var(--line)}
+.row-item:first-child{border-top:0}
+.row-item b{display:block; font-size:.93rem}
+.row-item .ico{width:38px; height:38px; border-radius:12px; display:grid; place-items:center; background:var(--chip)}
+.row-item .ico svg{width:20px; height:20px}
+.row-item .ico.live{background:none; font-size:40px; line-height:0; width:40px; height:40px}
+.ring-wrap{display:flex; align-items:center; gap:16px; margin-top:8px}
+.ring{width:92px; height:92px; flex:none}
+.post-head{display:flex; gap:10px; align-items:center}
+.lgu{width:40px; height:40px; border-radius:50%; background:#14213D; color:#FFC233; display:grid; place-items:center; font-weight:800; font-size:.85rem; flex:none}
+.cover{height:96px; border-radius:16px; margin-top:12px; background:linear-gradient(110deg, transparent 58%, #C8102E 58% 63%, transparent 63% 66%, #FFC233 66% 71%, transparent 71% 74%, #2F7BE0 74% 79%, transparent 79%), #14213D}
+.react{display:flex; gap:14px; font-size:.8rem; color:var(--muted); margin-top:10px}
+.hscroll{display:grid; grid-auto-flow:column; grid-auto-columns:minmax(240px, 1fr); gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; padding-bottom:4px; margin-top:10px; overscroll-behavior-x:contain}
+.news-mini{scroll-snap-align:start; border-radius:18px; padding:12px; background:var(--chip); display:grid; gap:8px}
+.thumb{height:84px; border-radius:12px; display:grid; place-items:center; color:rgba(255,255,255,.9)}
+.thumb svg{width:30px; height:30px}
+.t1{background:linear-gradient(135deg,#1E5AA8,#5AA2F5)} .t2{background:linear-gradient(135deg,#B45309,#FFC233)} .t3{background:linear-gradient(135deg,#0E7C74,#3FB8A8)} .t4{background:linear-gradient(135deg,#14213D,#2F4E8A)}
+.segment{position:relative; display:inline-flex; gap:2px; padding:4px; border-radius:999px; background:var(--chip); max-width:100%; overflow-x:auto}
+.segment button{position:relative; z-index:1; border:0; background:transparent; border-radius:999px; padding:8px 14px; min-height:38px; font-weight:700; font-size:.85rem; white-space:nowrap; transition:color .2s}
+.segment button[aria-pressed="true"]{color:#0E1726}
+.spill{position:absolute; inset:0; z-index:0; background:var(--mango); border-radius:999px; clip-path:inset(var(--pt,4px) var(--pr,0px) var(--pb,4px) var(--pl,0px) round 999px)}
+.feed{display:grid; gap:14px}
+.post .thumb{height:170px; margin-top:12px}
+.actions{display:flex; gap:6px; margin-top:12px}
+.act{border:1px solid var(--line); background:transparent; border-radius:999px; padding:8px 14px; min-height:40px; font-weight:700; font-size:.82rem}
+.mango-btn{border:0; background:var(--mango); color:#0E1726; border-radius:999px; padding:10px 18px; min-height:44px; font-weight:800}
+.hours{display:grid; grid-auto-flow:column; grid-auto-columns:64px; gap:8px; overflow-x:auto; margin-top:10px; padding-bottom:4px}
+.hour{display:grid; gap:4px; justify-items:center; padding:10px 6px; border-radius:16px; background:var(--chip); font-size:.8rem}
+.hour svg{width:24px; height:24px}
+.map{width:100%; height:auto; display:block; margin-top:10px; border-radius:16px}
+.tabbar{position:fixed; z-index:30; left:12px; right:12px; bottom:calc(10px + env(safe-area-inset-bottom, 0px)); border-radius:24px; padding:6px; display:grid; grid-template-columns:repeat(5, 1fr)}
+.tabbar button{position:relative; z-index:1; border:0; background:transparent; display:grid; justify-items:center; gap:2px; padding:7px 2px; min-height:52px; font-size:.72rem; font-weight:700; border-radius:18px; color:var(--muted); transition:color .2s}
+.tabbar button svg{width:22px; height:22px}
+.tabbar button[aria-current="page"]{color:#0E1726}
+.tpill{position:absolute; inset:0; background:var(--mango); border-radius:18px; clip-path:inset(var(--pt,6px) var(--pr,0px) var(--pb,6px) var(--pl,0px) round 18px)}
+@media (min-width:720px){ .grid.cols{grid-template-columns:repeat(12, minmax(0,1fr))} .span-7{grid-column:span 7} .span-5{grid-column:span 5} .span-4{grid-column:span 4} .span-3{grid-column:span 3} .span-8{grid-column:span 8} .span-12{grid-column:span 12} .span-6{grid-column:span 6} }
+@media (min-width:1024px){
+  .app{padding:18px 18px 28px 104px}
+  .tabbar{display:none}
+  .side{display:flex; position:fixed; z-index:30; left:16px; top:50%; transform:translateY(-50%); flex-direction:column; align-items:center; gap:6px; padding:12px 8px; border-radius:999px}
+  .side .navs{position:relative; display:grid; gap:6px}
+  .side .navs button{position:relative; z-index:1; width:48px; height:48px; border-radius:50%; border:0; background:transparent; color:#C8D5E6; display:grid; place-items:center; transition:color .2s}
+  .side .navs button svg{width:22px; height:22px}
+  .side .navs button[aria-current="page"]{color:#0E1726}
+  .side .navs button:hover:not([aria-current="page"]){color:#fff}
+  .vpill{position:absolute; inset:0; background:var(--mango); border-radius:999px; clip-path:inset(var(--pt,0px) 0 var(--pb,0px) 0 round 999px)}
+  .side .sep{width:26px; height:1px; background:rgba(255,255,255,.14); margin:6px 0}
+}
+</style>
+
+<canvas id="sky" aria-hidden="true"></canvas>
+<div id="smoke" aria-hidden="true"></div>
+
+<div class="demo glass" role="group" aria-label="Preview controls">
+  <b>Preview</b>
+  <div class="grp" id="time-grp"><span class="lbl">Time</span>
+    <button type="button" class="chip-btn" data-time="auto" aria-pressed="true">Auto</button>
+    <button type="button" class="chip-btn" data-time="buntag" aria-pressed="false">Buntag</button>
+    <button type="button" class="chip-btn" data-time="udto" aria-pressed="false">Udto</button>
+    <button type="button" class="chip-btn" data-time="hapon" aria-pressed="false">Hapon</button>
+    <button type="button" class="chip-btn" data-time="gabii" aria-pressed="false">Gabii</button>
+  </div>
+  <div class="grp" id="wx-grp"><span class="lbl">Weather</span>
+    <button type="button" class="chip-btn" data-wx="clear" aria-pressed="false">Clear</button>
+    <button type="button" class="chip-btn" data-wx="cloudy" aria-pressed="false">Cloudy</button>
+    <button type="button" class="chip-btn" data-wx="rain" aria-pressed="true">Rain</button>
+    <button type="button" class="chip-btn" data-wx="storm" aria-pressed="false">Thunderstorm</button>
+  </div>
+  <div class="grp"><button type="button" class="chip-btn" id="lite-btn" aria-pressed="false">Lite mode</button><button type="button" class="chip-btn" id="replay-btn">Replay intro</button><button type="button" class="chip-btn" id="alert-btn">New alert</button><button type="button" class="chip-btn" id="icons-btn" aria-pressed="false" aria-controls="icons-panel">All icons</button></div>
+  <span class="note">Sample data only, no APIs</span>
+</div>
+<div class="icons-panel glass" id="icons-panel" hidden></div>
+
+<div class="stage">
+  <header class="lnav" id="lnav">
+    <div class="brand"><span class="mark" aria-hidden="true"></span>SugboNow</div>
+    <button type="button" class="icon-btn theme-btn on-sky" aria-label="Switch to dark mode" aria-pressed="false"><span class="sun" data-icon="sun"></span><span class="moon" data-icon="moon"></span></button>
+  </header>
+
+  <!-- ===== HOME + SIGN IN / SIGN UP ===== -->
+  <section class="screen" id="scr-auth" aria-labelledby="hero-h">
+    <div class="lgrid">
+      <div class="hero-copy">
+        <h1 class="display" id="hero-h">Know when to leave, rain or shine.</h1>
+        <p class="lede" data-rise>SugboNow checks Cebu traffic, weather, floods and your mayor's posts, then tells you when to leave for every trip.</p>
+        <div class="peek night" data-rise>
+          <span class="pill-tag tag-mango">Example</span>
+          <div class="peek-i"><span class="pi" data-live="clock"></span><span><small>Leave by</small><b class="tnum"><span data-wheel id="pk-leave">6:43</span> AM</b></span></div>
+          <div class="peek-i"><span class="pi" id="pk-ico"></span><span><small>Talamban</small><b class="tnum"><span data-wheel id="pk-temp">25</span>° <span id="pk-wx">Rain</span></b></span></div>
+          <div class="peek-i"><span class="pi" data-live="traffic"></span><span><small>Weather delay</small><b class="tnum" id="pk-delay">+12 min</b></span></div>
+        </div>
+        <p class="facts" data-rise>Traffic checked every <b class="tnum"><span data-count="15">15</span> min</b> · Your brief is ready by <b class="tnum"><span data-wheel>5:30</span> AM</b></p>
+      </div>
+      <div class="lane" aria-hidden="true"></div>
+      <div class="auth-card glass" id="auth-card">
+        <form class="auth-form" id="form-login">
+          <h2 id="h-login" tabindex="-1">Sign in</h2>
+          <p class="sub" data-s>Maayong pagbalik! Use your SugboNow account.</p>
+          <div class="field" data-s><label for="li-email">Email</label><input id="li-email" type="email" autocomplete="email" value="thea@example.com" readonly></div>
+          <div class="field" data-s><label for="li-pass">Password</label><div class="pw"><input id="li-pass" type="password" autocomplete="current-password" value="example1" readonly><button type="button" class="show" aria-controls="li-pass" aria-pressed="false">Show</button></div></div>
+          <button type="submit" class="primary" data-s><span class="label">Sign in</span><span class="spin" aria-hidden="true"></span></button>
+          <p class="switch" data-s>New to SugboNow? <button type="button" class="outline" data-go="signup">Sign up</button></p>
+        </form>
+        <form class="auth-form off" id="form-signup" inert>
+          <h2 id="h-signup" tabindex="-1">Create your account</h2>
+          <p class="sub" data-s>Bag-o ka diri? Next you pick your city, your mayor and a first trip.</p>
+          <div class="field" data-s><label for="su-name">First name</label><input id="su-name" type="text" autocomplete="given-name" value="Thea" readonly></div>
+          <div class="field" data-s><label for="su-email">Email</label><input id="su-email" type="email" autocomplete="email" value="thea@example.com" readonly></div>
+          <div class="field" data-s><label for="su-pass">Password</label><div class="pw"><input id="su-pass" type="password" autocomplete="new-password" value="example1" readonly><button type="button" class="show" aria-controls="su-pass" aria-pressed="false">Show</button></div></div>
+          <button type="submit" class="primary" data-s><span class="label">Create account</span><span class="spin" aria-hidden="true"></span></button>
+          <p class="switch" data-s>Already riding with us? <button type="button" class="outline" data-go="login">Sign in</button></p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== APP ===== -->
+  <section class="app" id="app" hidden aria-label="SugboNow app">
+    <nav class="side night" aria-label="Main">
+      <span class="mark" aria-hidden="true" style="margin:4px 0 8px"></span>
+      <div class="navs" id="side-navs">
+        <span class="vpill" id="vpill" aria-hidden="true"></span>
+        <button type="button" data-page="today" aria-label="Today" title="Today" aria-current="page"><span data-icon="house"></span></button>
+        <button type="button" data-page="news" aria-label="News" title="News"><span data-icon="newspaper"></span></button>
+        <button type="button" data-page="mayor" aria-label="Mayor" title="Mayor"><span data-icon="megaphone"></span></button>
+        <button type="button" data-page="weather" aria-label="Weather" title="Weather"><span data-icon="cloud-sun"></span></button>
+        <button type="button" data-page="traffic" aria-label="Traffic" title="Traffic"><span data-icon="traffic-signal"></span></button>
+      </div>
+      <span class="sep" aria-hidden="true"></span>
+      <button type="button" class="icon-btn" id="signout" aria-label="Sign out" title="Sign out" style="background:transparent; border-color:rgba(255,255,255,.14); color:#C8D5E6"><span data-icon="arrow-up-right"></span></button>
+    </nav>
+
+    <div class="shell">
+      <header class="top glass">
+        <div class="top-title">
+          <h1 id="title" tabindex="-1">Maayong udto, Thea</h1>
+          <div class="meta-row"><span class="loc"><span data-icon="map-pin"></span>Talamban, Cebu City</span><span id="date">Sat, Nov 1</span></div>
+        </div>
+        <div class="top-actions">
+          <span class="wx-chip" id="wx-chip"><span data-icon="cloud-rain"></span><span id="wx-chip-text">25° Rain</span></span>
+          <button type="button" class="icon-btn" id="bell" data-page="traffic" aria-label="Alerts, 2 new"><span class="bell-i" data-icon="bell"></span><b class="badge tnum" id="bell-n">2</b></button>
+          <button type="button" class="icon-btn theme-btn" aria-label="Switch to dark mode" aria-pressed="false"><span class="sun" data-icon="sun"></span><span class="moon" data-icon="moon"></span></button>
+          <span class="avatar" aria-hidden="true">T</span>
+        </div>
+      </header>
+
+      <!-- Today -->
+      <div class="page" id="p-today" data-title="greeting">
+        <div class="grid cols">
+          <article class="card night hero span-7">
+            <h3>Your next trip <span class="pill-tag tag-mango" id="delay-tag">+12 min · rain</span></h3>
+            <p class="big tnum" style="margin-top:12px"><small>Leave by</small><span id="leave-time" data-wheel>6:43</span> AM</p>
+            <p class="route">Classes · Home → School · arrive 7:30</p>
+            <svg class="chart" id="trip-chart" viewBox="0 0 340 120" role="img" aria-label="Travel time this morning: today's trip takes up to 44 minutes, usually 33"></svg>
+            <div class="legend"><span><i style="background:#FFC233"></i>Today</span><span><i style="background:rgba(200,213,230,.6)"></i>Usual</span></div>
+          </article>
+          <article class="card glass span-5">
+            <h3>Weather now <span class="muted small">Talamban</span></h3>
+            <div class="wx-now">
+              <div class="wxi" id="wxi-today" aria-hidden="true"></div>
+              <div><p class="temp tnum"><span id="wx-temp" data-wheel>25</span>°</p><p style="font-weight:700" id="wx-label">Moderate rain</p></div>
+            </div>
+            <p class="muted small" style="margin-top:8px" id="wx-advice">Rain until about 11 AM. Bring an umbrella.</p>
+            <div class="bars" id="rain-bars" role="img" aria-label="Rain chance for the next 6 hours"></div>
+          </article>
+          <article class="card glass span-5">
+            <h3>Near your places <span class="muted small">2 alerts</span></h3>
+            <div class="list">
+              <div class="row-item"><span class="ico live" data-live="flood"></span><div><b>Flood · Banilad Road</b><span class="muted small"><span class="tnum" data-count="1.8" data-dec="1">1.8</span> km from School</span></div><span class="pill-tag sev-high">High</span></div>
+              <div class="row-item"><span class="ico live" data-live="closure"></span><div><b>Lane closed · Osmeña Blvd</b><span class="muted small"><span class="tnum" data-count="2.4" data-dec="1">2.4</span> km from Home</span></div><span class="pill-tag sev-med">Medium</span></div>
+              <div class="row-item"><span class="ico live" data-live="traffic"></span><div><b>Slow traffic · Gov. Cuenco Ave</b><span class="muted small">On your route</span></div><span class="pill-tag sev-ok">Low</span></div>
+            </div>
+          </article>
+          <article class="card glass span-3">
+            <h3>This week</h3>
+            <div class="ring-wrap">
+              <svg class="ring" viewBox="0 0 100 100" role="img" aria-label="4 of 5 trips on time"><circle cx="50" cy="50" r="40" fill="none" stroke="var(--chip)" stroke-width="10"/><circle data-ring="201" cx="50" cy="50" r="40" fill="none" stroke="#0E9C8F" stroke-width="10" stroke-linecap="round" stroke-dasharray="251.3" stroke-dashoffset="50.3" transform="rotate(-90 50 50)"/><text x="50" y="56" text-anchor="middle" font-size="22" font-weight="800" fill="currentColor" font-family="inherit"><tspan data-count="4">4</tspan>/5</text></svg>
+              <p class="small"><b style="display:block; font-size:1rem">Trips on time</b><span class="muted">One late on Tuesday, in the rain.</span></p>
+            </div>
+          </article>
+          <article class="card glass span-4">
+            <div class="post-head"><span class="lgu">CC</span><div style="min-width:0"><b style="display:block">City LGU (sample)</b><span class="muted small">35 min ago</span></div><span class="pill-tag tag-mango" style="margin-left:auto">Naay klase?</span></div>
+            <p style="margin-top:10px">No classes in public schools this afternoon because of the heavy rain. Stay safe, Sugboanon.</p>
+            <div class="cover" aria-hidden="true"></div>
+            <div class="react tnum"><span><span data-count="4.8" data-dec="1" data-suffix="K">4.8K</span> reactions</span><span><span data-count="1.2" data-dec="1" data-suffix="K">1.2K</span> comments</span><span><span data-count="690">690</span> shares</span></div>
+          </article>
+          <article class="card glass span-12">
+            <h3>Top Cebu news <span class="muted small">Sample headlines</span></h3>
+            <div class="hscroll">
+              <div class="news-mini"><div class="thumb t1"><span data-icon="cloud-rain"></span></div><b>Rain to continue over Metro Cebu until noon</b><span class="muted small">Metro desk · 20 min</span></div>
+              <div class="news-mini"><div class="thumb t2"><span data-icon="traffic-signal"></span></div><b>New loading bays open along the jeepney route to IT Park</b><span class="muted small">City desk · 1 h</span></div>
+              <div class="news-mini"><div class="thumb t3"><span data-icon="drop"></span></div><b>Water service resumes in parts of Mandaue tonight</b><span class="muted small">Utilities · 2 h</span></div>
+              <div class="news-mini"><div class="thumb t4"><span data-icon="megaphone"></span></div><b>Sinulog route plans shared for the January parade</b><span class="muted small">Events · 3 h</span></div>
+            </div>
+          </article>
+        </div>
+      </div>
+
+      <!-- News -->
+      <div class="page" id="p-news" data-title="News" hidden>
+        <div class="card glass">
+          <div class="segment" id="news-seg" role="group" aria-label="Filter news">
+            <span class="spill" id="news-pill" aria-hidden="true"></span>
+            <button type="button" aria-pressed="true">All Cebu</button>
+            <button type="button" aria-pressed="false">Alerts</button>
+            <button type="button" aria-pressed="false">Cebu City</button>
+            <button type="button" aria-pressed="false">Mandaue</button>
+            <button type="button" aria-pressed="false">Lapu-Lapu</button>
+          </div>
+        </div>
+        <div class="grid cols">
+          <div class="feed span-8">
+            <article class="card glass post"><div class="post-head"><span class="lgu" style="background:#1E5AA8; color:#fff">MD</span><div><b style="display:block">Metro desk (sample)</b><span class="muted small">20 min · Cebu City</span></div><span class="pill-tag sev-high" style="margin-left:auto">Flood</span></div><p style="margin-top:10px; font-weight:700; font-size:1.05rem">Knee-deep flooding reported along Banilad Road</p><p class="muted" style="margin-top:4px">Motorists are asked to use Gov. M. Cuenco Avenue while water recedes.</p><div class="thumb t1"><span data-icon="waves"></span></div><div class="actions"><button type="button" class="act" data-toggle data-on="Saved" data-off="Save" aria-pressed="false">Save</button></div></article>
+            <article class="card glass post"><div class="post-head"><span class="lgu" style="background:#B45309; color:#fff">CD</span><div><b style="display:block">City desk (sample)</b><span class="muted small">1 h · Cebu City</span></div></div><p style="margin-top:10px; font-weight:700; font-size:1.05rem">New loading bays open along the jeepney route to IT Park</p><p class="muted" style="margin-top:4px">Twelve marked stops aim to cut the stop-and-go along the corridor.</p><div class="thumb t2"><span data-icon="traffic-signal"></span></div><div class="actions"><button type="button" class="act" data-toggle data-on="Saved" data-off="Save" aria-pressed="false">Save</button></div></article>
+          </div>
+          <aside class="card glass span-4">
+            <h3>Trending in Cebu</h3>
+            <div class="list">
+              <div class="row-item"><span class="ico">1</span><div><b>Banilad flooding</b><span class="muted small"><span class="tnum" data-count="2.1" data-dec="1" data-suffix="K">2.1K</span> reading</span></div><span></span></div>
+              <div class="row-item"><span class="ico">2</span><div><b>Class suspensions</b><span class="muted small"><span class="tnum" data-count="1.6" data-dec="1" data-suffix="K">1.6K</span> reading</span></div><span></span></div>
+              <div class="row-item"><span class="ico">3</span><div><b>Sinulog 2027 route</b><span class="muted small"><span class="tnum" data-count="980">980</span> reading</span></div><span></span></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <!-- Mayor -->
+      <div class="page" id="p-mayor" data-title="Mayor" hidden>
+        <article class="card glass">
+          <div class="cover" style="height:120px; margin-top:0" aria-hidden="true"></div>
+          <div class="post-head" style="margin-top:-28px; padding:0 6px"><span class="lgu" style="width:64px; height:64px; font-size:1.1rem; border:3px solid var(--glass-solid)">CC</span></div>
+          <div style="display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-top:8px"><div><p style="font-size:1.25rem; font-weight:800">City LGU (sample)</p><p class="muted small">Cebu City decides its own class suspensions.</p></div><button type="button" class="mango-btn act" data-toggle data-on="Following" data-off="Follow" aria-pressed="true">Following</button></div>
+        </article>
+        <div class="grid cols">
+          <article class="card glass span-6"><div class="post-head"><span class="lgu">CC</span><div><b style="display:block">City LGU (sample)</b><span class="muted small">35 min ago</span></div><span class="pill-tag tag-mango" style="margin-left:auto">Naay klase?</span></div><p style="margin-top:10px">No classes in public schools this afternoon because of the heavy rain. Stay safe, Sugboanon.</p><div class="react tnum"><span><span data-count="4.8" data-dec="1" data-suffix="K">4.8K</span> reactions</span><span><span data-count="1.2" data-dec="1" data-suffix="K">1.2K</span> comments</span></div></article>
+          <article class="card glass span-6"><div class="post-head"><span class="lgu">CC</span><div><b style="display:block">City LGU (sample)</b><span class="muted small">Yesterday</span></div><span class="pill-tag sev-ok" style="margin-left:auto">Traffic</span></div><p style="margin-top:10px">Road works on Osmeña Boulevard move to night shifts starting Monday to ease the morning rush.</p><div class="react tnum"><span><span data-count="2.1" data-dec="1" data-suffix="K">2.1K</span> reactions</span><span><span data-count="540">540</span> comments</span></div></article>
+        </div>
+      </div>
+
+      <!-- Weather -->
+      <div class="page" id="p-weather" data-title="Weather" hidden>
+        <div class="grid cols">
+          <article class="card glass span-5">
+            <h3>Now in Talamban <span class="muted small" id="wx-updated">Updated 4 min ago</span></h3>
+            <div class="wx-now" style="margin-top:10px">
+              <div class="wxi big" id="wxi-weather" aria-hidden="true"></div>
+              <div><p class="temp tnum" style="font-size:3rem"><span id="wx-temp2" data-wheel>25</span>°</p><p style="font-weight:700" id="wx-label2">Moderate rain</p></div>
+            </div>
+            <p class="muted small tnum" style="margin-top:10px">Feels like <span data-count="28">28</span>° · Humidity <span data-count="88">88</span>% · Wind <span data-count="14">14</span> km/h</p>
+          </article>
+          <article class="card glass span-7">
+            <h3>Next 12 hours</h3>
+            <div class="hours" id="hours"></div>
+          </article>
+          <article class="card glass span-12">
+            <h3>Advisory <span class="pill-tag sev-med">Sample</span></h3>
+            <p style="margin-top:8px">Moderate to heavy rain over Metro Cebu until noon. Flooding is possible in low-lying parts of Banilad and Mandaue.</p>
+          </article>
+        </div>
+      </div>
+
+      <!-- Traffic -->
+      <div class="page" id="p-traffic" data-title="Traffic" hidden>
+        <div class="grid cols">
+          <article class="card glass span-8">
+            <h3>Metro Cebu right now <span class="muted small">Sample map</span></h3>
+            <svg class="map" viewBox="0 0 600 320" role="img" aria-label="Map with two alerts near Banilad and Osmeña Boulevard">
+              <rect width="600" height="320" fill="var(--chip)"/>
+              <path d="M600 40 C 520 80, 470 130, 455 200 C 445 250, 470 290, 520 320 L600 320 Z" fill="#5AA2F5" opacity=".35"/>
+              <g fill="none" stroke="var(--muted)" stroke-opacity=".55" stroke-linecap="round">
+                <path data-draw pathLength="1" stroke-dasharray="1" d="M40 260 C 140 220, 220 200, 320 150 S 430 70, 470 40" stroke-width="7"/>
+                <path data-draw pathLength="1" stroke-dasharray="1" d="M120 40 C 160 120, 200 190, 230 300" stroke-width="5"/>
+                <path data-draw pathLength="1" stroke-dasharray="1" d="M20 140 C 140 150, 260 140, 400 110" stroke-width="4"/>
+                <path data-draw pathLength="1" stroke-dasharray="1" d="M300 300 C 320 240, 350 200, 420 170" stroke-width="4"/>
+              </g>
+              <g font-family="inherit" font-size="13" font-weight="700" fill="currentColor">
+                <circle data-pop cx="305" cy="158" r="11" fill="#C8102E"/><text x="322" y="150">Banilad Rd</text>
+                <circle data-pop cx="205" cy="222" r="11" fill="#B45309"/><text x="222" y="238">Osmeña Blvd</text>
+                <circle data-pop cx="420" cy="170" r="8" fill="#0E7C74"/><text x="380" y="198">Mandaue</text>
+              </g>
+            </svg>
+          </article>
+          <article class="card glass span-4">
+            <h3>On your way</h3>
+            <div class="list">
+              <div class="row-item"><span class="ico live" data-live="flood"></span><div><b>Flood · Banilad Road</b><span class="muted small">Adds about <span class="tnum" data-count="9">9</span> min</span></div><span class="pill-tag sev-high">High</span></div>
+              <div class="row-item"><span class="ico live" data-live="closure"></span><div><b>Lane closed · Osmeña</b><span class="muted small">Adds about <span class="tnum" data-count="3">3</span> min</span></div><span class="pill-tag sev-med">Medium</span></div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <nav class="tabbar glass" aria-label="Main" id="tabbar">
+      <span class="tpill" id="tpill" aria-hidden="true"></span>
+      <button type="button" data-page="today" aria-current="page"><span data-icon="house"></span>Today</button>
+      <button type="button" data-page="news"><span data-icon="newspaper"></span>News</button>
+      <button type="button" data-page="mayor"><span data-icon="megaphone"></span>Mayor</button>
+      <button type="button" data-page="weather"><span data-icon="cloud-sun"></span>Weather</button>
+      <button type="button" data-page="traffic"><span data-icon="traffic-signal"></span>Traffic</button>
+    </nav>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/motion@14.3.0/dist/motion.js"></script>
+<script>
+const ICONS = {"arrow-up-right":{"vb":"0 0 256 256","inner":"<path d=\"M200,64V168a8,8,0,0,1-16,0V83.31L69.66,197.66a8,8,0,0,1-11.32-11.32L172.69,72H88a8,8,0,0,1,0-16H192A8,8,0,0,1,200,64Z\"/>"},"barricade":{"vb":"0 0 256 256","inner":"<path d=\"M224,64H32A16,16,0,0,0,16,80v72a16,16,0,0,0,16,16H56v32a8,8,0,0,0,16,0V168H184v32a8,8,0,0,0,16,0V168h24a16,16,0,0,0,16-16V80A16,16,0,0,0,224,64Zm0,64.69L175.31,80H224ZM80.69,80l72,72H103.31L32,80.69V80ZM32,103.31,80.69,152H32ZM224,152H175.31l-72-72h49.38L224,151.32V152Z\"/>"},"bell":{"vb":"0 0 256 256","inner":"<path d=\"M221.8,175.94C216.25,166.38,208,139.33,208,104a80,80,0,1,0-160,0c0,35.34-8.26,62.38-13.81,71.94A16,16,0,0,0,48,200H88.81a40,40,0,0,0,78.38,0H208a16,16,0,0,0,13.8-24.06ZM128,216a24,24,0,0,1-22.62-16h45.24A24,24,0,0,1,128,216ZM48,184c7.7-13.24,16-43.92,16-80a64,64,0,1,1,128,0c0,36.05,8.28,66.73,16,80Z\"/>"},"car":{"vb":"0 0 256 256","inner":"<path d=\"M240,104H229.2L201.42,41.5A16,16,0,0,0,186.8,32H69.2a16,16,0,0,0-14.62,9.5L26.8,104H16a8,8,0,0,0,0,16h8v80a16,16,0,0,0,16,16H64a16,16,0,0,0,16-16V184h96v16a16,16,0,0,0,16,16h24a16,16,0,0,0,16-16V120h8a8,8,0,0,0,0-16ZM69.2,48H186.8l24.89,56H44.31ZM64,200H40V184H64Zm128,0V184h24v16Zm24-32H40V120H216ZM56,144a8,8,0,0,1,8-8H80a8,8,0,0,1,0,16H64A8,8,0,0,1,56,144Zm112,0a8,8,0,0,1,8-8h16a8,8,0,0,1,0,16H176A8,8,0,0,1,168,144Z\"/>"},"caret-right":{"vb":"0 0 256 256","inner":"<path d=\"M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z\"/>"},"clock":{"vb":"0 0 256 256","inner":"<path d=\"M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48A8,8,0,0,1,192,128Z\"/>"},"cloud-fill":{"vb":"0 0 256 256","inner":"<path d=\"M160.06,40A88.1,88.1,0,0,0,81.29,88.67h0A87.48,87.48,0,0,0,72,127.73,8.18,8.18,0,0,1,64.57,136,8,8,0,0,1,56,128a103.66,103.66,0,0,1,5.34-32.92,4,4,0,0,0-4.75-5.18A64.09,64.09,0,0,0,8,152c0,35.19,29.75,64,65,64H160a88.09,88.09,0,0,0,87.93-91.48C246.11,77.54,207.07,40,160.06,40Z\"/>"},"cloud-lightning":{"vb":"0 0 256 256","inner":"<path d=\"M156,16A76.2,76.2,0,0,0,84.92,64.76,53.26,53.26,0,0,0,76,64a52,52,0,0,0,0,104h37.87L97.14,195.88A8,8,0,0,0,104,208h25.87l-16.73,27.88a8,8,0,0,0,13.72,8.24l24-40A8,8,0,0,0,144,192H118.13l14.4-24H156a76,76,0,0,0,0-152Zm0,136H76a36,36,0,0,1,0-72,38.11,38.11,0,0,1,4.78.31q-.56,3.57-.77,7.23a8,8,0,0,0,16,.92A60.06,60.06,0,1,1,156,152Z\"/>"},"cloud-moon":{"vb":"0 0 256 256","inner":"<path d=\"M172,72a76.45,76.45,0,0,0-12.36,1A71.93,71.93,0,0,0,104.17,9.83a8,8,0,0,0-9.59,9.58A56.05,56.05,0,0,1,40,88a56.45,56.45,0,0,1-12.59-1.42,8,8,0,0,0-9.59,9.59,72.22,72.22,0,0,0,32.29,45.06A52,52,0,0,0,92,224h80a76,76,0,0,0,0-152ZM37.37,104c.87,0,1.75,0,2.63,0a72.08,72.08,0,0,0,72-72c0-.89,0-1.78,0-2.67a55.63,55.63,0,0,1,32,48,76.28,76.28,0,0,0-43,43.4A52,52,0,0,0,62,129.59,56.22,56.22,0,0,1,37.37,104ZM172,208H92a36,36,0,1,1,4.78-71.69c-.37,2.37-.63,4.79-.77,7.23a8,8,0,0,0,16,.92,58.91,58.91,0,0,1,1.88-11.81c0-.16.09-.32.12-.48A60.06,60.06,0,1,1,172,208Z\"/>"},"cloud-rain":{"vb":"0 0 256 256","inner":"<path d=\"M158.66,196.44l-32,48a8,8,0,1,1-13.32-8.88l32-48a8,8,0,0,1,13.32,8.88ZM232,92a76.08,76.08,0,0,1-76,76H132.28l-29.62,44.44a8,8,0,1,1-13.32-8.88L113.05,168H76A52,52,0,0,1,76,64a53.26,53.26,0,0,1,8.92.76A76.08,76.08,0,0,1,232,92Zm-16,0A60.06,60.06,0,0,0,96,88.46a8,8,0,0,1-16-.92q.21-3.66.77-7.23A38.11,38.11,0,0,0,76,80a36,36,0,0,0,0,72h80A60.07,60.07,0,0,0,216,92Z\"/>"},"cloud-sun":{"vb":"0 0 256 256","inner":"<path d=\"M164,72a76.2,76.2,0,0,0-20.26,2.73,55.63,55.63,0,0,0-9.41-11.54l9.51-13.57a8,8,0,1,0-13.11-9.18L121.22,54A55.9,55.9,0,0,0,96,48c-.58,0-1.16,0-1.74,0L91.37,31.71a8,8,0,1,0-15.75,2.77L78.5,50.82A56.1,56.1,0,0,0,55.23,65.67L41.61,56.14a8,8,0,1,0-9.17,13.11L46,78.77A55.55,55.55,0,0,0,40,104c0,.57,0,1.15,0,1.72L23.71,108.6a8,8,0,0,0,1.38,15.88,8.24,8.24,0,0,0,1.39-.12l16.32-2.88a55.74,55.74,0,0,0,5.86,12.42A52,52,0,0,0,84,224h80a76,76,0,0,0,0-152ZM56,104a40,40,0,0,1,72.54-23.24,76.26,76.26,0,0,0-35.62,40,52.14,52.14,0,0,0-31,4.17A40,40,0,0,1,56,104ZM164,208H84a36,36,0,1,1,4.78-71.69c-.37,2.37-.63,4.79-.77,7.23a8,8,0,0,0,16,.92,58.91,58.91,0,0,1,1.88-11.81c0-.16.09-.32.12-.48A60.06,60.06,0,1,1,164,208Z\"/>"},"cloud":{"vb":"0 0 256 256","inner":"<path d=\"M160,40A88.09,88.09,0,0,0,81.29,88.67,64,64,0,1,0,72,216h88a88,88,0,0,0,0-176Zm0,160H72a48,48,0,0,1,0-96c1.1,0,2.2,0,3.29.11A88,88,0,0,0,72,128a8,8,0,0,0,16,0,72,72,0,1,1,72,72Z\"/>"},"drop":{"vb":"0 0 256 256","inner":"<path d=\"M174,47.75a254.19,254.19,0,0,0-41.45-38.3,8,8,0,0,0-9.18,0A254.19,254.19,0,0,0,82,47.75C54.51,79.32,40,112.6,40,144a88,88,0,0,0,176,0C216,112.6,201.49,79.32,174,47.75ZM128,216a72.08,72.08,0,0,1-72-72c0-57.23,55.47-105,72-118,16.53,13,72,60.75,72,118A72.08,72.08,0,0,1,128,216Zm55.89-62.66a57.6,57.6,0,0,1-46.56,46.55A8.75,8.75,0,0,1,136,200a8,8,0,0,1-1.32-15.89c16.57-2.79,30.63-16.85,33.44-33.45a8,8,0,0,1,15.78,2.68Z\"/>"},"house-fill":{"vb":"0 0 256 256","inner":"<path d=\"M224,120v96a8,8,0,0,1-8,8H160a8,8,0,0,1-8-8V164a4,4,0,0,0-4-4H108a4,4,0,0,0-4,4v52a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V120a16,16,0,0,1,4.69-11.31l80-80a16,16,0,0,1,22.62,0l80,80A16,16,0,0,1,224,120Z\"/>"},"house":{"vb":"0 0 256 256","inner":"<path d=\"M219.31,108.68l-80-80a16,16,0,0,0-22.62,0l-80,80A15.87,15.87,0,0,0,32,120v96a8,8,0,0,0,8,8h64a8,8,0,0,0,8-8V160h32v56a8,8,0,0,0,8,8h64a8,8,0,0,0,8-8V120A15.87,15.87,0,0,0,219.31,108.68ZM208,208H160V152a8,8,0,0,0-8-8H104a8,8,0,0,0-8,8v56H48V120l80-80,80,80Z\"/>"},"map-pin":{"vb":"0 0 256 256","inner":"<path d=\"M128,64a40,40,0,1,0,40,40A40,40,0,0,0,128,64Zm0,64a24,24,0,1,1,24-24A24,24,0,0,1,128,128Zm0-112a88.1,88.1,0,0,0-88,88c0,31.4,14.51,64.68,42,96.25a254.19,254.19,0,0,0,41.45,38.3,8,8,0,0,0,9.18,0A254.19,254.19,0,0,0,174,200.25c27.45-31.57,42-64.85,42-96.25A88.1,88.1,0,0,0,128,16Zm0,206c-16.53-13-72-60.75-72-118a72,72,0,0,1,144,0C200,161.23,144.53,209,128,222Z\"/>"},"megaphone":{"vb":"0 0 256 256","inner":"<path d=\"M248,120a48.05,48.05,0,0,0-48-48H160.2c-2.91-.17-53.62-3.74-101.91-44.24A16,16,0,0,0,32,40V200a16,16,0,0,0,26.29,12.25c37.77-31.68,77-40.76,93.71-43.3v31.72A16,16,0,0,0,159.12,214l11,7.33A16,16,0,0,0,194.5,212l11.77-44.36A48.07,48.07,0,0,0,248,120ZM48,199.93V40h0c42.81,35.91,86.63,45,104,47.24v65.48C134.65,155,90.84,164.07,48,199.93Zm131,8,0,.11-11-7.33V168h21.6ZM200,152H168V88h32a32,32,0,1,1,0,64Z\"/>"},"moon":{"vb":"0 0 256 256","inner":"<path d=\"M233.54,142.23a8,8,0,0,0-8-2,88.08,88.08,0,0,1-109.8-109.8,8,8,0,0,0-10-10,104.84,104.84,0,0,0-52.91,37A104,104,0,0,0,136,224a103.09,103.09,0,0,0,62.52-20.88,104.84,104.84,0,0,0,37-52.91A8,8,0,0,0,233.54,142.23ZM188.9,190.34A88,88,0,0,1,65.66,67.11a89,89,0,0,1,31.4-26A106,106,0,0,0,96,56,104.11,104.11,0,0,0,200,160a106,106,0,0,0,14.92-1.06A89,89,0,0,1,188.9,190.34Z\"/>"},"newspaper":{"vb":"0 0 256 256","inner":"<path d=\"M88,112a8,8,0,0,1,8-8h80a8,8,0,0,1,0,16H96A8,8,0,0,1,88,112Zm8,40h80a8,8,0,0,0,0-16H96a8,8,0,0,0,0,16ZM232,64V184a24,24,0,0,1-24,24H32A24,24,0,0,1,8,184.11V88a8,8,0,0,1,16,0v96a8,8,0,0,0,16,0V64A16,16,0,0,1,56,48H216A16,16,0,0,1,232,64Zm-16,0H56V184a23.84,23.84,0,0,1-1.37,8H208a8,8,0,0,0,8-8Z\"/>"},"sun":{"vb":"0 0 256 256","inner":"<path d=\"M120,40V16a8,8,0,0,1,16,0V40a8,8,0,0,1-16,0Zm72,88a64,64,0,1,1-64-64A64.07,64.07,0,0,1,192,128Zm-16,0a48,48,0,1,0-48,48A48.05,48.05,0,0,0,176,128ZM58.34,69.66A8,8,0,0,0,69.66,58.34l-16-16A8,8,0,0,0,42.34,53.66Zm0,116.68-16,16a8,8,0,0,0,11.32,11.32l16-16a8,8,0,0,0-11.32-11.32ZM192,72a8,8,0,0,0,5.66-2.34l16-16a8,8,0,0,0-11.32-11.32l-16,16A8,8,0,0,0,192,72Zm5.66,114.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32-11.32ZM48,128a8,8,0,0,0-8-8H16a8,8,0,0,0,0,16H40A8,8,0,0,0,48,128Zm80,80a8,8,0,0,0-8,8v24a8,8,0,0,0,16,0V216A8,8,0,0,0,128,208Zm112-88H216a8,8,0,0,0,0,16h24a8,8,0,0,0,0-16Z\"/>"},"traffic-signal":{"vb":"0 0 256 256","inner":"<path d=\"M128,56a32,32,0,1,0,32,32A32,32,0,0,0,128,56Zm0,48a16,16,0,1,1,16-16A16,16,0,0,1,128,104Zm0,32a32,32,0,1,0,32,32A32,32,0,0,0,128,136Zm0,48a16,16,0,1,1,16-16A16,16,0,0,1,128,184Zm88-40H200V80h16a8,8,0,0,0,0-16H200V40a16,16,0,0,0-16-16H72A16,16,0,0,0,56,40V64H40a8,8,0,0,0,0,16H56v64H40a8,8,0,0,0,0,16H56v56a16,16,0,0,0,16,16H184a16,16,0,0,0,16-16V160h16a8,8,0,0,0,0-16Zm-32,72H72V40H184V216Z\"/>"},"waves":{"vb":"0 0 256 256","inner":"<path d=\"M222.16,177.25a8,8,0,0,1-1,11.25c-17.36,14.39-32.86,19.5-47,19.5-18.58,0-34.82-8.82-49.93-17-25.35-13.76-47.24-25.64-79.07.74a8,8,0,1,1-10.22-12.31c40.17-33.28,70.32-16.92,96.93-2.48,25.35,13.75,47.24,25.63,79.07-.74A8,8,0,0,1,222.16,177.25Zm-11.27-57c-31.83,26.38-53.72,14.5-79.07.74-26.61-14.43-56.76-30.79-96.93,2.49a8,8,0,0,0,10.22,12.31c31.83-26.38,53.72-14.5,79.07-.74,15.11,8.19,31.35,17,49.93,17,14.14,0,29.64-5.11,47-19.5a8,8,0,1,0-10.22-12.31ZM45.11,79.8c31.83-26.37,53.72-14.49,79.07-.74,15.11,8.2,31.35,17,49.93,17,14.14,0,29.64-5.12,47-19.5a8,8,0,1,0-10.22-12.31c-31.83,26.38-53.72,14.5-79.07.74C105.21,50.58,75.06,34.22,34.89,67.5A8,8,0,1,0,45.11,79.8Z\"/>"}};
+const M = window.Motion;
+const animate = M ? M.animate : null;
+const stagger = M ? M.stagger : () => 0;
+const root = document.documentElement;
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const reduceMQ = matchMedia('(prefers-reduced-motion: reduce)');
+const reduced = () => reduceMQ.matches || !M;
+const lowEnd = (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
+const EASE = [.22, 1, .36, 1];
+const rand = (a, b) => a + Math.random() * (b - a);
+// element animations skip empty lists so a page without bars or rows never throws
+const anim = (t, v, o) => (!animate || (t && t.length === 0)) ? null : animate(t, v, o);
+const set = (t, v) => { anim(t, v, { duration: 0 }); };
+/* ---------- icons: one system. Live icons (flat cartoon, drawn from parts, loop on one beat) show a condition; control icons (Phosphor line) are for navigation and buttons and stay still ---------- */
+const INK = '#0E1726', LINE = 'stroke="' + INK + '" stroke-width="2.4" stroke-linejoin="round"';
+const part = (cls, inner, style) => '<span class="' + cls + '"' + (style ? ' style="' + style + '"' : '') + '><svg viewBox="0 0 64 64" aria-hidden="true">' + inner + '</svg></span>';
+const hop = art => '<span class="w-shadow"></span><span class="w-hop">' + art + '</span>';
+const RAYS = [0, 1, 2, 3, 4, 5, 6, 7].map(i => { const a = i * Math.PI / 4, d = 'M' + (32 + 18 * Math.cos(a)).toFixed(1) + ' ' + (30 + 18 * Math.sin(a)).toFixed(1) + 'L' + (32 + 24.5 * Math.cos(a)).toFixed(1) + ' ' + (30 + 24.5 * Math.sin(a)).toFixed(1); return '<path d="' + d + '" stroke="' + INK + '" stroke-width="6.2" stroke-linecap="round"/><path d="' + d + '" stroke="#FF9F1C" stroke-width="2.8" stroke-linecap="round"/>'; }).join('');
+const DISC = '<circle cx="32" cy="30" r="13.5" fill="#F5A300"/><circle cx="30.4" cy="28.2" r="11.6" fill="#FFC233"/><circle cx="32" cy="30" r="13.5" fill="none" ' + LINE + '/>';
+const MOON = '<path d="M27.76 14.05A19 19 0 1 0 47.68 36.45A15 15 0 0 1 27.76 14.05Z" fill="#F6D978" ' + LINE + '/>';
+const star = (x, y, k) => '<path transform="translate(' + x + ' ' + y + ') scale(' + k + ')" d="M0-6L1.6-1.6 6 0 1.6 1.6 0 6-1.6 1.6-6 0-1.6-1.6Z" fill="#FFE9A8" ' + LINE + '/>';
+const CLOUD = 'M17 50a11 11 0 0 1-2-21.8 15 15 0 0 1 28.8-5.2 14 14 0 0 1 5.2 27Z', BAND = 'M5.2 41C12 46 20 46 26 43.5 32 47 40 46.5 44 43.5 50 46 54 44.5 57.5 40A14 14 0 0 1 49 50H17A11 11 0 0 1 5.2 41Z';
+const cloud = (fill = '#FFFFFF', shade = '#CFDBEA', tf = '') => '<g transform="' + tf + '"><path d="' + CLOUD + '" fill="' + fill + '"/><path d="' + BAND + '" fill="' + shade + '"/><path d="' + CLOUD + '" fill="none" ' + LINE + '/></g>';
+const drops = xs => xs.map((x, i) => part('w-drop', '<path transform="translate(' + x + ' 56)" d="M0-7C3.2-2.6 4.8-.2 4.8 2.4A4.8 4.8 0 1 1-4.8 2.4C-4.8-.2-3.2-2.6 0-7Z" fill="#3E8BE8" ' + LINE + '/>', '--n:' + i)).join('');
+const fogLine = (x, y, w, cls) => part(cls, '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="5.6" rx="2.8" fill="#E8EEF6" ' + LINE + '/>');
+const SMALL_SUN = 'translate(14 -6) scale(.78)', SMALL_MOON = 'translate(16 -8) scale(.74)';
+const carWheel = (x, y) => part('w-wheel', '<circle cx="' + x + '" cy="' + y + '" r="7.4" fill="' + INK + '"/><circle cx="' + x + '" cy="' + y + '" r="3" fill="#C9D3DF"/><path d="M' + (x - 5.6) + ' ' + y + 'H' + (x + 5.6) + '" stroke="#8C99AA" stroke-width="1.6"/>', 'transform-origin:' + (x / .64).toFixed(1) + '% ' + (y / .64).toFixed(1) + '%');
+const WATER = 'M32 9C40 20 48 28 48 38A16 16 0 1 1 16 38C16 28 24 20 32 9Z';
+const WI = {
+  // weather
+  'clear-day': hop(part('w-spin', RAYS, 'transform-origin:50% 46.9%') + part('', DISC)),
+  'clear-night': part('w-rock', MOON) + part('w-twinkle', star(50, 14, 1), 'transform-origin:78% 22%') + part('w-twinkle b', star(43, 27, .7), 'transform-origin:67% 42%'),
+  'partly-day': '<span class="w-peek">' + part('w-spin', '<g transform="' + SMALL_SUN + '">' + RAYS + '</g>', 'transform-origin:60.9% 27.2%') + part('', '<g transform="' + SMALL_SUN + '">' + DISC + '</g>') + '</span>' + part('w-float', cloud()),
+  'partly-night': part('w-rock', '<g transform="' + SMALL_MOON + '">' + MOON + '</g>', 'transform-origin:62% 30%') + part('w-float', cloud()),
+  cloudy: part('w-float b', cloud('#DDE6F1', '#BCCADB', 'translate(18 -9) scale(.72)')) + part('w-float', cloud()),
+  fog: part('w-float', cloud('#FFFFFF', '#CFDBEA', 'translate(0 -10)')) + fogLine(12, 45, 40, 'w-slosh') + fogLine(19, 54, 30, 'w-slosh b'),
+  rain2: drops([24, 40]) + part('w-bob', cloud()),
+  rain3: drops([20, 32, 44]) + part('w-bob', cloud()),
+  rain4: drops([16, 27, 38, 49]) + part('w-bob', cloud('#E4EBF4', '#BFCDDE')),
+  storm: drops([17, 47]) + part('w-shake', cloud('#7B8AA3', '#5B6980')) + part('w-bolt', '<path d="M36 33 24 50H32L28 63 45 44H36L41 33Z" fill="#FFC233" ' + LINE + '/>'),
+  // alert types
+  flood: part('w-slosh', '<path d="M4 30q7-7 14 0t14 0 14 0 14 0v22a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4Z" fill="#8FC2F5" ' + LINE + '/>') + part('w-slosh b', '<path d="M4 41q7 7 14 0t14 0 14 0 14 0v11a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4Z" fill="#3E8BE8" ' + LINE + '/>'),
+  closure: part('', '<circle cx="20" cy="15" r="5.4" fill="#7A2E22" ' + LINE + '/><circle cx="44" cy="15" r="5.4" fill="#7A2E22" ' + LINE + '/><rect x="13" y="34" width="7" height="20" rx="1.6" fill="#9AA7B8" ' + LINE + '/><rect x="44" y="34" width="7" height="20" rx="1.6" fill="#9AA7B8" ' + LINE + '/><rect x="9" y="53" width="15" height="4.6" rx="2" fill="#9AA7B8" ' + LINE + '/><rect x="40" y="53" width="15" height="4.6" rx="2" fill="#9AA7B8" ' + LINE + '/><rect x="6" y="20" width="52" height="16" rx="3" fill="#FFC233"/><path d="M17 21.2h7l-7.4 13.6h-7Zm15 0h7l-7.4 13.6h-7Zm15 0h7l-7.4 13.6h-7Z" fill="#C8102E"/><rect x="6" y="20" width="52" height="16" rx="3" fill="none" ' + LINE + '/>') + part('w-blink', '<circle cx="20" cy="15" r="4.2" fill="#FF6B4A"/>') + part('w-blink b', '<circle cx="44" cy="15" r="4.2" fill="#FF6B4A"/>'),
+  traffic: part('w-bob', '<path d="M7 44c0-4 3-6.5 7-7l6-1 7-10c1.2-1.7 3-2.5 5-2.5h11c2.6 0 4.8 1.3 6 3.6l4.2 8.4c5 1 8.8 3.4 8.8 8V47c0 1.7-1.3 3-3 3H10c-1.7 0-3-1.3-3-3Z" fill="#FFC233"/><path d="M7.2 44.6H62V47c0 1.7-1.3 3-3 3H10c-1.7 0-3-1.3-3-3Z" fill="#F5A300"/><path d="M24.5 35.5l4.6-6.6c.7-1 1.8-1.6 3-1.6H37v8.2ZM40 27.3h3c1.5 0 2.9.8 3.6 2.2l3 6H40Z" fill="#1F2A3A"/><circle cx="10.6" cy="41" r="1.9" fill="#FFF3C4"/><path d="M7 44c0-4 3-6.5 7-7l6-1 7-10c1.2-1.7 3-2.5 5-2.5h11c2.6 0 4.8 1.3 6 3.6l4.2 8.4c5 1 8.8 3.4 8.8 8V47c0 1.7-1.3 3-3 3H10c-1.7 0-3-1.3-3-3Z" fill="none" ' + LINE + '/>') + carWheel(20, 50) + carWheel(47, 50),
+  power: part('', '<rect x="23" y="6" width="5" height="14" rx="2" fill="' + INK + '"/><rect x="36" y="6" width="5" height="14" rx="2" fill="' + INK + '"/><path d="M32 44v6c0 5 3 8 8 8h10" fill="none" stroke="' + INK + '" stroke-width="3.4" stroke-linecap="round"/><path d="M16 19h32v8c0 10-7 17-16 17s-16-7-16-17Z" fill="#C9D3DF"/><path d="M16 19h27v8c0 9-5.6 15.4-13 16.8C22 42.4 16 35.8 16 27Z" fill="#EEF3F8"/><path d="M16 19h32v8c0 10-7 17-16 17s-16-7-16-17Z" fill="none" ' + LINE + '/>') + part('w-blink', '<path d="M54 2 47 14h5l-3 9 10-12h-5l3-9Z" fill="#FFC233" ' + LINE + '/>'),
+  water: hop(part('', '<path d="' + WATER + '" fill="#2F6FC0"/><path d="M31 12.6C38 22.4 44.6 29.6 44.6 37.6A14 14 0 1 1 17.4 37C17.4 28.8 24.4 21.8 31 12.6Z" fill="#3E8BE8"/><path d="M23 38c0 4 2.4 7 6 8" fill="none" stroke="#BFE0FF" stroke-width="2.6" stroke-linecap="round"/><path d="' + WATER + '" fill="none" ' + LINE + '/>')),
+  typhoon: part('w-spin two', '<g fill="#5B7FB5" ' + LINE + '><path d="M32 19C38 11 48 7 58 9 50 11 46 18 45 27Z"/><path transform="rotate(180 32 32)" d="M32 19C38 11 48 7 58 9 50 11 46 18 45 27Z"/><circle cx="32" cy="32" r="14"/></g><circle cx="32" cy="32" r="5" fill="#FFFFFF" ' + LINE + '/>'),
+  class: hop(part('', '<path d="M25 16v-3a7 7 0 0 1 14 0v3" fill="none" stroke="' + INK + '" stroke-width="3"/><rect x="14" y="15" width="36" height="39" rx="11" fill="#1E5AA8"/><rect x="14" y="15" width="32" height="36" rx="11" fill="#2F7BE0"/><path d="M21 26h22" stroke="' + INK + '" stroke-width="2.2" stroke-linecap="round"/><rect x="21" y="33" width="22" height="14" rx="5" fill="#FFC233" ' + LINE + '/><rect x="14" y="15" width="36" height="39" rx="11" fill="none" ' + LINE + '/>')),
+  clock: part('', '<circle cx="32" cy="32" r="24" fill="#CFDBEA"/><circle cx="30.6" cy="30.4" r="21.6" fill="#FFFFFF"/><path d="M32 13v4M32 47v4M13 32h4M47 32h4" stroke="' + INK + '" stroke-width="2.4" stroke-linecap="round"/><path d="M32 32 24 26" stroke="' + INK + '" stroke-width="3.4" stroke-linecap="round"/><circle cx="32" cy="32" r="24" fill="none" ' + LINE + '/>') + part('w-spin two', '<path d="M32 32V15" stroke="#C8102E" stroke-width="3" stroke-linecap="round"/>') + part('', '<circle cx="32" cy="32" r="3" fill="' + INK + '"/>')
+};
+const wi = (kind, still) => '<i class="wi' + (still ? ' still' : '') + '" aria-hidden="true">' + WI[kind] + '</i>';
+const svgIcon = n => { const i = ICONS[n]; return i ? '<svg viewBox="' + i.vb + '" fill="currentColor" aria-hidden="true">' + i.inner + '</svg>' : ''; };
+$$('[data-icon]').forEach(el => { el.innerHTML = svgIcon(el.dataset.icon); });
+$$('[data-live]').forEach(el => { el.innerHTML = wi(el.dataset.live); });
+
+/* ---------- time + weather state ---------- */
+const TIMES = ['buntag', 'udto', 'hapon', 'gabii'];
+function manilaMinutes(){
+  const p = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' }).formatToParts(new Date());
+  const g = t => Number((p.find(x => x.type === t) || {}).value || 0);
+  return g('hour') * 60 + g('minute');
+}
+const autoTime = () => { const m = manilaMinutes(); return m >= 300 && m < 600 ? 'buntag' : m >= 600 && m < 960 ? 'udto' : m >= 960 && m < 1110 ? 'hapon' : 'gabii'; };
+const state = { timeChoice: 'auto', time: autoTime(), wx: 'rain' };
+
+/* ---------- sky canvas ---------- */
+const sky = (() => {
+  const c = $('#sky'), ctx = c.getContext('2d');
+  const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const PAL = {
+    buntag: ['#2B5296', '#7FA6E0', '#FFDCA0'],
+    udto:   ['#1A5DBF', '#4E9BEA', '#BFE3FF'],
+    hapon:  ['#22468F', '#6C8ED6', '#FFC774'],
+    gabii:  ['#060B1C', '#0D1C42', '#1E3A6E']
+  };
+  const DIM = { cloudy: [['#5A7090', '#8EA3BE', '#C9D5E3'], .35], rain: [['#334155', '#4B5A6E', '#6E7E92'], .6], storm: [['#151B26', '#232D3B', '#36424F'], .82] };
+  const WX = { clear: { clouds: 3, rain: 0, storm: 0 }, cloudy: { clouds: 9, rain: 0, storm: 0 }, rain: { clouds: 10, rain: .65, storm: 0 }, storm: { clouds: 12, rain: 1, storm: 1 } };
+  const SUN = { buntag: [.18, .34], udto: [.64, .14], hapon: [.82, .3], gabii: [.8, .16] };
+  let W = 0, H = 0, dpr = 1, last = 0, raf = 0, running = false;
+  const cur = { cols: PAL.udto.map(hex), clouds: 3, rain: 0, storm: 0, night: 0, sun: [.64, .14], sunVis: 1 };
+  let tgt = { ...cur, cols: cur.cols.map(x => x.slice()) };
+  let stars = [], clouds = [], drops = [], beads = [], flash = 0, bolt = null, nextFlash = 0, liteMode = false;
+  const sprite = document.createElement('canvas'); sprite.width = 256; sprite.height = 128;
+  (() => { const s = sprite.getContext('2d');
+    [[70, 78, 46], [118, 60, 56], [170, 76, 44], [128, 88, 50], [92, 92, 38], [196, 92, 30]].forEach(([x, y, r]) => {
+      const g = s.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(.7, 'rgba(255,255,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+      s.fillStyle = g; s.beginPath(); s.arc(x, y, r, 0, Math.PI * 2); s.fill(); }); })();
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  function seed(){
+    const area = W * H, k = liteMode ? .5 : 1;
+    stars = Array.from({ length: Math.round(Math.min(140, area / 9000) * k) }, () => ({ x: rnd(0, W), y: rnd(0, H * .62), r: rnd(.5, 1.6), ph: rnd(0, 6.3), sp: rnd(.6, 1.6) }));
+    clouds = Array.from({ length: 14 }, (_, i) => ({ x: rnd(-200, W), y: rnd(H * .04, H * .5), s: rnd(.7, 1.9), v: rnd(4, 12), a: rnd(.55, .95), i }));
+    drops = Array.from({ length: Math.round(Math.min(380, area / 3200) * k) }, () => ({ x: rnd(-100, W), y: rnd(-H, H), l: rnd(10, 22), v: rnd(620, 980) }));
+    beads = Array.from({ length: Math.round(28 * k) }, () => ({ x: rnd(0, W), y: rnd(0, H), r: rnd(1.6, 4.2), v: rnd(6, 40), stick: rnd(0, 3) }));
+  }
+  function resize(){
+    dpr = Math.min(window.devicePixelRatio || 1, lowEnd || liteMode ? 1 : 1.5);
+    W = innerWidth; H = innerHeight; c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); seed(); draw(0, performance.now());
+  }
+  function target(time, wx){
+    let cols = PAL[time].map(hex);
+    const d = DIM[wx];
+    if (d) { const amt = time === 'gabii' ? d[1] * .45 : d[1]; cols = cols.map((col, i) => col.map((v, j) => Math.round(v + (hex(d[0][i])[j] - v) * amt))); }
+    const p = WX[wx];
+    tgt = { cols, clouds: p.clouds, rain: p.rain, storm: p.storm, night: time === 'gabii' ? 1 : 0, sun: SUN[time], sunVis: wx === 'clear' ? 1 : wx === 'cloudy' ? .45 : .12 };
+    if (!target.done) { target.done = true; Object.assign(cur, JSON.parse(JSON.stringify(tgt))); }
+    const mid = cols[1], lum = (.2126 * mid[0] + .7152 * mid[1] + .0722 * mid[2]) / 255;
+    root.dataset.tone = lum < .42 ? 'dark' : 'light';
+    root.style.setProperty('--page-bg', 'rgb(' + cols[0].join(',') + ')');
+    if (reduced()) { Object.assign(cur, JSON.parse(JSON.stringify(tgt))); draw(0, performance.now()); }
+  }
+  const lerp = (a, b, k) => a + (b - a) * k;
+  function draw(dt, now){
+    const k = dt ? 1 - Math.exp(-dt * 2.2) : 0;
+    cur.cols = cur.cols.map((col, i) => col.map((v, j) => lerp(v, tgt.cols[i][j], k)));
+    ['clouds', 'rain', 'storm', 'night', 'sunVis'].forEach(p => { cur[p] = lerp(cur[p], tgt[p], k); });
+    cur.sun = [lerp(cur.sun[0], tgt.sun[0], k), lerp(cur.sun[1], tgt.sun[1], k)];
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, 'rgb(' + cur.cols[0].map(Math.round) + ')'); g.addColorStop(.55, 'rgb(' + cur.cols[1].map(Math.round) + ')'); g.addColorStop(1, 'rgb(' + cur.cols[2].map(Math.round) + ')');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    const t = now / 1000;
+    if (cur.night > .02) {
+      ctx.fillStyle = '#fff';
+      for (const s of stars) { ctx.globalAlpha = cur.night * (1 - cur.rain * .8) * (.35 + .65 * (.5 + .5 * Math.sin(t * s.sp + s.ph))); ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.283); ctx.fill(); }
+      ctx.globalAlpha = 1;
+    }
+    const sx = cur.sun[0] * W, sy = cur.sun[1] * H, vis = cur.sunVis;
+    if (vis > .02) {
+      const isMoon = cur.night > .5, R = Math.min(W, H) * (isMoon ? .22 : .34);
+      const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, R);
+      glow.addColorStop(0, isMoon ? 'rgba(244,213,141,' + .35 * vis + ')' : 'rgba(255,214,120,' + .6 * vis + ')'); glow.addColorStop(1, 'rgba(255,214,120,0)');
+      ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(sx, sy, R, 0, 6.283); ctx.fill();
+      ctx.globalAlpha = vis; ctx.fillStyle = isMoon ? '#F4E3B5' : '#FFE8A3'; ctx.beginPath(); ctx.arc(sx, sy, Math.min(W, H) * (isMoon ? .028 : .04), 0, 6.283); ctx.fill(); ctx.globalAlpha = 1;
+    }
+    const nC = cur.clouds, grey = Math.min(1, cur.rain * .9 + cur.storm * .2);
+    for (const cl of clouds) {
+      if (cl.i >= nC + .5) continue;
+      cl.x += cl.v * dt * (1 + cur.storm); if (cl.x > W + 60) { cl.x = -280 * cl.s; cl.y = rnd(H * .04, H * .5); }
+      ctx.globalAlpha = cl.a * Math.min(1, nC - cl.i + .5) * (cur.night > .5 ? .35 : 1) * (1 - grey * .35);
+      ctx.drawImage(sprite, cl.x, cl.y, 256 * cl.s, 128 * cl.s);
+    }
+    ctx.globalAlpha = 1;
+    if (grey > .05) { ctx.fillStyle = 'rgba(20,28,40,' + grey * .18 + ')'; ctx.fillRect(0, 0, W, H); }
+    if (cur.rain > .02) {
+      const n = Math.round(drops.length * cur.rain), wind = .22 + cur.storm * .12;
+      ctx.strokeStyle = 'rgba(210,225,245,' + (.32 + cur.storm * .1) + ')'; ctx.lineWidth = 1.1; ctx.beginPath();
+      for (let i = 0; i < n; i++) { const d = drops[i]; d.y += d.v * dt; d.x += d.v * dt * wind; if (d.y > H) { d.y = rnd(-60, -10); d.x = rnd(-120, W); } ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - d.l * wind, d.y - d.l); }
+      ctx.stroke();
+      for (const b of beads) {
+        if (b.stick > 0) b.stick -= dt; else { b.y += b.v * dt; if (Math.random() < .004) b.stick = rnd(.4, 2.5); }
+        if (b.y > H + 8) { b.y = rnd(-20, H * .5); b.x = rnd(0, W); }
+        ctx.globalAlpha = cur.rain; ctx.fillStyle = 'rgba(235,244,255,.22)'; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 6.283); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.arc(b.x - b.r * .35, b.y - b.r * .35, b.r * .32, 0, 6.283); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+    if (cur.storm > .5 && !reduced()) {
+      if (now > nextFlash) {
+        nextFlash = now + rnd(4200, 8200); flash = 1;
+        let x = rnd(W * .15, W * .85), y = 0; bolt = [[x, y]];
+        while (y < H * .55) { y += rnd(18, 42); x += rnd(-26, 26); bolt.push([x, y]); }
+      }
+      if (flash > 0) {
+        ctx.fillStyle = 'rgba(220,230,255,' + flash * .28 + ')'; ctx.fillRect(0, 0, W, H);
+        if (bolt && flash > .6) { ctx.strokeStyle = 'rgba(255,255,255,' + flash + ')'; ctx.lineWidth = 2.2; ctx.beginPath(); bolt.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke(); }
+        flash = Math.max(0, flash - dt * 3);
+      }
+    }
+  }
+  function loop(now){
+    if (!running) return;
+    const dt = Math.min(.05, (now - last) / 1000);
+    if (lowEnd || liteMode ? dt >= 1 / 31 : true) { last = now; draw(dt, now); }
+    raf = requestAnimationFrame(loop);
+  }
+  function start(){ if (running || reduced()) return; running = true; last = performance.now(); raf = requestAnimationFrame(loop); }
+  function stop(){ running = false; cancelAnimationFrame(raf); }
+  document.addEventListener('visibilitychange', () => document.hidden ? stop() : start());
+  reduceMQ.addEventListener('change', () => { stop(); start(); draw(0, performance.now()); });
+  addEventListener('resize', resize);
+  return { init(){ resize(); start(); }, target, setLite(on){ liteMode = on; resize(); } };
+})();
+
+/* ---------- cartoon exhaust: flat outlined puffs that pop in and pop away. Plain elements and the Web Animations API,
+   so the browser runs them on the compositor and there is no draw loop ---------- */
+const smoke = (() => {
+  const host = $('#smoke');
+  const POP = 'cubic-bezier(.34,1.7,.64,1)';
+  let cloudNow = [];
+  const make = (x, y, r, cls, inner) => {
+    const el = document.createElement('i');
+    el.className = cls;
+    el.style.cssText = 'left:' + (x - r) + 'px;top:' + (y - r) + 'px;width:' + 2 * r + 'px;height:' + 2 * r + 'px;font-size:' + r + 'px';
+    if (inner) el.innerHTML = inner;
+    host.append(el);
+    return el;
+  };
+  // A small lumpy puff: outline circles first, then the fill on top, so only the outer edge gets a line
+  const LUMPS = [[22, 37, 14], [35, 24, 15], [47, 38, 12.5], [33, 43, 13]];
+  const lumps = (style, grow, dx, dy, k) => LUMPS.map(([x, y, r]) => '<circle cx="' + (x + dx) + '" cy="' + (y + dy) + '" r="' + (r * k + grow) + '" style="fill:var(' + style + ')"/>').join('');
+  const BLOB = '<svg viewBox="0 0 64 64" aria-hidden="true">' + lumps('--puff-line', 2.8, 0, 0, 1) + lumps('--puff-shade', 0, 0, 0, 1) + lumps('--puff', 0, -1.4, -2, .92) + '</svg>';
+  // One puff from the tailpipe: pops out, drifts back and up, shrinks away and removes itself
+  function puff(x, y, r){
+    const el = make(x, y, r, 'puff-blob', BLOB), dx = rand(18, 54), dy = -rand(14, 40), spin = 'rotate(' + Math.round(rand(0, 360)) + 'deg)';
+    el.animate([
+      { transform: 'translate(0,0) ' + spin + ' scale(0)', easing: POP },
+      { transform: 'translate(' + dx * .3 + 'px,' + dy * .3 + 'px) ' + spin + ' scale(1)', offset: .28, easing: 'ease-in' },
+      { transform: 'translate(' + dx + 'px,' + dy + 'px) ' + spin + ' scale(0)' }
+    ], { duration: rand(420, 640) }).onfinish = () => el.remove();
+  }
+  // Big puffs pop open in a wave from (ox, oy) until the area is covered; resolves the moment it is.
+  // Grid step d, radius at least .92d and jitter at most .12d leave no gap (the farthest point from any centre is .877d).
+  // Every puff has a dark circle underneath all the fills, so the whole cloud gets one bumpy outline and no lines inside
+  function cover(a, ox, oy, dur){
+    const d = Math.sqrt(a.w * a.h / (root.dataset.lite === 'on' ? a.n * .6 : a.n)), m = d * .5;
+    const cols = Math.ceil((a.w - 2 * m) / d) + 1, rows = Math.ceil((a.h - 2 * m) / d) + 1;
+    const list = [];
+    for (let i = 0; i < cols; i++) for (let k = 0; k < rows; k++) {
+      const x = a.x + m + i * (a.w - 2 * m) / (cols - 1) + rand(-.12, .12) * d, y = a.y + m + k * (a.h - 2 * m) / (rows - 1) + rand(-.12, .12) * d;
+      list.push({ x, y, r: rand(.92, 1.2) * d, dd: Math.hypot(x - ox, y - oy) });
+    }
+    // farthest first, so puffs nearer the tailpipe sit in front and the shading bulges outward
+    list.sort((p, q) => q.dd - p.dd);
+    const far = list[0].dd || 1, pop = Math.min(220, dur * 600);
+    for (const p of list) p.ink = make(p.x, p.y, p.r + 3.5, 'puff-ink');
+    for (const p of list) p.el = make(p.x, p.y, p.r, 'puff');
+    const anims = list.flatMap(p => [p.ink, p.el].map(el => el.animate([{ transform: 'scale(0)' }, { transform: 'scale(1)' }], { duration: pop, delay: p.dd / far * (dur * 1000 - pop), easing: POP, fill: 'both' })));
+    cloudNow = list;
+    return Promise.all(anims.map(x => x.finished));
+  }
+  // The whole cloud pops away in the same wave
+  function clear(){
+    const list = cloudNow, far = list.reduce((m, p) => Math.max(m, p.dd), 1);
+    cloudNow = [];
+    return Promise.all(list.flatMap(p => [p.ink, p.el].map(el => el.animate([
+      { transform: 'scale(1)' },
+      { transform: 'translateY(-6%) scale(1.06)', offset: .3 },
+      { transform: 'translateY(-26%) scale(0)' }
+    ], { duration: 220, delay: p.dd / far * 140, easing: 'cubic-bezier(.5,0,.75,0)', fill: 'forwards' }).finished))).then(() => list.forEach(p => { p.ink.remove(); p.el.remove(); }));
+  }
+  return { puff, cover, clear };
+})();
+
+/* ---------- words that rise, numbers that roll or count ---------- */
+const esc = s => s.replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
+function words(el, text){
+  const t = (text ?? el.textContent).trim();
+  if (el._t !== t || !el.querySelector('.w')) { el._t = t; el.innerHTML = t.split(/\s+/).map(w => '<span class="w"><span>' + esc(w) + '</span></span>').join(' '); }
+  return el.querySelectorAll('.w > span');
+}
+function rise(el, delay = 0, big = false){
+  const ws = words(el);
+  if (reduced() || !ws.length) return;
+  set(ws, { y: '110%', opacity: 0 });
+  anim(ws, big ? { y: ['110%', '0%'], opacity: [0, 1], rotate: [6, 0] } : { y: ['110%', '0%'], opacity: [0, 1] },
+    { type: 'spring', visualDuration: big ? .7 : .42, bounce: big ? .25 : .15, delay: stagger(big ? .07 : .035, { startDelay: delay }) });
+}
+const DIGITS = '01234567890123456789'.split('').map(d => '<span>' + d + '</span>').join('');
+function wheelTo(el, str, o = {}){
+  str = String(str);
+  if (el._val === undefined || el._val.replace(/\d/g, '0') !== str.replace(/\d/g, '0')) {
+    el.innerHTML = '<span class="sr"></span><span class="nw" aria-hidden="true">' + [...str].map(ch => /\d/.test(ch) ? '<span class="nw-d"><span class="nw-s">' + DIGITS + '</span></span>' : '<span>' + esc(ch) + '</span>').join('') + '</span>';
+  }
+  el._val = str; el.firstChild.textContent = str;
+  const ds = str.replace(/\D/g, '');
+  el.querySelectorAll('.nw-s').forEach((s, i) => {
+    const to = 10 + Number(ds[i]), from = o.from0 ? 0 : s._p;
+    const put = v => { s._p = v; s.style.transform = 'translateY(' + (-v) + 'em)'; };
+    if (s._a) s._a.stop();
+    if (from == null || from === to || reduced()) { put(to); return; }
+    put(from);
+    s._a = animate(from, to, { type: 'spring', visualDuration: o.from0 ? .9 + i * .1 : .6, bounce: .15, delay: (o.delay || 0) + i * .07, onUpdate: put });
+  });
+}
+function countTo(el, to, o = {}){
+  const dec = Number(el.dataset.dec || 0), suf = el.dataset.suffix || '';
+  const show = v => { el.textContent = v.toFixed(dec) + suf; };
+  if (el._c) el._c.stop();
+  const from = o.from ?? to;
+  if (reduced() || from === to) { show(to); return; }
+  show(from);
+  el._c = animate(from, to, { duration: o.dur || 1.1, delay: o.delay || 0, ease: [.16, 1, .3, 1], onUpdate: show });
+}
+function setDelay(el, n, word, zero){
+  const prev = el._n; el._n = n;
+  if (!n) { el.textContent = zero; return; }
+  el.innerHTML = '+<span class="tnum" data-count="' + n + '">' + n + '</span> min' + word;
+  if (prev !== undefined) countTo(el.firstElementChild, n, { from: prev, dur: .7 });
+}
+function drawLine(p, delay){
+  p.setAttribute('stroke-dashoffset', '1');
+  animate(1, 0, { duration: .9, delay, ease: EASE, onUpdate: v => p.setAttribute('stroke-dashoffset', v) });
+}
+
+/* ---------- weather UI ---------- */
+const COPY = {
+  clear:  { day: [31, 'Sunny'], night: [26, 'Clear'], advice: 'No rain expected for the next 12 hours.', delay: [0, ''], bars: [5, 5, 10, 10, 15, 10] },
+  cloudy: { day: [29, 'Cloudy'], night: [26, 'Cloudy'], advice: 'No rain expected for the next 12 hours.', delay: [3, ''], bars: [20, 25, 30, 25, 20, 15] },
+  rain:   { day: [25, 'Moderate rain'], night: [24, 'Light rain'], advice: 'Rain until about 11 AM. Bring an umbrella.', delay: [12, ' · rain'], bars: [80, 70, 55, 40, 25, 15] },
+  storm:  { day: [24, 'Thunderstorm'], night: [24, 'Thunderstorm'], advice: 'Thunderstorm advisory until 2 PM. Avoid flooded roads.', delay: [20, ' · storm'], bars: [95, 90, 80, 60, 40, 25] }
+};
+let booted = false;
+const kindOf = (wx, night) => ({ clear: night ? 'clear-night' : 'clear-day', cloudy: night ? 'partly-night' : 'partly-day', rain: night ? 'rain2' : 'rain3', storm: 'storm' }[wx]);
+function applyWeatherUI(){
+  const { time, wx } = state, c = COPY[wx], night = time === 'gabii';
+  const [temp, label] = night ? c.night : c.day;
+  const short = wx === 'storm' ? 'Storm' : label.split(' ').pop().replace(/^./, s => s.toUpperCase());
+  ['#wx-temp', '#wx-temp2', '#pk-temp'].forEach(s => wheelTo($(s), temp));
+  $('#wx-label').textContent = $('#wx-label2').textContent = label;
+  $('#wx-advice').textContent = c.advice;
+  $('#wx-chip-text').textContent = temp + '° ' + short;
+  $('#pk-wx').textContent = short;
+  const kind = kindOf(wx, night);
+  $('#wx-chip').firstElementChild.innerHTML = wi(kind, true);
+  $('#pk-ico').innerHTML = $('#wxi-today').innerHTML = $('#wxi-weather').innerHTML = wi(kind);
+  setDelay($('#delay-tag'), c.delay[0], c.delay[1], 'Usual time');
+  setDelay($('#pk-delay'), c.delay[0], '', 'None');
+  const mins = 7 * 60 + 30 - 35 - c.delay[0], leave = Math.floor(mins / 60) + ':' + String(mins % 60).padStart(2, '0');
+  wheelTo($('#leave-time'), leave); wheelTo($('#pk-leave'), leave);
+  const labels = ['Now', '+1h', '+2h', '+3h', '+4h', '+5h'];
+  $('#rain-bars').innerHTML = c.bars.map((v, i) => '<div class="bar"><i style="height:' + Math.max(6, v * .6) + 'px"></i>' + labels[i] + '</div>').join('');
+  if (booted && !reduced()) anim($$('#rain-bars i'), { scaleY: [0, 1] }, { type: 'spring', visualDuration: .5, bounce: .3, delay: stagger(.04) });
+  $('#hours').innerHTML = Array.from({ length: 12 }, (_, i) => { const ic = i < 4 ? kind : i < 8 ? (wx === 'clear' ? kindOf('clear', night) : 'cloudy') : kindOf('cloudy', night); return '<div class="hour"><span class="muted">' + (i ? '+' + i + 'h' : 'Now') + '</span>' + wi(ic, true) + '<b class="tnum">' + (temp + Math.round(Math.sin(i / 2) * 2)) + '°</b></div>'; }).join('');
+  greet();
+}
+const greetText = () => ({ buntag: 'Maayong buntag', udto: 'Maayong udto', hapon: 'Maayong hapon', gabii: 'Maayong gabii' }[state.time] + ', Thea');
+function greet(){
+  if (page !== 'today' || $('#title')._t === greetText()) return;
+  words($('#title'), greetText());
+  if (!$('#app').hidden) rise($('#title'));
+}
+function setSky(){ sky.target(state.time, state.wx); applyWeatherUI(); }
+
+/* ---------- charts ---------- */
+function drawTripChart(){
+  const usual = [22, 22, 23, 25, 28, 31, 33, 32, 30, 28, 26, 24, 23], today = [24, 25, 27, 31, 36, 41, 44, 42, 39, 35, 31, 28, 26];
+  const W = 340, H = 120, X = i => 8 + i * (W - 16) / 12, Y = v => H - 18 - (v - 18) * (H - 34) / 30;
+  const line = d => d.map((v, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1)).join(' ');
+  const area = line(today) + ' L' + X(12) + ' ' + (H - 18) + ' L' + X(0) + ' ' + (H - 18) + ' Z';
+  $('#trip-chart').innerHTML = '<defs><linearGradient id="ga" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFC233" stop-opacity=".45"/><stop offset="1" stop-color="#FFC233" stop-opacity="0"/></linearGradient></defs>'
+    + '<path data-fade d="' + area + '" fill="url(#ga)"/><path d="' + line(usual) + '" fill="none" stroke="rgba(200,213,230,.6)" stroke-width="2" stroke-dasharray="4 4"/>'
+    + '<path data-draw pathLength="1" stroke-dasharray="1" d="' + line(today) + '" fill="none" stroke="#FFC233" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'
+    + '<circle data-pop cx="' + X(6) + '" cy="' + Y(44) + '" r="5" fill="#FFC233" stroke="#0E1726" stroke-width="2"/>'
+    + '<text data-pop x="' + X(6) + '" y="' + (Y(44) - 10) + '" text-anchor="middle" font-size="11" font-weight="800" fill="#EEF3FA" font-family="inherit">44 min</text>'
+    + ['6 AM', '7 AM', '8 AM', '9 AM'].map((t, i) => '<text x="' + X(i * 4) + '" y="' + (H - 2) + '" font-size="10" fill="#C8D5E6" text-anchor="' + (i === 0 ? 'start' : i === 3 ? 'end' : 'middle') + '" font-family="inherit">' + t + '</text>').join('');
+}
+
+/* ---------- stretchy sliding pill (leading edge first, trailing edge catches up) ---------- */
+function slidePill(pill, target, axis, anim = true){
+  const box = pill.parentElement.getBoundingClientRect(), t = target.getBoundingClientRect();
+  const [aVar, bVar] = axis === 'x' ? ['--pl', '--pr'] : ['--pt', '--pb'];
+  const a = axis === 'x' ? t.left - box.left : t.top - box.top;
+  const b = axis === 'x' ? box.right - t.right : box.bottom - t.bottom;
+  pill._v = pill._v || {}; pill._c = pill._c || {};
+  const go = (name, to, dur) => {
+    const from = pill._v[name];
+    if (pill._c[name]) pill._c[name].stop();
+    if (!anim || from === undefined || reduced()) { pill._v[name] = to; pill.style.setProperty(name, to + 'px'); return; }
+    pill._c[name] = animate(from, to, { duration: dur, ease: EASE, onUpdate: v => { pill._v[name] = v; pill.style.setProperty(name, v + 'px'); } });
+  };
+  const forward = pill._v[aVar] === undefined || a > pill._v[aVar];
+  go(aVar, a, forward ? .55 : .36);
+  go(bVar, b, forward ? .36 : .55);
+}
+
+/* ---------- pages: a full entrance the first time a tab opens, a quick one after ---------- */
+let page = 'today', navToken = 0;
+const seen = new Set();
+function playPage(pg, first, delay = 0){
+  const cards = Array.from(pg.querySelectorAll('.card'));
+  if (reduced() || !cards.length) return;
+  if (!first) { anim(cards, { opacity: [0, 1], y: [12, 0] }, { duration: .35, ease: EASE, delay: stagger(.035, { startDelay: delay }) }); return; }
+  set(cards, { opacity: 0 });
+  anim(cards, { opacity: [0, 1], y: [28, 0], scale: [.96, 1] }, { type: 'spring', visualDuration: .6, bounce: .2, delay: stagger(.065, { startDelay: delay }) });
+  cards.forEach((card, i) => {
+    const d = delay + .12 + i * .065, q = s => card.querySelectorAll(s);
+    q('[data-wheel]').forEach(el => wheelTo(el, el._val, { from0: true, delay: d + .05 }));
+    q('[data-count]').forEach(el => countTo(el, Number(el.dataset.count), { from: 0, delay: d + .15 }));
+    const rows = q('.row-item, .news-mini, .hour');
+    set(rows, { opacity: 0 });
+    anim(rows, { opacity: [0, 1], x: [-16, 0] }, { type: 'spring', visualDuration: .45, bounce: .1, delay: stagger(.05, { startDelay: d + .12 }) });
+    const pops = q('.pill-tag, .lgu');
+    set(pops, { opacity: 0 });
+    anim(pops, { scale: [.5, 1], opacity: [0, 1] }, { type: 'spring', visualDuration: .45, bounce: .45, delay: stagger(.05, { startDelay: d + .2 }) });
+    anim(q('.bar i'), { scaleY: [0, 1] }, { type: 'spring', visualDuration: .55, bounce: .3, delay: stagger(.05, { startDelay: d + .2 }) });
+    anim(q('.cover'), { clipPath: ['inset(0 100% 0 0)', 'inset(0 0% 0 0)'] }, { duration: .8, ease: EASE, delay: d + .1 });
+    q('[data-draw]').forEach((p, k) => drawLine(p, d + .2 + k * .12));
+    set(q('[data-fade]'), { opacity: 0 });
+    anim(q('[data-fade]'), { opacity: [0, 1] }, { duration: .6, delay: d + .5 });
+    const dots = q('[data-pop]');
+    set(dots, { opacity: 0 });
+    anim(dots, { scale: [0, 1], opacity: [0, 1] }, { type: 'spring', visualDuration: .4, bounce: .5, delay: stagger(.08, { startDelay: d + .8 }) });
+    q('[data-ring]').forEach(r => { const full = 251.3, amt = Number(r.dataset.ring); r.setAttribute('stroke-dashoffset', full); animate(0, 1, { duration: 1.1, delay: d + .2, ease: EASE, onUpdate: v => r.setAttribute('stroke-dashoffset', full - amt * v) }); });
+  });
+}
+function syncNav(anim){
+  $$('#side-navs [data-page], #tabbar [data-page]').forEach(b => b.dataset.page === page ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'));
+  const sideBtn = $('#side-navs [data-page="' + page + '"]'), tabBtn = $('#tabbar [data-page="' + page + '"]');
+  if (sideBtn && sideBtn.offsetParent) slidePill($('#vpill'), sideBtn, 'y', anim);
+  if (tabBtn && tabBtn.offsetParent) slidePill($('#tpill'), tabBtn, 'x', anim);
+}
+function setTitle(){ const p = $('#p-' + page); words($('#title'), p.dataset.title === 'greeting' ? greetText() : p.dataset.title); }
+function go(next){
+  if (next === page) return;
+  const out = $('#p-' + page), inn = $('#p-' + next), token = ++navToken;
+  page = next; syncNav(true);
+  if (reduced()) { $$('.page').forEach(p => { p.hidden = p.id !== 'p-' + page; }); setTitle(); seen.add(page); $('#title').focus({ preventScroll: true }); return; }
+  animate(out, { opacity: 0, filter: 'blur(8px)', scale: .985 }, { duration: .2, ease: 'easeIn' }).then(() => {
+    if (token !== navToken) return;
+    $$('.page').forEach(p => { p.hidden = p.id !== 'p-' + page; });
+    set(out, { opacity: 1, filter: 'blur(0px)', scale: 1 });
+    scrollTo({ top: 0 });
+    setTitle(); rise($('#title'));
+    if (page === 'news') requestAnimationFrame(() => initSegment($('#news-seg'), $('#news-pill')));
+    playPage(inn, !seen.has(page)); seen.add(page);
+    $('#title').focus({ preventScroll: true });
+  });
+}
+function initSegment(seg, pill){
+  const btn = seg.querySelector('[aria-pressed="true"]');
+  if (btn) slidePill(pill, btn, 'x', false);
+}
+$('#news-seg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  $$('#news-seg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  slidePill($('#news-pill'), b, 'x', true);
+});
+
+/* ---------- the bell stays still, and rings once when a new alert arrives; the badge shows how many are unread ---------- */
+const RING = [0, 18, -16, 11, -8, 4, 0].map(deg => ({ transform: 'rotate(' + deg + 'deg)' }));
+let unread = 2;
+function setUnread(n){
+  unread = n;
+  $('#bell-n').textContent = n; $('#bell-n').hidden = !n;
+  $('#bell').setAttribute('aria-label', n ? 'Alerts, ' + n + ' new' : 'Alerts');
+}
+function ringBell(){
+  if (reduced() || !unread) return;
+  $('.bell-i').animate(RING, { duration: 1000, easing: 'ease-in-out' });
+  $('#bell-n').animate([{ transform: 'scale(.4)' }, { transform: 'scale(1)' }], { duration: 400, easing: 'cubic-bezier(.34,1.56,.64,1)' });
+}
+
+/* ---------- theme: the new mode travels out from the toggle ---------- */
+function applyMode(mode){
+  root.dataset.mode = mode;
+  $$('.theme-btn').forEach(btn => {
+    btn.setAttribute('aria-pressed', String(mode === 'dark'));
+    btn.setAttribute('aria-label', mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+  });
+}
+function toggleTheme(btn){
+  const next = root.dataset.mode === 'dark' ? 'light' : 'dark';
+  if (!document.startViewTransition || reduced()) { applyMode(next); return; }
+  const r = btn.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+  const R = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+  root.dataset.vt = 'theme';
+  const vt = document.startViewTransition(() => applyMode(next));
+  vt.ready.then(() => root.animate({ clipPath: ['circle(0px at ' + x + 'px ' + y + 'px)', 'circle(' + R + 'px at ' + x + 'px ' + y + 'px)'] }, { duration: 720, easing: 'cubic-bezier(.22,1,.36,1)', pseudoElement: '::view-transition-new(root)' })).catch(() => {});
+  vt.finished.finally(() => { delete root.dataset.vt; });
+}
+
+/* ---------- jeepney: faces left; wheels and body bounce follow the distance it travels ---------- */
+const WHEEL = '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="9.5" fill="#141B26"/><circle cx="10" cy="10" r="4.6" fill="#C9D3DF"/><path d="M10 1.5v4M10 14.5v4M1.5 10h4M14.5 10h4" stroke="#8C99AA" stroke-width="1.6"/></svg>';
+const JEEP = '<div class="jeep"><span class="jeep-shadow"></span><span class="jeep-body"><svg viewBox="0 0 150 64">'
+  + '<g transform="translate(150 0) scale(-1 1)">'
+  + '<rect x="10" y="7" width="96" height="7" rx="3" fill="#1E5AA8" stroke="#0E1726" stroke-width="1.8"/><rect x="78" y="0.5" width="30" height="7.5" rx="1.6" fill="#FFC233" stroke="#0E1726" stroke-width="1.8"/>'
+  + '<rect x="8" y="13" width="104" height="38" rx="7" fill="#E9EEF4" stroke="#0E1726" stroke-width="1.8"/><path d="M110 22 L134 27 Q141 29 142 36 L143 50 L110 50 Z" fill="#E9EEF4" stroke="#0E1726" stroke-width="1.8"/>'
+  + '<path d="M104 15 L116 15 L122 31 L104 31 Z" fill="#1F2A3A"/>'
+  + '<rect x="15" y="17" width="18" height="13" rx="2.5" fill="#1F2A3A"/><rect x="37" y="17" width="18" height="13" rx="2.5" fill="#1F2A3A"/><rect x="59" y="17" width="18" height="13" rx="2.5" fill="#1F2A3A"/><rect x="81" y="17" width="18" height="13" rx="2.5" fill="#1F2A3A"/>'
+  + '<rect x="17" y="18.5" width="6" height="2" rx="1" fill="#5A6B85"/>'
+  + '<rect x="8" y="34" width="135" height="4.5" fill="#C8102E"/><rect x="8" y="39.5" width="135" height="3.2" fill="#FFC233"/><rect x="8" y="43.5" width="135" height="1.8" fill="#1E5AA8"/>'
+  + '<rect x="137" y="33" width="6" height="11" rx="1.5" fill="#9AA7B8"/><circle cx="139.5" cy="30" r="2.6" fill="#FFE08A"/>'
+  + '<rect x="5" y="49" width="142" height="4.5" rx="2" fill="#B8C2CF" stroke="#0E1726" stroke-width="1.8"/><path d="M126 22 L131 14" stroke="#B8C2CF" stroke-width="1.4" stroke-linecap="round"/>'
+  + '</g>'
+  + '<text x="57" y="6" font-size="4.6" font-weight="800" text-anchor="middle" fill="#0E1726" font-family="Arial, sans-serif">TALAMBAN</text>'
+  + '<rect x="140" y="51.5" width="10" height="3" rx="1.2" fill="#5E6B7D" stroke="#0E1726" stroke-width="1.8"/>'
+  + '</svg></span><span class="wheel w1">' + WHEEL + '</span><span class="wheel w2">' + WHEEL + '</span></div>';
+$$('.lane').forEach(l => l.insertAdjacentHTML('beforeend', JEEP));
+$$('.jeep').forEach(j => { j._w = Array.from(j.querySelectorAll('.wheel')); j._b = j.querySelector('.jeep-body'); j._x = 0; j._y = 0; j._s = 1; j._tilt = 0; j._shake = 0; j._run = 0; });
+function pose(j, x){
+  j._x = x; j.style.transform = 'translate(' + x + 'px,' + j._y + 'px) scale(' + j._s + ')';
+  const turn = x / (Math.PI * 20 * j._s) * 360;
+  j._w.forEach(w => { w.style.transform = 'rotate(' + turn + 'deg)'; });
+  j._b.style.transform = 'translateY(' + (Math.sin(x / (6 * j._s)) * .9 + j._shake) + 'px) rotate(' + j._tilt + 'deg)';
+}
+const tail = j => ({ x: j._x + 150 * j._s, y: j._y + 53 * j._s });
+// Pulls in from the right edge (behind the glass card on wide screens) and stops beside the card, or centred on a phone
+// A new ride bumps j._run, so a jeep still driving off from the last switch stops moving instead of fighting the new one
+function jeepIn(j, card){
+  const run = ++j._run, lane = j.parentElement, r = card.getBoundingClientRect(), wide = innerWidth >= 900;
+  card.before(lane); lane.style.zIndex = '';  // behind the glass card while it pulls in...
+  j._s = wide ? 1.3 : 1; j._tilt = 0; j._shake = 0;
+  j._y = Math.min(r.bottom, innerHeight - 8) + j._s - 70 * j._s;
+  const x0 = innerWidth + 10, xs = wide ? r.left - 18 - 150 * j._s : (innerWidth - 150 * j._s) / 2;
+  pose(j, x0); j.style.visibility = 'visible';
+  return animate(x0, xs, { duration: .3, ease: [.16, 1, .3, 1], onUpdate: x => { if (run === j._run) pose(j, x); } }).then(() => {
+    if (run === j._run) { document.body.append(lane); lane.style.zIndex = 90; }  // ...and in front of its own smoke once it has stopped
+  });
+}
+// A short stop: the nose dips as it brakes, the engine shakes and coughs out three puffs
+function jeepRev(j){
+  const run = j._run, t = tail(j);
+  let next = 0;
+  return animate(0, 1, { duration: .14, onUpdate: v => {
+    if (run !== j._run) return;
+    j._tilt = -2.4 * Math.sin(Math.PI * v); j._shake = Math.sin(v * 40) * (1 - v) * 1.2; pose(j, j._x);
+    if (v >= next) { next += .34; smoke.puff(t.x, t.y, rand(9, 13) * j._s); }
+  } }).then(() => { if (run === j._run) { j._tilt = 0; j._shake = 0; pose(j, j._x); } });
+}
+// Floors it to the left and off the screen, then hides. A puff every 46px of road, so the trail reads as separate cartoon puffs
+function jeepOut(j){
+  const run = j._run, x0 = j._x, x1 = -150 * j._s - 30, ty = tail(j).y;
+  let lastPuff = x0;
+  return animate(x0, x1, { duration: .4, ease: [.5, 0, .9, .4], onUpdate: x => {
+    if (run !== j._run) return;
+    j._tilt = 2.2 * Math.sin(Math.PI * Math.min(1, (x0 - x) / 180));
+    pose(j, x);
+    while (lastPuff - x >= 46) { lastPuff -= 46; const px = lastPuff + 150 * j._s; if (px > -20) smoke.puff(px, ty + rand(-4, 4), rand(12, 22) * j._s); }
+  } }).then(() => { if (run === j._run) j.style.visibility = 'hidden'; });
+}
+
+/* ---------- home page with the sign-in / sign-up card, and the app ---------- */
+const scrAuth = $('#scr-auth'), card = $('#auth-card'), forms = { login: $('#form-login'), signup: $('#form-signup') };
+let screen = 'auth', mode = 'login', busy = false;
+function showApp(on){
+  scrAuth.hidden = on; $('#lnav').hidden = on; $('#app').hidden = !on;
+  screen = on ? 'app' : 'auth';
+}
+function setForm(next){
+  mode = next;
+  for (const k in forms) { const on = k === next; forms[k].classList.toggle('off', !on); forms[k].inert = !on; }
+}
+function playForm(f, delay = 0){
+  rise(f.querySelector('h2'), delay);
+  if (reduced()) return;
+  const kids = f.querySelectorAll('[data-s]');
+  set(kids, { opacity: 0 });
+  anim(kids, { opacity: [0, 1], y: [10, 0] }, { duration: .3, ease: EASE, delay: stagger(.035, { startDelay: delay + .04 }) });
+}
+function playScreen(delay = 0){
+  rise($('#hero-h'), delay, true);
+  playForm(forms[mode], delay + .3);
+  if (reduced()) return;
+  const blocks = scrAuth.querySelectorAll('[data-rise]'), icons = scrAuth.querySelectorAll('.pi');
+  set(blocks, { opacity: 0 }); set(card, { opacity: 0 }); set(icons, { opacity: 0 });
+  anim(blocks, { opacity: [0, 1], y: [18, 0], filter: ['blur(6px)', 'blur(0px)'] }, { duration: .6, ease: EASE, delay: stagger(.09, { startDelay: delay + .35 }) });
+  anim(card, { opacity: [0, 1], y: [26, 0], scale: [.97, 1] }, { type: 'spring', visualDuration: .6, bounce: .18, delay: delay + .12 });
+  anim(icons, { scale: [.4, 1], opacity: [0, 1] }, { type: 'spring', visualDuration: .45, bounce: .45, delay: stagger(.08, { startDelay: delay + .55 }) });
+  scrAuth.querySelectorAll('[data-wheel]').forEach(el => wheelTo(el, el._val, { from0: true, delay: delay + .55 }));
+  scrAuth.querySelectorAll('[data-count]').forEach(el => countTo(el, Number(el.dataset.count), { from: 0, delay: delay + .6 }));
+}
+function enterApp(delay = 0){
+  $$('.primary').forEach(b => { b.classList.remove('busy'); b.removeAttribute('aria-busy'); });
+  page = 'today'; $$('.page').forEach(p => { p.hidden = p.id !== 'p-today'; });
+  setTitle(); syncNav(false);
+  seen.clear(); seen.add('today');
+  rise($('#title'), delay);
+  playPage($('#p-today'), true, delay + .05);
+  if (!reduced()) {
+    anim($('.top'), { opacity: [0, 1], y: [-14, 0] }, { duration: .5, ease: EASE, delay });
+    anim($$('.side, .tabbar'), { opacity: [0, 1] }, { duration: .5, delay: delay + .1 });
+  }
+  $('#title').focus({ preventScroll: true });
+  setUnread(2); setTimeout(ringBell, (delay + 1.1) * 1000);  // unread alerts waiting at sign-in ring the bell once
+}
+// The jeepney pulls in from the side (0.3s), stops and coughs smoke, then floors it off while the page changes underneath.
+// Resolves the moment the area is covered (0.3s for the card, 0.42s for the whole screen); the jeep keeps driving off on its own
+async function jeepSmoke(full){
+  const j = $('.jeep');
+  await jeepIn(j, card);
+  const r = card.getBoundingClientRect(), t = tail(j);
+  const covered = smoke.cover(full ? { x: 0, y: 0, w: innerWidth, h: innerHeight, n: 56 } : { x: r.left, y: r.top, w: r.width, h: r.height, n: 34 }, t.x, t.y, full ? .42 : .3);
+  jeepRev(j).then(() => jeepOut(j));
+  await covered;
+}
+// Sign in <-> sign up: the form changes inside the smoke-filled card and is usable at once, while the smoke clears out of it
+async function switchForm(next){
+  if (busy || next === mode) return;
+  const f = forms[next];
+  if (reduced()) { setForm(next); playForm(f); f.querySelector('h2').focus({ preventScroll: true }); return; }
+  busy = true; card.inert = true;
+  await jeepSmoke();
+  setForm(next); card.inert = false; busy = false;
+  playForm(f, .04);
+  f.querySelector('h2').focus({ preventScroll: true });
+  smoke.clear();
+}
+// Signing in: the same ride, but the exhaust covers the whole screen; the dashboard is swapped in underneath and rolls in as it clears
+async function signIn(){
+  if (reduced()) { showApp(true); enterApp(); return; }
+  busy = true; card.inert = true;
+  await jeepSmoke(true);
+  card.inert = false;
+  showApp(true); scrollTo(0, 0);
+  enterApp(.08);
+  smoke.clear();
+  busy = false;
+}
+
+document.addEventListener('click', e => {
+  const t = e.target;
+  const tb = t.closest('.theme-btn'); if (tb) { toggleTheme(tb); return; }
+  const g = t.closest('[data-go]'); if (g) { switchForm(g.dataset.go); return; }
+  const sh = t.closest('.show');
+  if (sh) { const inp = $('#' + sh.getAttribute('aria-controls')), rev = inp.type === 'password'; inp.type = rev ? 'text' : 'password'; sh.textContent = rev ? 'Hide' : 'Show'; sh.setAttribute('aria-pressed', String(rev)); return; }
+  const b = t.closest('[data-page]'); if (b) { if (b.id === 'bell') setUnread(0); go(b.dataset.page); return; }
+  const tg = t.closest('[data-toggle]');
+  if (tg) { const on = tg.getAttribute('aria-pressed') !== 'true'; tg.setAttribute('aria-pressed', String(on)); tg.textContent = on ? tg.dataset.on : tg.dataset.off; }
+});
+document.addEventListener('submit', e => {
+  e.preventDefault();
+  const b = e.target.querySelector('.primary'); if (busy || b.classList.contains('busy')) return;
+  b.classList.add('busy'); b.setAttribute('aria-busy', 'true');
+  signIn();
+});
+$('#signout').addEventListener('click', () => {
+  if (busy) return;
+  const back = () => { setForm('login'); showApp(false); playScreen(.05); $('#h-login').focus({ preventScroll: true }); };
+  if (reduced()) { back(); return; }
+  busy = true;
+  animate($('#app'), { opacity: 0, filter: 'blur(6px)' }, { duration: .25, ease: 'easeIn' }).then(() => { set($('#app'), { opacity: 1, filter: 'blur(0px)' }); back(); busy = false; });
+});
+
+/* ---------- preview controls ---------- */
+$('#time-grp').addEventListener('click', e => {
+  const b = e.target.closest('[data-time]'); if (!b) return;
+  $$('#time-grp [data-time]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  state.timeChoice = b.dataset.time; state.time = b.dataset.time === 'auto' ? autoTime() : b.dataset.time; setSky();
+});
+$('#wx-grp').addEventListener('click', e => {
+  const b = e.target.closest('[data-wx]'); if (!b) return;
+  $$('#wx-grp [data-wx]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  state.wx = b.dataset.wx; setSky();
+});
+$('#lite-btn').addEventListener('click', e => {
+  const on = root.dataset.lite !== 'on'; root.dataset.lite = on ? 'on' : 'off';
+  e.currentTarget.setAttribute('aria-pressed', String(on)); sky.setLite(on);
+});
+$('#replay-btn').addEventListener('click', () => {
+  if (busy) return;
+  if (screen !== 'app') { playScreen(); return; }
+  seen.clear(); seen.add(page); rise($('#title')); playPage($('#p-' + page), true);
+});
+
+const GALLERY = [['clear-day', 'Sunny'], ['clear-night', 'Clear night'], ['partly-day', 'Partly cloudy'], ['partly-night', 'Partly cloudy, night'], ['cloudy', 'Cloudy'], ['fog', 'Fog'], ['rain2', 'Light rain'], ['rain3', 'Rain'], ['rain4', 'Heavy rain'], ['storm', 'Thunderstorm'], ['flood', 'Flood'], ['closure', 'Road closure'], ['traffic', 'Traffic'], ['power', 'Power out'], ['water', 'Water out'], ['typhoon', 'Typhoon'], ['class', 'Class suspension'], ['clock', 'Leave time']];
+const CONTROLS = [['house', 'Today'], ['newspaper', 'News'], ['megaphone', 'Mayor'], ['cloud-sun', 'Weather'], ['traffic-signal', 'Traffic'], ['bell', 'Alerts'], ['map-pin', 'Place'], ['sun', 'Light mode'], ['moon', 'Dark mode'], ['arrow-up-right', 'Open']];
+$('#icons-panel').innerHTML = '<h3>Live icons: show a condition, loop on one beat</h3>' + GALLERY.map(([k, l]) => '<figure>' + wi(k) + '<figcaption>' + l + '</figcaption></figure>').join('') + '<h3>Control icons: navigation and buttons, stay still</h3>' + CONTROLS.map(([k, l]) => '<figure>' + svgIcon(k) + '<figcaption>' + l + '</figcaption></figure>').join('');
+$('#alert-btn').addEventListener('click', () => { setUnread(unread + 1); ringBell(); });
+$('#icons-btn').addEventListener('click', e => {
+  const panel = $('#icons-panel'), on = panel.hidden;
+  panel.hidden = !on; e.currentTarget.setAttribute('aria-pressed', String(on));
+});
+
+/* ---------- boot ---------- */
+if (lowEnd) { root.dataset.lite = 'on'; $('#lite-btn').setAttribute('aria-pressed', 'true'); }
+applyMode(matchMedia('(prefers-color-scheme: dark)').matches || root.dataset.theme === 'dark' || state.time === 'gabii' ? 'dark' : 'light');
+try { $('#date').textContent = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', weekday: 'short', month: 'short', day: 'numeric' }).format(new Date()); } catch (e) {}
+drawTripChart();
+sky.init(); sky.setLite(root.dataset.lite === 'on');
+setSky();
+$$('[data-wheel]').forEach(el => { if (el._val === undefined) wheelTo(el, el.textContent.trim()); });
+setTitle();
+setForm('login'); showApp(false);
+playScreen(.15);
+if (!reduced()) anim($('#lnav'), { opacity: [0, 1], y: [-10, 0] }, { duration: .5, ease: EASE });
+booted = true;
+addEventListener('resize', () => { if (!$('#app').hidden) syncNav(false); if (page === 'news') initSegment($('#news-seg'), $('#news-pill')); });
+</script>

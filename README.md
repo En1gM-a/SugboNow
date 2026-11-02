@@ -76,6 +76,7 @@ sugbo-now/
 │   ├── data-sources.md
 │   └── handoffs/
 │       ├── frontend.md          # frontend spec + prompt for AI agents
+│       ├── frontend-sample.html # working sample of the design (no API calls)
 │       └── frontend-gsap-lenis.md  # GSAP + Lenis: not used (why, notes for later)
 ├── supabase/
 │   ├── migrations/
