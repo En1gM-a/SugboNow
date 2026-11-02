@@ -397,7 +397,7 @@ The jeepney is hidden until the press. There is no road and no parked jeepney un
 | 0 s | The user presses "Sign up" (or "Sign in" on the sign-up form). The auth card goes inert. The jeepney appears just off the right edge of the screen. Its wheels sit on the card's bottom edge (clamped to 8px above the bottom of the screen), and it faces left. Scale 1.3 at ≥ 900px, 1 on phones |
 | 0–0.3 s | It pulls in, moving left, ease cubic-bezier(.16,1,.3,1). At ≥ 900px it passes behind the glass card, so you see it blurred through the glass, and stops 18px left of the card. On phones it drives in front of the card and stops in the center of the screen |
 | 0.3 s | It moves in front of the smoke. The smoke's cover starts from its tailpipe (see below) |
-| 0.3–0.44 s | The stop: the nose dips 2.4° and returns, the body shakes up to 1.2px and fades out, and three small puffs come out of the tailpipe |
+| 0.3–0.44 s | The stop: the nose dips 2.4° and returns, the body shakes by up to 1.2px and the shake dies away, and three small puffs come out of the tailpipe |
 | 0.44–0.84 s | It floors it to the left and off the screen, ease cubic-bezier(.5,0,.9,.4). The nose lifts 2.2° over the first 180px, and it leaves one small puff every 46px of road. The wheels' rotation and the body's small bounce follow the distance traveled |
 | 0.6 s | The card is fully covered. Swap the form and the URL (/login ↔ /signup, with no view transition), remove inert, and move focus to the new form's h2 |
 | 0.6–0.96 s | The cloud pops away, and the new form enters at the same time (see "Home page entrance": only the h2 words and the form rows, starting 40 ms in) |
