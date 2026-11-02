@@ -10,8 +10,9 @@ follow `frontend.md`:
 - **`<scrolling>`:** native scrolling. Smooth scrolling only for in-page jumps (for example, from the alert status
   line to the alerts section), and never with reduced motion on. Nothing appears on scroll: content is visible at
   rest, with no fade-ins as sections enter the viewport.
-- **`<motion>`:** CSS for states, Motion for page transitions, onboarding steps, exit animations, `height: auto`
-  expanders and live values, and the View Transitions API for the auth flow.
+- **`<motion>`:** CSS for states, icon loops and page entrances, Motion for page exits, onboarding steps, exit
+  animations and `height: auto` expanders, the Web Animations API for the jeepney's smoke, and the View Transitions
+  API for the theme switch.
 
 ## Why not
 
