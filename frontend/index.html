@@ -1,5 +1,62 @@
 <!doctype html>
 <html lang="en">
-  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Sugbo Now</title></head>
-  <body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1A5DBF" />
+    <meta name="description" content="SugboNow tells you when to leave for every trip in Cebu, from traffic, weather, floods and your mayor's posts." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>SugboNow</title>
+    <script>
+      // Before the first paint: the Manila time of day, light or dark mode, Lite mode and still mode,
+      // so the sky's colors and the theme never flash (handoff <performance>, "First paint").
+      (function () {
+        var d = document.documentElement;
+        var get = function (key) {
+          try { return localStorage.getItem(key); } catch (e) { return null; }
+        };
+        var time = 'udto';
+        try {
+          var parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' }).formatToParts(new Date());
+          var h = 0, m = 0;
+          for (var i = 0; i < parts.length; i++) {
+            if (parts[i].type === 'hour') h = +parts[i].value;
+            if (parts[i].type === 'minute') m = +parts[i].value;
+          }
+          var t = h * 60 + m;
+          time = t >= 300 && t < 600 ? 'buntag' : t >= 600 && t < 960 ? 'udto' : t >= 960 && t < 1110 ? 'hapon' : 'gabii';
+        } catch (e) {}
+        d.dataset.time = time;
+        var mode = get('sn-mode');
+        if (mode !== 'light' && mode !== 'dark') {
+          mode = (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) || time === 'gabii' ? 'dark' : 'light';
+        }
+        d.dataset.mode = mode;
+        var lite = get('sn-lite');
+        if (lite !== 'on' && lite !== 'off') {
+          var n = navigator;
+          lite = (n.hardwareConcurrency || 8) <= 4 || (n.deviceMemory || 8) <= 4 || (n.connection && n.connection.saveData) ? 'on' : 'off';
+        }
+        d.dataset.lite = lite;
+        if (get('sn-still') === 'on') d.dataset.still = '';
+      })();
+    </script>
+    <style>
+      /* First paint only: this time of day's sky gradient and a static shell, before any JavaScript runs.
+         Never give <html> a background: then <body>'s gradient would paint above the sky canvas (z-index: -1) and hide it.
+         Without one, the body's background moves to the page canvas, underneath everything. */
+      body { margin: 0; min-height: 100vh; background: linear-gradient(180deg, #1A5DBF, #4E9BEA 55%, #BFE3FF) fixed; }
+      [data-time="buntag"] body { background: linear-gradient(180deg, #2B5296, #7FA6E0 55%, #FFDCA0) fixed; }
+      [data-time="hapon"] body { background: linear-gradient(180deg, #22468F, #6C8ED6 55%, #FFC774) fixed; }
+      [data-time="gabii"] body { background: linear-gradient(180deg, #060B1C, #0D1C42 55%, #1E3A6E) fixed; }
+      .ss { width: min(1200px, calc(100% - 32px)); margin: 0 auto; padding-top: 14px; color: #fff; font: 800 1.1rem/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+      .ss-brand { display: flex; align-items: center; gap: 9px; height: 44px; }
+      .ss-mark { width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(180deg, #FFC233 0 52%, #2F7BE0 52% 100%); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.85); }
+      .ss-card { margin: 10vh auto 0; max-width: 440px; height: 420px; border-radius: 28px; background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.28); }
+    </style>
+  </head>
+  <body>
+    <div id="root"><div class="ss" aria-hidden="true"><div class="ss-brand"><span class="ss-mark"></span>SugboNow</div><div class="ss-card"></div></div></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
