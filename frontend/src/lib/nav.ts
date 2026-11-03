@@ -19,7 +19,7 @@ export function activeTab(pathname: string): number {
 
 export const loadPlaceholderPage = () => import('@/pages/PlaceholderPage');
 
-/** Today's main queries, fetched as soon as sign-in succeeds so the page opens with its data. */
+/** Today's main queries, fetched while the log-in smoke covers the screen so the page opens with its data. */
 export function prefetchToday() {
   void queryClient.prefetchQuery(queries.profile());
   void queryClient.prefetchQuery(queries.brief());

@@ -2,9 +2,9 @@ import type { UseQueryResult } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CountUp } from '@/components/CountUp';
+import { JeepneyArt } from '@/components/EmptyArt';
 import { Expander } from '@/components/Expander';
 import { Icon } from '@/components/icons/Icon';
-import { LiveIcon } from '@/components/LiveIcon';
 import { RollNumber } from '@/components/RollNumber';
 import { Card, CardError, timing } from '@/components/today/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -124,9 +124,7 @@ export function NextTripCard({ i, brief }: { i: number; brief: UseQueryResult<Br
       <Card i={i} span="span-7" tone="night" className="trip" labelledBy="trip-h">
         {head}
         <div className="empty">
-          <span className="empty-icon">
-            <LiveIcon kind="clock" still />
-          </span>
+          <JeepneyArt />
           <p className="empty-text">Add your weekly trips to get a leave time</p>
           <Link to="/profile?section=trips" className="btn btn-secondary">
             Add a trip

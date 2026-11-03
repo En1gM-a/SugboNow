@@ -57,7 +57,7 @@ export function RollNumber({ value, delay = 0, className }: RollNumberProps) {
       shown.current = { shape, digits };
       return;
     }
-    // First open: start at 0 and make one full turn once the page's entrance has started.
+    // First open: hold at 0 while the page waits under the smoke, then make one full turn.
     els.forEach((el) => place(el, 0, 'none'));
     if (start === null) return;
     void els[0]?.offsetHeight;

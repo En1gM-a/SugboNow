@@ -1,4 +1,6 @@
-// The "All clear" empty-state drawing in the live icon style, without loops (handoff <icons>, Other touches).
+import { JEEP_BODY, JEEP_WHEEL } from '@/lib/jeepArt';
+
+// Empty-state drawings in the live icon style, without loops (handoff <icons>, Other touches).
 
 const LINE = 'stroke="#0E1726" stroke-width="2.4" stroke-linejoin="round"';
 const CALM_SEA =
@@ -11,4 +13,16 @@ const CALM_SEA =
 /** "All clear": a calm sea and sun. */
 export function AllClearArt() {
   return <span className="empty-art" aria-hidden="true" dangerouslySetInnerHTML={{ __html: CALM_SEA }} />;
+}
+
+/** "Add your weekly trips": the parked jeepney. */
+export function JeepneyArt() {
+  return (
+    <span className="empty-jeep" aria-hidden="true">
+      <span className="jeep-shadow" />
+      <span className="jeep-body" dangerouslySetInnerHTML={{ __html: JEEP_BODY }} />
+      <span className="wheel wheel-1" dangerouslySetInnerHTML={{ __html: JEEP_WHEEL }} />
+      <span className="wheel wheel-2" dangerouslySetInnerHTML={{ __html: JEEP_WHEEL }} />
+    </span>
+  );
 }

@@ -1,8 +1,10 @@
+import { useEffect } from 'react';
 import { Outlet, ScrollRestoration } from 'react-router-dom';
 import { Sky } from '@/components/Sky';
 import { useAuth } from '@/context/AuthContext';
 import { useWeather } from '@/hooks/useFeeds';
 import { useProfile } from '@/hooks/useProfile';
+import { preloadRide } from '@/lib/rideBridge';
 import type { SkyWeather } from '@/lib/sky';
 import { skyWeather, weatherKind } from '@/lib/weatherKind';
 
@@ -21,9 +23,18 @@ function useSkyWeather(): SkyWeather {
   return 'rain';
 }
 
-/** Everything outside the routes: the live sky behind the whole app. */
+/**
+ * Everything outside the routes: the sky behind the app, and the jeepney and its smoke in front of it. Both layers
+ * are fixed at the app root so they survive a route change, and no ancestor of the auth card or the jeepney sets
+ * z-index, transform, opacity or filter, which would break their stacking order (handoff <motion>, Layers).
+ */
 export function RootLayout() {
   const weather = useSkyWeather();
+
+  useEffect(() => {
+    preloadRide();
+  }, []);
+
   return (
     <>
       <Sky weather={weather} />
@@ -31,6 +42,8 @@ export function RootLayout() {
         Skip to content
       </a>
       <Outlet />
+      <div id="jeep-lane" className="jeep-lane" aria-hidden="true" />
+      <div id="smoke" className="smoke" aria-hidden="true" />
       <ScrollRestoration />
     </>
   );

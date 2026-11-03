@@ -1,8 +1,9 @@
 // The signed-out home page at /login and /signup (handoff <pages>, pages 1 and 2): hero copy on the left and one glass
-// card on the right holding both the sign-in and the sign-up form. Switching forms crossfades them and the new title
-// rises; signing in goes straight to Today, which plays its own entrance.
+// card on the right holding both the sign-in and the sign-up form. Switching forms and logging in run the jeepney ride
+// (handoff <motion>, "The jeepney ride").
 
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react';
+import { flushSync } from 'react-dom';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Field, PasswordField } from '@/components/auth/Field';
 import { CountUp } from '@/components/CountUp';
@@ -17,6 +18,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useDisplay } from '@/lib/display';
 import { EntranceContext, type Entrance } from '@/lib/entrance';
 import { prefetchToday } from '@/lib/nav';
+import { loadRide, loginRide } from '@/lib/rideBridge';
 import { USE_MOCKS } from '@/lib/supabaseClient';
 import { cx, vars } from '@/utils/cx';
 
@@ -37,12 +39,14 @@ interface FormProps {
   active: boolean;
   play: FormPlay | null;
   headingRef: RefObject<HTMLHeadingElement | null>;
+  /** True while a ride runs: the card is inert. */
+  locked: boolean;
   onSwitch: () => void;
 }
 
 const playAttr = (play: FormPlay | null) => (play ? (play.token % 2 ? 'b' : 'a') : undefined);
 
-function SignInForm({ active, play, headingRef, onSwitch, onSignIn, onReset }: FormProps & {
+function SignInForm({ active, play, headingRef, locked, onSwitch, onSignIn, onReset }: FormProps & {
   onSignIn: (email: string, password: string) => Promise<string | null>;
   onReset: (email: string) => Promise<string | null>;
 }) {
@@ -56,7 +60,7 @@ function SignInForm({ active, play, headingRef, onSwitch, onSignIn, onReset }: F
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (busy) return;
+    if (busy || locked) return;
     const next: typeof errors = {};
     if (!EMAIL.test(email.trim())) next.email = 'Enter the email you signed up with, like thea@example.com.';
     if (!password) next.password = 'Enter your password.';
@@ -66,7 +70,7 @@ function SignInForm({ active, play, headingRef, onSwitch, onSignIn, onReset }: F
     if (next.password) return passwordInput.current?.focus();
     setBusy(true);
     const error = await onSignIn(email.trim(), password);
-    // On success the button stays busy until Today opens.
+    // On success the button stays busy until the ride has taken the user into the app.
     if (error) {
       setBusy(false);
       setMessage({ error: true, text: error });
@@ -147,7 +151,7 @@ function SignInForm({ active, play, headingRef, onSwitch, onSignIn, onReset }: F
       )}
       <p className="form-switch" data-row style={vars({ '--k': row++ })}>
         New to SugboNow?
-        <Button variant="secondary" onClick={onSwitch}>
+        <Button variant="secondary" onClick={onSwitch} disabled={locked}>
           Sign up
         </Button>
       </p>
@@ -155,7 +159,7 @@ function SignInForm({ active, play, headingRef, onSwitch, onSignIn, onReset }: F
   );
 }
 
-function SignUpForm({ active, play, headingRef, onSwitch, onSignUp }: FormProps & {
+function SignUpForm({ active, play, headingRef, locked, onSwitch, onSignUp }: FormProps & {
   onSignUp: (name: string, email: string, password: string) => Promise<{ error?: string; checkEmail?: boolean }>;
 }) {
   const [name, setName] = useState('');
@@ -175,7 +179,7 @@ function SignUpForm({ active, play, headingRef, onSwitch, onSignUp }: FormProps 
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (busy) return;
+    if (busy || locked) return;
     const next: typeof errors = {};
     if (!name.trim()) next.name = 'Enter your first name.';
     if (!EMAIL.test(email.trim())) next.email = 'Enter an email you can open, like thea@example.com.';
@@ -213,7 +217,7 @@ function SignUpForm({ active, play, headingRef, onSwitch, onSignUp }: FormProps 
             Check your email
           </h2>
           <p className="sub">We sent a confirmation link to {checkEmail}. Open it, then sign in.</p>
-          <Button variant="secondary" onClick={onSwitch}>
+          <Button variant="secondary" onClick={onSwitch} disabled={locked}>
             Back to sign in
           </Button>
         </>
@@ -270,7 +274,7 @@ function SignUpForm({ active, play, headingRef, onSwitch, onSignUp }: FormProps 
           )}
           <p className="form-switch" data-row style={vars({ '--k': row++ })}>
             Already riding with us?
-            <Button variant="secondary" onClick={onSwitch}>
+            <Button variant="secondary" onClick={onSwitch} disabled={locked}>
               Sign in
             </Button>
           </p>
@@ -286,15 +290,16 @@ export default function HomePage() {
   const navigate = useNavigate();
   const { still } = useDisplay();
   const form: FormName = location.pathname === '/signup' ? 'signup' : 'login';
+  const card = useRef<HTMLDivElement>(null);
   const loginHeading = useRef<HTMLHeadingElement>(null);
   const signupHeading = useRef<HTMLHeadingElement>(null);
   const shownForm = useRef<FormName>(form);
-  /** Where a successful sign-in or sign-up goes (Today, or onboarding after a new sign-up). */
-  const destination = useRef('/');
   // The home entrance plays when the page loads and after sign-out (each time this page mounts).
   const [play] = useState(() => !still);
   const [start] = useState(() => performance.now());
   const [formPlay, setFormPlay] = useState<FormPlay | null>(() => (still ? null : { form, token: 0, delay: 300 }));
+  const [riding, setRiding] = useState(false);
+  const [destination, setDestination] = useState<string | null>(null);
 
   useEffect(() => {
     // Coming here from inside the app (after sign-out): move focus to the form's title.
@@ -302,42 +307,87 @@ export default function HomePage() {
     // Runs once, on mount.
   }, []);
 
-  // Back and Forward between /login and /signup, or opening either URL: show the right form.
+  // Back and Forward between /login and /signup, or opening either URL: the right form, with no ride.
   useEffect(() => {
     if (shownForm.current === form) return;
     shownForm.current = form;
     if (!still) setFormPlay({ form, token: Date.now(), delay: 40 });
   }, [form, still]);
 
-  /** Sign in ↔ sign up: the forms crossfade (120 ms), the new title rises, and focus moves to it. */
-  function switchTo(next: FormName) {
-    if (next === form) return;
-    shownForm.current = next;
-    navigate(PATH[next], { flushSync: true });
-    if (!still) setFormPlay({ form: next, token: Date.now(), delay: 40 });
-    (next === 'login' ? loginHeading : signupHeading).current?.focus({ preventScroll: true });
+  // Covered and signed in: into the app. Waiting for both means the protected route never sees a signed-out state.
+  useEffect(() => {
+    if (!destination || status !== 'signedIn') return;
+    if (still) {
+      loginRide.cancel();
+      navigate(destination, { replace: true });
+      return;
+    }
+    void loginRide.finish(() => navigate(destination, { replace: true }));
+  }, [destination, status, still, navigate]);
+
+  /** Sign in ↔ sign up: the jeepney's smoke covers the card, the forms swap under it, and the new form enters. */
+  async function switchTo(next: FormName) {
+    if (riding || next === form) return;
+    const swap = () => {
+      shownForm.current = next;
+      navigate(PATH[next], { flushSync: true });
+      if (!still) setFormPlay({ form: next, token: Date.now(), delay: 40 });
+      (next === 'login' ? loginHeading : signupHeading).current?.focus({ preventScroll: true });
+    };
+    if (still || !card.current) return swap();
+    setRiding(true);
+    try {
+      const ride = await loadRide();
+      // The new form is usable 0.6 s after the press: covered, swapped, then the smoke clears while it enters.
+      await ride.coverCard(card.current);
+      flushSync(() => setRiding(false));
+      swap();
+      void ride.clearSmoke();
+    } catch {
+      setRiding(false);
+      swap();
+    }
+  }
+
+  /** After sign-in or sign-up succeeds: the same ride, but the smoke covers the whole screen. */
+  async function rideInto(path: string) {
+    prefetchToday();
+    if (!still && card.current) {
+      try {
+        const ride = await loadRide();
+        await ride.coverScreen(card.current);
+      } catch {
+        // No ride (its code failed to load): go straight in.
+      }
+    }
+    setDestination(path);
   }
 
   async function handleSignIn(email: string, password: string): Promise<string | null> {
-    destination.current = '/';
+    loginRide.begin();
     try {
       await signIn(email, password);
     } catch (err) {
+      loginRide.cancel();
       return messageOf(err);
     }
-    prefetchToday();
+    await rideInto('/');
     return null;
   }
 
   async function handleSignUp(name: string, email: string, password: string) {
-    destination.current = '/welcome';
+    loginRide.begin();
     try {
       const { needsConfirmation } = await signUp(name, email, password);
-      if (needsConfirmation) return { checkEmail: true };
+      if (needsConfirmation) {
+        loginRide.cancel();
+        return { checkEmail: true };
+      }
     } catch (err) {
+      loginRide.cancel();
       return { error: messageOf(err) };
     }
-    prefetchToday();
+    await rideInto('/welcome');
     return {};
   }
 
@@ -350,8 +400,8 @@ export default function HomePage() {
     }
   }
 
-  // Signed in, by this page's forms or by a session restored on page load: into the app.
-  if (status === 'signedIn') return <Navigate to={destination.current} replace />;
+  // A session restored on page load goes straight to Today, with no ride.
+  if (status === 'signedIn' && !loginRide.holding && !destination) return <Navigate to="/" replace />;
 
   const entrance: Entrance = { mode: play ? 'first' : 'none', start };
 
@@ -414,12 +464,13 @@ export default function HomePage() {
               </b>
             </p>
           </section>
-          <div className="auth-card glass">
+          <div className="auth-card glass" ref={card} inert={riding}>
             <SignInForm
               active={form === 'login'}
               play={formPlay?.form === 'login' ? formPlay : null}
               headingRef={loginHeading}
-              onSwitch={() => switchTo('signup')}
+              locked={riding}
+              onSwitch={() => void switchTo('signup')}
               onSignIn={handleSignIn}
               onReset={handleReset}
             />
@@ -427,7 +478,8 @@ export default function HomePage() {
               active={form === 'signup'}
               play={formPlay?.form === 'signup' ? formPlay : null}
               headingRef={signupHeading}
-              onSwitch={() => switchTo('login')}
+              locked={riding}
+              onSwitch={() => void switchTo('login')}
               onSignUp={handleSignUp}
             />
           </div>

@@ -10,6 +10,7 @@ import { useBrief, useWeather } from '@/hooks/useFeeds';
 import { useManilaTime } from '@/hooks/useManilaTime';
 import { useProfile } from '@/hooks/useProfile';
 import { getDisplay, useDisplay } from '@/lib/display';
+import { useGateHeld } from '@/lib/entrance';
 import { greeting, shortDate } from '@/lib/time';
 import { oneWord, weatherKind } from '@/lib/weatherKind';
 import { initials } from '@/utils/format';
@@ -88,6 +89,8 @@ export function Header() {
   const { user } = useAuth();
   const profile = useProfile();
   const time = useManilaTime();
+  // Under the log-in smoke the title waits, and rises as the smoke clears.
+  const held = useGateHeld();
   const { still } = useDisplay();
   const h1 = useRef<HTMLHeadingElement>(null);
   const firstRoute = useRef(true);
@@ -117,7 +120,7 @@ export function Header() {
               <Skeleton className="title-skel" />
             </>
           ) : (
-            <RiseWords key={title} text={title} play={!still} />
+            <RiseWords key={`${title}-${held}`} text={title} play={!held && !still} />
           )}
         </h1>
         <div className="meta-row">
