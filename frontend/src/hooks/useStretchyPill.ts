@@ -79,11 +79,12 @@ export function useStretchyPill(axis: 'x' | 'y', active: number, radius: number)
   useEffect(() => {
     const onResize = () => place(false);
     window.addEventListener('resize', onResize);
-    return () => {
-      window.removeEventListener('resize', onResize);
-      running.current.forEach((stop) => stop());
-    };
+    return () => window.removeEventListener('resize', onResize);
   }, [place]);
+
+  // Stop a running stretch only on unmount. In the effect above, the cleanup would run on every tab change, right
+  // after the layout effect started the new stretch, and cancel it before it moved: the pill stayed one tab behind.
+  useEffect(() => () => running.current.forEach((stop) => stop()), []);
 
   return { box, pill };
 }
