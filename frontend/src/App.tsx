@@ -1,10 +1,11 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
 import { AppShell } from '@/components/layout/AppShell';
 import type { RouteHandle } from '@/components/layout/Header';
+import { PageSkeleton } from '@/components/layout/Page';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { RootLayout } from '@/components/layout/RootLayout';
-import { loadPlaceholderPage, loadWelcomePage } from '@/lib/nav';
+import { loadNewsPage, loadPlaceholderPage, loadWelcomePage } from '@/lib/nav';
 import HomePage from '@/pages/HomePage';
 import type { PlaceholderName } from '@/pages/PlaceholderPage';
 import TodayPage from '@/pages/TodayPage';
@@ -12,12 +13,10 @@ import TodayPage from '@/pages/TodayPage';
 // The home page and Today are in the main bundle; every other route loads on demand (handoff <performance>).
 const PlaceholderPage = lazy(loadPlaceholderPage);
 const WelcomePage = lazy(loadWelcomePage);
+const NewsPage = lazy(loadNewsPage);
 
-const later = (page: PlaceholderName) => (
-  <Suspense fallback={null}>
-    <PlaceholderPage page={page} />
-  </Suspense>
-);
+const lazily = (page: ReactNode) => <Suspense fallback={<PageSkeleton />}>{page}</Suspense>;
+const later = (page: PlaceholderName) => lazily(<PlaceholderPage page={page} />);
 
 const handle = (title: string): RouteHandle => ({ title });
 
@@ -51,7 +50,7 @@ const router = createBrowserRouter([
             element: <AppShell />,
             children: [
               { index: true, element: <TodayPage />, handle: handle('greeting') },
-              { path: 'news', element: later('news'), handle: handle('News') },
+              { path: 'news', element: lazily(<NewsPage />), handle: handle('News') },
               { path: 'mayor', element: later('mayor'), handle: handle('Mayor') },
               { path: 'weather', element: later('weather'), handle: handle('Weather') },
               { path: 'traffic', element: later('traffic'), handle: handle('Traffic') },

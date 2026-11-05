@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Link, useLocation, useMatches } from 'react-router-dom';
 import { Icon } from '@/components/icons/Icon';
 import { LiveIcon } from '@/components/LiveIcon';
@@ -6,6 +6,7 @@ import { RiseWords } from '@/components/RiseWords';
 import { ThemeSwitch } from '@/components/ThemeSwitch';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/context/AuthContext';
+import { useNow } from '@/hooks/useBrowser';
 import { useBrief, useWeather } from '@/hooks/useFeeds';
 import { useManilaTime } from '@/hooks/useManilaTime';
 import { useProfile } from '@/hooks/useProfile';
@@ -13,28 +14,12 @@ import { getDisplay, useDisplay } from '@/lib/display';
 import { useGateHeld } from '@/lib/entrance';
 import { greeting, shortDate } from '@/lib/time';
 import { oneWord, weatherKind } from '@/lib/weatherKind';
-import { initials } from '@/utils/format';
+import { initials, updatedAgo } from '@/utils/format';
 import { Bell } from './Bell';
 
 export interface RouteHandle {
   /** The page title, or "greeting" for Today's "Maayong udto, Thea". */
   title: string;
-}
-
-function useNow(everyMs: number) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), everyMs);
-    return () => window.clearInterval(id);
-  }, [everyMs]);
-  return now;
-}
-
-function updatedAgo(at: number, now: number): string {
-  const min = Math.max(0, Math.round((now - at) / 60_000));
-  if (min < 1) return 'Updated just now';
-  if (min < 60) return `Updated ${min} min ago`;
-  return `Updated ${Math.round(min / 60)} h ago`;
 }
 
 /** "Updated 2 min ago", after the live dot. The dot sends out one ring when new data arrives; it never pulses on its own. */
