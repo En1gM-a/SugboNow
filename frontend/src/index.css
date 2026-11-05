@@ -726,6 +726,7 @@
   }
   .field {
     display: grid;
+    align-content: start;
     gap: 5px;
   }
   .field-top {
@@ -1576,7 +1577,7 @@
     -webkit-box-orient: vertical;
   }
 
-  /* Setup prompt and the pages still to come */
+  /* Setup prompt */
   .setup {
     display: flex;
     flex-wrap: wrap;
@@ -1584,17 +1585,11 @@
     justify-content: space-between;
     gap: 12px;
   }
-  .placeholder {
-    display: grid;
-    justify-items: start;
-    gap: 12px;
-    padding: 28px;
-  }
-  .ph-q {
-    font-size: 1.65rem;
-    font-weight: 800;
-    line-height: 1.15;
-    letter-spacing: -0.02em;
+  .offline {
+    padding: 10px 16px;
+    border-radius: 18px;
+    font-size: 0.9rem;
+    font-weight: 700;
   }
 
   /* ---------- Forms: everything past the auth card uses the same fields ---------- */
@@ -2884,6 +2879,124 @@
     }
   }
 
+  /* Profile: a settings list, and one section at a time */
+  .settings {
+    padding: 8px;
+  }
+  .settings-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    min-height: 52px;
+    padding: 8px 10px;
+    border-radius: 16px;
+    transition:
+      background-color 150ms ease,
+      transform 100ms var(--ease-out);
+  }
+  .settings-row:active {
+    transform: scale(0.99);
+  }
+  .settings-row:focus-visible {
+    outline-offset: -2px;
+  }
+  .settings-row[aria-current="true"] {
+    background: var(--mango);
+    color: #0e1726;
+  }
+  .settings-row b {
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+  .settings-caret {
+    color: var(--muted);
+    --icon: 14px;
+  }
+  .settings-row[aria-current="true"] .settings-caret {
+    color: inherit;
+  }
+  @media (hover: hover) {
+    .settings-row:hover:not([aria-current="true"]) {
+      background: var(--chip);
+    }
+  }
+  .profile-panel {
+    display: grid;
+    align-content: start;
+    gap: 12px;
+  }
+  .section-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+  .section-title:focus {
+    outline: none;
+  }
+  .section-body {
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+  }
+  .item-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-top: 1px solid var(--line);
+  }
+  .item-row:first-child {
+    border-top: 0;
+  }
+  .item-ico {
+    color: var(--muted);
+  }
+  .item-actions {
+    display: flex;
+    gap: 6px;
+  }
+  .item-actions .btn-icon {
+    --icon: 18px;
+  }
+  .add-row {
+    justify-self: start;
+    --icon: 18px;
+  }
+  .inline-link {
+    color: var(--blue);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .settings-switches .switch-row:first-of-type {
+    margin-top: 0;
+    border-top: 0;
+    padding-top: 0;
+  }
+  .signout {
+    display: grid;
+    justify-items: start;
+    gap: 12px;
+  }
+  .profile-screen {
+    display: grid;
+    gap: 10px;
+    animation: screen-in 260ms var(--ease-out) backwards;
+  }
+  .back-link {
+    justify-self: start;
+    min-height: 44px;
+    padding: 0 16px 0 10px;
+    border: 1px solid var(--glass-line);
+    background: var(--glass);
+    color: var(--ink);
+    font-size: 0.9rem;
+    --icon: 16px;
+  }
+
   /* The "Right now" glance */
   .glance-rows {
     display: grid;
@@ -3531,7 +3644,8 @@
   animation: none !important;
 }
 :root[data-still] .skel,
-:root[data-still] .peek-sheet {
+:root[data-still] .peek-sheet,
+:root[data-still] .profile-screen {
   animation: none;
 }
 :root[data-still] .peek-sheet,
@@ -3540,7 +3654,8 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .skel,
-  .peek-sheet {
+  .peek-sheet,
+  .profile-screen {
     animation: none;
   }
   .peek-sheet,
@@ -3552,6 +3667,12 @@
 @keyframes sheet-up {
   from {
     transform: translateY(100%);
+  }
+}
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
   }
 }
 @keyframes spin {
