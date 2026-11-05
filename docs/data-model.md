@@ -18,9 +18,14 @@ on top of the base columns from `0001_init_schema.sql`:
 | `commute_destination_location_id` | `uuid`, nullable, FK → `locations(id)` | Typical commute end. Same reasoning as origin. |
 
 All six columns are nullable. Profile rows are created by the
-`handle_new_user()` signup trigger before the user has entered any of this
-data, and the two commute columns can't be populated until the user has
-saved at least one row in `public.locations`.
+`handle_new_user()` signup trigger, and the two commute columns can't be
+populated until the user has saved at least one row in `public.locations`.
+
+`first_name`, `city`, `address_text` and `subscribed_mayor` start from the
+sign-up form: since `0006_save_signup_details_on_profile.sql`, the trigger reads
+them from the auth metadata and saves a bad value as empty, so it never blocks a
+sign-up. Read them from `profiles`, never from `user_metadata`, which doesn't
+change when the user edits their Profile. See `docs/handoffs/signup.md`.
 
 ## public.lgu_sources
 
