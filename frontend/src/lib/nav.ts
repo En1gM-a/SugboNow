@@ -21,6 +21,7 @@ export const loadPlaceholderPage = () => import('@/pages/PlaceholderPage');
 export const loadWelcomePage = () => import('@/pages/WelcomePage');
 export const loadNewsPage = () => import('@/pages/NewsPage');
 export const loadMayorPage = () => import('@/pages/MayorPage');
+export const loadWeatherPage = () => import('@/pages/WeatherPage');
 
 /** Today's main queries, fetched while the log-in smoke covers the screen so the page opens with its data. */
 export function prefetchToday() {
@@ -47,6 +48,11 @@ export function preloadRoute(to: string) {
     void loadMayorPage();
     void queryClient.prefetchQuery(queries.lguSources());
     void queryClient.prefetchQuery(queries.lguPostsLatest(10));
+    return;
+  }
+  if (to === '/weather') {
+    void loadWeatherPage();
+    void queryClient.prefetchQuery(queries.weatherAll());
     return;
   }
   void loadPlaceholderPage();

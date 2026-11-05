@@ -5,7 +5,7 @@ import type { RouteHandle } from '@/components/layout/Header';
 import { PageSkeleton } from '@/components/layout/Page';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { RootLayout } from '@/components/layout/RootLayout';
-import { loadMayorPage, loadNewsPage, loadPlaceholderPage, loadWelcomePage } from '@/lib/nav';
+import { loadMayorPage, loadNewsPage, loadPlaceholderPage, loadWeatherPage, loadWelcomePage } from '@/lib/nav';
 import HomePage from '@/pages/HomePage';
 import type { PlaceholderName } from '@/pages/PlaceholderPage';
 import TodayPage from '@/pages/TodayPage';
@@ -15,6 +15,7 @@ const PlaceholderPage = lazy(loadPlaceholderPage);
 const WelcomePage = lazy(loadWelcomePage);
 const NewsPage = lazy(loadNewsPage);
 const MayorPage = lazy(loadMayorPage);
+const WeatherPage = lazy(loadWeatherPage);
 
 const lazily = (page: ReactNode) => <Suspense fallback={<PageSkeleton />}>{page}</Suspense>;
 const later = (page: PlaceholderName) => lazily(<PlaceholderPage page={page} />);
@@ -53,7 +54,7 @@ const router = createBrowserRouter([
               { index: true, element: <TodayPage />, handle: handle('greeting') },
               { path: 'news', element: lazily(<NewsPage />), handle: handle('News') },
               { path: 'mayor', element: lazily(<MayorPage />), handle: handle('Mayor') },
-              { path: 'weather', element: later('weather'), handle: handle('Weather') },
+              { path: 'weather', element: lazily(<WeatherPage />), handle: handle('Weather') },
               { path: 'traffic', element: later('traffic'), handle: handle('Traffic') },
               { path: 'profile', element: later('profile'), handle: handle('Profile') },
             ],
