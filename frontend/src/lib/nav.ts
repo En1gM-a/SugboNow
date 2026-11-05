@@ -23,6 +23,7 @@ export const loadMayorPage = () => import('@/pages/MayorPage');
 export const loadWeatherPage = () => import('@/pages/WeatherPage');
 export const loadTrafficPage = () => import('@/pages/TrafficPage');
 export const loadProfilePage = () => import('@/pages/ProfilePage');
+export const loadResetPasswordPage = () => import('@/pages/ResetPasswordPage');
 
 /** Today's main queries, fetched while the log-in smoke covers the screen so the page opens with its data. */
 export function prefetchToday() {
