@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Outlet, ScrollRestoration } from 'react-router-dom';
 import { Sky } from '@/components/Sky';
+import { Toaster } from '@/components/ui/Toaster';
 import { useAuth } from '@/context/AuthContext';
 import { useWeather } from '@/hooks/useFeeds';
 import { useProfile } from '@/hooks/useProfile';
@@ -42,6 +43,7 @@ export function RootLayout() {
         Skip to content
       </a>
       <Outlet />
+      <Toaster />
       <div id="jeep-lane" className="jeep-lane" aria-hidden="true" />
       <div id="smoke" className="smoke" aria-hidden="true" />
       <ScrollRestoration />

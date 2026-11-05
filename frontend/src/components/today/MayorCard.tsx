@@ -62,7 +62,7 @@ export function MayorCard({ i, span }: { i: number; span: string }) {
         </h2>
         <p className="muted small mt-2">{source ? 'No posts yet.' : 'Pick your mayor in Profile to see their latest post here.'}</p>
         {!source && (
-          <Link to="/profile" className="btn btn-quiet">
+          <Link to="/profile?section=details" className="btn btn-quiet">
             Pick your mayor
           </Link>
         )}

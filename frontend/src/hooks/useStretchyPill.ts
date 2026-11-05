@@ -72,18 +72,31 @@ export function useStretchyPill(axis: 'x' | 'y', active: number, radius: number)
     [active, axis, radius, still],
   );
 
+  const latest = useRef(place);
+
   useLayoutEffect(() => {
+    latest.current = place;
     place(true);
   }, [place]);
 
+  // Follow the box's size: the window resizing, the rail or tab bar appearing at its breakpoint, or a segmented
+  // control's options arriving from the API. Only a real change counts: the observer also fires once when it starts,
+  // and placing the pill then would cancel a stretch that has just begun.
   useEffect(() => {
-    const onResize = () => place(false);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [place]);
+    const el = box.current;
+    if (!el) return;
+    let size = '';
+    const observer = new ResizeObserver(([entry]) => {
+      const next = `${entry.contentRect.width}x${entry.contentRect.height}`;
+      if (size && size !== next) latest.current(false);
+      size = next;
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
-  // Stop a running stretch only on unmount. In the effect above, the cleanup would run on every tab change, right
-  // after the layout effect started the new stretch, and cancel it before it moved: the pill stayed one tab behind.
+  // Stop a running stretch only on unmount. A cleanup tied to `place` would run on every tab change, right after the
+  // layout effect started the new stretch, and cancel it before it moved: the pill stayed one tab behind.
   useEffect(() => () => running.current.forEach((stop) => stop()), []);
 
   return { box, pill };

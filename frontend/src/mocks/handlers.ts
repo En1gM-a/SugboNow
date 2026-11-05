@@ -39,15 +39,19 @@ interface MockDb {
   schedule: ScheduleEntry[];
 }
 
-function freshDb(): MockDb {
+/** What the sign-up form saved; on the real project a database trigger does this. */
+type SignupDetails = Partial<Pick<Profile, 'firstName' | 'city' | 'addressText' | 'subscribedMayor'>>;
+
+function freshDb(details: SignupDetails): MockDb {
   const p = initialProfile();
   return {
     profile: {
       ...p,
-      firstName: null,
-      city: null,
-      addressText: null,
-      subscribedMayor: null,
+      displayName: details.firstName ?? p.displayName,
+      firstName: details.firstName ?? null,
+      city: details.city ?? null,
+      addressText: details.addressText ?? null,
+      subscribedMayor: details.subscribedMayor ?? null,
       commuteOriginLocationId: null,
       commuteDestinationLocationId: null,
       createdAt: new Date().toISOString(),
@@ -60,9 +64,10 @@ function freshDb(): MockDb {
 
 function loadDb(): MockDb {
   try {
-    if (localStorage.getItem(FRESH_USER_KEY)) {
+    const details = localStorage.getItem(FRESH_USER_KEY);
+    if (details) {
       localStorage.removeItem(FRESH_USER_KEY);
-      const db = freshDb();
+      const db = freshDb(JSON.parse(details) as SignupDetails);
       saveDb(db);
       return db;
     }
