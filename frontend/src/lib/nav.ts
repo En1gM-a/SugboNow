@@ -20,6 +20,7 @@ export function activeTab(pathname: string): number {
 export const loadPlaceholderPage = () => import('@/pages/PlaceholderPage');
 export const loadWelcomePage = () => import('@/pages/WelcomePage');
 export const loadNewsPage = () => import('@/pages/NewsPage');
+export const loadMayorPage = () => import('@/pages/MayorPage');
 
 /** Today's main queries, fetched while the log-in smoke covers the screen so the page opens with its data. */
 export function prefetchToday() {
@@ -40,6 +41,12 @@ export function preloadRoute(to: string) {
     void loadNewsPage();
     void queryClient.prefetchQuery(queries.news(50));
     void queryClient.prefetchQuery(queries.areas());
+    return;
+  }
+  if (to === '/mayor') {
+    void loadMayorPage();
+    void queryClient.prefetchQuery(queries.lguSources());
+    void queryClient.prefetchQuery(queries.lguPostsLatest(10));
     return;
   }
   void loadPlaceholderPage();

@@ -496,6 +496,24 @@ const CAPTIONS: Array<[LguPost['category'], string]> = [
   ['general', 'Free medical and dental mission this Saturday at the city sports complex, 8 AM to 4 PM. Bring a valid ID.'],
 ];
 
+const photo = (from: string, to: string): LguPost['media'][number] => ({
+  type: 'image',
+  url: art(from, to, 1080, 1080),
+  thumbnailUrl: art(from, to, 1080, 1080),
+  width: 1080,
+  height: 1080,
+  altText: 'Sample picture for this post',
+  durationSeconds: null,
+});
+
+// One of each media layout: 1 image, 2 side by side, 3 or more with "+N", and a video that links to Facebook.
+const POST_MEDIA: Record<number, LguPost['media']> = {
+  0: [photo('#14213D', '#C8102E')],
+  1: [photo('#B45309', '#FFC233'), photo('#14213D', '#2F7BE0')],
+  3: [photo('#0E7C74', '#3FB8A8'), photo('#1E5AA8', '#5AA2F5'), photo('#14213D', '#2F4E8A'), photo('#B45309', '#14213D'), photo('#0E7C74', '#14213D')],
+  4: [{ type: 'video', url: 'https://www.facebook.com/', thumbnailUrl: art('#14213D', '#0E7C74'), width: 1280, height: 720, altText: null, durationSeconds: 94 }],
+};
+
 export function postsFor(slug: string): LguPost[] {
   const offset = lguSources.findIndex((s) => s.slug === slug);
   return Array.from({ length: 10 }, (_, i) => {
@@ -509,7 +527,7 @@ export function postsFor(slug: string): LguPost[] {
       linkUrl: null,
       postedAt: minutesAgo(35 + i * 260 + offset * 30),
       firstSeenAt: minutesAgo(30 + i * 260),
-      media: [],
+      media: POST_MEDIA[i] ?? [],
       reactionCount: 4754 - i * 410 - offset * 120,
       commentCount: 1872 - i * 170,
       shareCount: 686 - i * 60,
