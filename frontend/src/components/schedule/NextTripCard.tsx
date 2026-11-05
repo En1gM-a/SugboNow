@@ -159,7 +159,9 @@ export function NextTripCard({ i, brief }: { i: number; brief: UseQueryResult<Br
         {head}
         {next.delayMinutes > 0 ? (
           <button type="button" className="tag tag-mango delay-chip e-pop" aria-expanded={open} aria-controls="trip-reasons" onClick={() => setOpen((o) => !o)}>
-            +<CountUp value={next.delayMinutes} delay={t.count} /> min · {word}
+            <span>
+              +<CountUp value={next.delayMinutes} delay={t.count} /> min · {word}
+            </span>
             <Icon name="caret-right" className={cx('chev', open && 'is-open')} />
           </button>
         ) : (

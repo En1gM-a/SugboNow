@@ -2,10 +2,11 @@
 // card on the right holding both the sign-in and the sign-up form. Switching forms and logging in run the jeepney ride
 // (handoff <motion>, "The jeepney ride").
 
+import * as m from 'motion/react-m';
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react';
 import { flushSync } from 'react-dom';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { Field, PasswordField } from '@/components/auth/Field';
+import { Field, PasswordField, SelectField } from '@/components/auth/Field';
 import { CountUp } from '@/components/CountUp';
 import { LiveIcon } from '@/components/LiveIcon';
 import { Logo } from '@/components/Logo';
@@ -14,11 +15,12 @@ import { RollNumber } from '@/components/RollNumber';
 import { ThemeSwitch } from '@/components/ThemeSwitch';
 import { Button } from '@/components/ui/Button';
 import { Tag } from '@/components/ui/Tag';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, type SignUpDetails } from '@/context/AuthContext';
 import { useDisplay } from '@/lib/display';
 import { EntranceContext, type Entrance } from '@/lib/entrance';
-import { prefetchToday } from '@/lib/nav';
+import { loadWelcomePage, prefetchToday } from '@/lib/nav';
 import { loadRide, loginRide } from '@/lib/rideBridge';
+import { CLASS_SUSPENSION_NOTE, HOME_CITIES, MAYORS, suggestedMayor } from '@/lib/signupOptions';
 import { USE_MOCKS } from '@/lib/supabaseClient';
 import { cx, vars } from '@/utils/cx';
 
@@ -159,38 +161,93 @@ function SignInForm({ active, play, headingRef, locked, onSwitch, onSignIn, onRe
   );
 }
 
+type SignUpErrors = Partial<Record<'firstName' | 'email' | 'password' | 'confirm' | 'city' | 'address' | 'mayor', string>>;
+
+// The two steps share one grid cell, so the card never jumps, and move like onboarding steps (handoff <motion>).
+const STEP_SPRING = { type: 'spring', visualDuration: 0.22, bounce: 0 } as const;
+
+/**
+ * Sign up, in two steps (handoff: signup.md). The form is signed out, so step 2's lists come from signupOptions.ts, and
+ * a database trigger saves the details when the account is created. Going back keeps what was typed.
+ */
 function SignUpForm({ active, play, headingRef, locked, onSwitch, onSignUp }: FormProps & {
-  onSignUp: (name: string, email: string, password: string) => Promise<{ error?: string; checkEmail?: boolean }>;
+  onSignUp: (details: SignUpDetails) => Promise<{ error?: string; checkEmail?: boolean }>;
 }) {
-  const [name, setName] = useState('');
+  const [step, setStep] = useState<1 | 2>(1);
+  const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string; confirm?: string }>({});
+  const [city, setCity] = useState('');
+  const [address, setAddress] = useState('');
+  const [mayor, setMayor] = useState('');
+  // Choosing a city suggests a mayor, until the user picks one themselves.
+  const [mayorPicked, setMayorPicked] = useState(false);
+  const [errors, setErrors] = useState<SignUpErrors>({});
   const [message, setMessage] = useState<string | null>(null);
   const [checkEmail, setCheckEmail] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const stepped = useRef(false);
   const inputs = {
-    name: useRef<HTMLInputElement>(null),
+    firstName: useRef<HTMLInputElement>(null),
     email: useRef<HTMLInputElement>(null),
     password: useRef<HTMLInputElement>(null),
     confirm: useRef<HTMLInputElement>(null),
+    city: useRef<HTMLSelectElement>(null),
+    address: useRef<HTMLInputElement>(null),
+    mayor: useRef<HTMLSelectElement>(null),
   };
+
+  // Each step replaces the one before it, so focus moves to the new step's title.
+  useEffect(() => {
+    if (stepped.current) headingRef.current?.focus({ preventScroll: true });
+  }, [step, headingRef]);
+
+  // "Check your email" replaces the form, so focus moves to its title. Leaving it starts the form fresh next time.
+  useEffect(() => {
+    if (!checkEmail) return;
+    if (active) {
+      headingRef.current?.focus({ preventScroll: true });
+    } else {
+      setCheckEmail(null);
+      setStep(1);
+    }
+  }, [active, checkEmail, headingRef]);
+
+  function moveTo(next: 1 | 2) {
+    stepped.current = true;
+    setErrors({});
+    setMessage(null);
+    setStep(next);
+  }
+
+  function next(e: FormEvent) {
+    e.preventDefault();
+    if (locked) return;
+    const found: SignUpErrors = {};
+    if (!firstName.trim()) found.firstName = 'Enter your first name.';
+    if (!EMAIL.test(email.trim())) found.email = 'Enter an email you can open, like thea@example.com.';
+    if (password.length < 8) found.password = 'Use at least 8 characters.';
+    if (confirm !== password) found.confirm = "The two passwords don't match.";
+    setErrors(found);
+    const first = (['firstName', 'email', 'password', 'confirm'] as const).find((k) => found[k]);
+    if (first) return inputs[first].current?.focus();
+    moveTo(2);
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (busy || locked) return;
-    const next: typeof errors = {};
-    if (!name.trim()) next.name = 'Enter your first name.';
-    if (!EMAIL.test(email.trim())) next.email = 'Enter an email you can open, like thea@example.com.';
-    if (password.length < 8) next.password = 'Use at least 8 characters.';
-    if (confirm !== password) next.confirm = "The two passwords don't match.";
-    setErrors(next);
+    const found: SignUpErrors = {};
+    if (!city) found.city = 'Pick your city or town.';
+    if (!address.trim()) found.address = 'Add your barangay or street.';
+    if (!mayor) found.mayor = 'Pick the mayor to follow.';
+    setErrors(found);
     setMessage(null);
-    const first = (['name', 'email', 'password', 'confirm'] as const).find((k) => next[k]);
+    const first = (['city', 'address', 'mayor'] as const).find((k) => found[k]);
     if (first) return inputs[first].current?.focus();
     setBusy(true);
-    const result = await onSignUp(name.trim(), email.trim(), password);
+    const result = await onSignUp({ firstName: firstName.trim(), email: email.trim(), password, city, addressText: address.trim(), subscribedMayor: mayor });
     if (result.error) {
       setBusy(false);
       setMessage(result.error);
@@ -201,84 +258,157 @@ function SignUpForm({ active, play, headingRef, locked, onSwitch, onSignUp }: Fo
   }
 
   let row = 0;
+  let rowTwo = 0;
   return (
     <form
       className={cx('auth-form', !active && 'off')}
       inert={!active}
       noValidate
-      onSubmit={submit}
+      onSubmit={step === 1 ? next : submit}
       data-play={active ? playAttr(play) : undefined}
       style={vars({ '--form-delay': `${play?.delay ?? 0}ms` })}
-      aria-labelledby="h-signup"
+      aria-labelledby={checkEmail || step === 1 ? 'h-signup' : 'h-signup-2'}
     >
       {checkEmail ? (
         <>
           <h2 id="h-signup" ref={headingRef} tabIndex={-1}>
             Check your email
           </h2>
-          <p className="sub">We sent a confirmation link to {checkEmail}. Open it, then sign in.</p>
-          <Button variant="secondary" onClick={onSwitch} disabled={locked}>
-            Back to sign in
-          </Button>
+          <p className="sub">We sent a confirmation link to {checkEmail}. Open it to add your places and a first trip.</p>
+          <p className="form-switch">
+            Already have an account?
+            <Button variant="secondary" onClick={onSwitch} disabled={locked}>
+              Sign in instead
+            </Button>
+          </p>
         </>
       ) : (
-        <>
-          <h2 id="h-signup" ref={headingRef} tabIndex={-1}>
-            <RiseWords key={play?.token ?? 'still'} text="Create your account" play={active && Boolean(play)} delay={play?.delay ?? 0} />
-          </h2>
-          <p className="sub" data-row style={vars({ '--k': row++ })}>
-            Bag-o ka diri? Next you pick your city, your mayor and a first trip.
-          </p>
-          <Field id="su-name" row={row++} label="First name" autoComplete="given-name" value={name} onChange={(e) => setName(e.target.value)} error={errors.name} ref={inputs.name} />
-          <Field
-            id="su-email"
-            row={row++}
-            label="Email"
-            type="email"
-            autoComplete="email"
-            inputMode="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            error={errors.email}
-            ref={inputs.email}
-          />
-          <PasswordField
-            id="su-pass"
-            row={row++}
-            label="Password (at least 8 characters)"
-            autoComplete="new-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            error={errors.password}
-            ref={inputs.password}
-          />
-          <PasswordField
-            id="su-confirm"
-            row={row++}
-            label="Confirm password"
-            autoComplete="new-password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            error={errors.confirm}
-            ref={inputs.confirm}
-          />
-          <div data-row style={vars({ '--k': row++ })}>
-            <Button type="submit" variant="primary" busy={busy} className="w-full">
-              Create account
-            </Button>
-          </div>
-          {message && (
-            <p className="form-msg is-error" role="alert">
-              {message}
+        <div className="su-steps">
+          <m.div className={cx('su-step', step !== 1 && 'off')} inert={step !== 1} initial={false} animate={{ opacity: step === 1 ? 1 : 0, x: step === 1 ? 0 : -16 }} transition={STEP_SPRING}>
+            <h2 id="h-signup" ref={step === 1 ? headingRef : undefined} tabIndex={-1}>
+              <RiseWords key={play?.token ?? 'still'} text="Create your account" play={active && Boolean(play)} delay={play?.delay ?? 0} />
+            </h2>
+            <p className="sub" data-row style={vars({ '--k': row++ })}>
+              Bag-o ka diri? Next you tell us where you live and which mayor to follow.
             </p>
-          )}
-          <p className="form-switch" data-row style={vars({ '--k': row++ })}>
-            Already riding with us?
-            <Button variant="secondary" onClick={onSwitch} disabled={locked}>
-              Sign in
-            </Button>
-          </p>
-        </>
+            <Field id="su-name" row={row++} label="First name" autoComplete="given-name" maxLength={40} value={firstName} onChange={(e) => setFirstName(e.target.value)} error={errors.firstName} ref={inputs.firstName} />
+            <Field
+              id="su-email"
+              row={row++}
+              label="Email"
+              type="email"
+              autoComplete="email"
+              inputMode="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              error={errors.email}
+              ref={inputs.email}
+            />
+            <PasswordField
+              id="su-pass"
+              row={row++}
+              label="Password (at least 8 characters)"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              error={errors.password}
+              ref={inputs.password}
+            />
+            <PasswordField
+              id="su-confirm"
+              row={row++}
+              label="Confirm password"
+              autoComplete="new-password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              error={errors.confirm}
+              ref={inputs.confirm}
+            />
+            <div data-row style={vars({ '--k': row++ })}>
+              <Button type="submit" variant="primary" className="w-full">
+                Next
+              </Button>
+            </div>
+            <p className="form-switch" data-row style={vars({ '--k': row++ })}>
+              Already riding with us?
+              <Button variant="secondary" onClick={onSwitch} disabled={locked}>
+                Sign in
+              </Button>
+            </p>
+          </m.div>
+          <m.div className={cx('su-step', step !== 2 && 'off')} inert={step !== 2} initial={false} animate={{ opacity: step === 2 ? 1 : 0, x: step === 2 ? 0 : 16 }} transition={STEP_SPRING}>
+            <h2 id="h-signup-2" ref={step === 2 ? headingRef : undefined} tabIndex={-1}>
+              Where you live
+            </h2>
+            <p className="sub" data-row style={vars({ '--k': rowTwo++ })}>
+              Asa ka nagpuyo? This sets your weather and whose class suspensions you see.
+            </p>
+            <SelectField
+              id="su-city"
+              row={rowTwo++}
+              label="Home city"
+              value={city}
+              onChange={(e) => {
+                setCity(e.target.value);
+                if (!mayorPicked && e.target.value) setMayor(suggestedMayor(e.target.value));
+              }}
+              error={errors.city}
+              ref={inputs.city}
+            >
+              <option value="">Choose your city or town</option>
+              {HOME_CITIES.map((c) => (
+                <option key={c.slug} value={c.slug}>
+                  {c.name}
+                </option>
+              ))}
+            </SelectField>
+            <Field
+              id="su-address"
+              row={rowTwo++}
+              label="Address"
+              autoComplete="street-address"
+              maxLength={200}
+              hint="A barangay or street is enough."
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              error={errors.address}
+              ref={inputs.address}
+            />
+            <SelectField
+              id="su-mayor"
+              row={rowTwo++}
+              label="Mayor to follow"
+              value={mayor}
+              hint={CLASS_SUSPENSION_NOTE}
+              onChange={(e) => {
+                setMayor(e.target.value);
+                setMayorPicked(true);
+              }}
+              error={errors.mayor}
+              ref={inputs.mayor}
+            >
+              <option value="">Choose a mayor</option>
+              {MAYORS.map((option) => (
+                <option key={option.slug} value={option.slug}>
+                  {option.label}
+                </option>
+              ))}
+            </SelectField>
+            <div className="form-actions" data-row style={vars({ '--k': rowTwo++ })}>
+              <Button variant="secondary" onClick={() => moveTo(1)} disabled={busy}>
+                Back
+              </Button>
+              <Button type="submit" variant="primary" busy={busy} className="grow">
+                Create account
+              </Button>
+            </div>
+            {message && (
+              <p className="form-msg is-error" role="alert">
+                {message}
+              </p>
+            )}
+          </m.div>
+        </div>
       )}
     </form>
   );
@@ -375,10 +505,10 @@ export default function HomePage() {
     return null;
   }
 
-  async function handleSignUp(name: string, email: string, password: string) {
+  async function handleSignUp(details: SignUpDetails) {
     loginRide.begin();
     try {
-      const { needsConfirmation } = await signUp(name, email, password);
+      const { needsConfirmation } = await signUp(details);
       if (needsConfirmation) {
         loginRide.cancel();
         return { checkEmail: true };
@@ -387,6 +517,7 @@ export default function HomePage() {
       loginRide.cancel();
       return { error: messageOf(err) };
     }
+    void loadWelcomePage();
     await rideInto('/welcome');
     return {};
   }

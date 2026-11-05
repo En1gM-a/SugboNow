@@ -26,7 +26,7 @@ function SetupPrompt({ i }: { i: number }) {
         </h2>
         <p className="muted small">Pick your city and your mayor so your leave times, weather and posts are about you.</p>
       </div>
-      <Link to="/welcome" className="btn btn-primary">
+      <Link to="/profile?section=details" className="btn btn-primary">
         Set up
       </Link>
     </section>

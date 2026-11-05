@@ -102,12 +102,14 @@ export function Header() {
   const place = profile.data?.addressText ?? null;
   const name = profile.data?.firstName ?? user?.email ?? '';
 
-  // Move focus to the page's title on every route change, including arriving from sign-in, but not on a fresh page load.
+  // Move focus to the page's title on every route change, including arriving from sign-in, but not on a fresh page load,
+  // and not when only the search params change: filters and tabs live in the URL and must keep their own focus.
   useEffect(() => {
     const fresh = firstRoute.current && location.key === 'default';
     firstRoute.current = false;
     if (!fresh) h1.current?.focus({ preventScroll: true });
-  }, [location.pathname, location.key]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   return (
     <header className="top glass">

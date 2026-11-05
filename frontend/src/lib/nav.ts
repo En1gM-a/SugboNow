@@ -18,6 +18,7 @@ export function activeTab(pathname: string): number {
 }
 
 export const loadPlaceholderPage = () => import('@/pages/PlaceholderPage');
+export const loadWelcomePage = () => import('@/pages/WelcomePage');
 
 /** Today's main queries, fetched while the log-in smoke covers the screen so the page opens with its data. */
 export function prefetchToday() {

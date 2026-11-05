@@ -4,13 +4,14 @@ import { AppShell } from '@/components/layout/AppShell';
 import type { RouteHandle } from '@/components/layout/Header';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { RootLayout } from '@/components/layout/RootLayout';
-import { loadPlaceholderPage } from '@/lib/nav';
+import { loadPlaceholderPage, loadWelcomePage } from '@/lib/nav';
 import HomePage from '@/pages/HomePage';
 import type { PlaceholderName } from '@/pages/PlaceholderPage';
 import TodayPage from '@/pages/TodayPage';
 
 // The home page and Today are in the main bundle; every other route loads on demand (handoff <performance>).
 const PlaceholderPage = lazy(loadPlaceholderPage);
+const WelcomePage = lazy(loadWelcomePage);
 
 const later = (page: PlaceholderName) => (
   <Suspense fallback={null}>
@@ -38,7 +39,14 @@ const router = createBrowserRouter([
       {
         element: <ProtectedRoute />,
         children: [
-          { path: 'welcome', element: later('welcome') },
+          {
+            path: 'welcome',
+            element: (
+              <Suspense fallback={null}>
+                <WelcomePage />
+              </Suspense>
+            ),
+          },
           {
             element: <AppShell />,
             children: [
