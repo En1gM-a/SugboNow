@@ -3802,6 +3802,8 @@
     transform: translateY(10px);
   }
 }
+/* A true 0 here, unlike the lede: at 0.01 the browser treats these as visible, and data filling in during the entrance
+   scores as layout shift (Today's CLS went from 0.005 to 0.106). */
 @keyframes card-in {
   from {
     opacity: 0;
