@@ -45,10 +45,10 @@ export const lguSources: LguSource[] = [
   {
     slug: 'lapu_lapu_city',
     displayName: 'Lapu-Lapu City',
-    officialName: null,
+    officialName: 'Cindi King Chan',
     officialTitle: 'mayor',
     lguType: 'city',
-    fbPageUrl: null,
+    fbPageUrl: 'https://www.facebook.com/mayorcindichan',
   },
   {
     slug: 'mandaue_city',
@@ -61,10 +61,10 @@ export const lguSources: LguSource[] = [
   {
     slug: 'cebu_province',
     displayName: 'Province of Cebu',
-    officialName: null,
+    officialName: 'Pamela Baricuatro',
     officialTitle: 'governor',
     lguType: 'province',
-    fbPageUrl: null,
+    fbPageUrl: 'https://www.facebook.com/cebugovph',
   },
 ];
 

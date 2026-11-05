@@ -1596,14 +1596,335 @@
     line-height: 1.15;
     letter-spacing: -0.02em;
   }
+
+  /* ---------- Forms: everything past the auth card uses the same fields ---------- */
+  .stack-form {
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+  }
+  .field select {
+    width: 100%;
+    min-width: 0;
+    min-height: 46px;
+    padding: 11px 38px 11px 13px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--chip);
+    color: var(--ink);
+    font: inherit;
+    cursor: pointer;
+    appearance: none;
+  }
+  .field select option {
+    background: var(--glass-solid);
+    color: var(--ink);
+  }
+  .field select[aria-invalid="true"] {
+    border-color: var(--err);
+  }
+  .select-wrap {
+    position: relative;
+    min-width: 0;
+  }
+  .select-wrap .ic {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    color: var(--muted);
+    pointer-events: none;
+    translate: 0 -50%;
+    --icon: 16px;
+  }
+  .field-hint {
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .field-legend {
+    padding: 0;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--muted);
+  }
+  fieldset.field {
+    min-width: 0;
+    border: 0;
+  }
+  .field-pair {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px;
+  }
+  .field-time {
+    max-width: 200px;
+  }
+  .form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding-top: 2px;
+  }
+
+  /* Toggle chips: filters and day pickers */
+  .chip {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--chip);
+    color: var(--ink);
+    font-size: 0.85rem;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease,
+      color 150ms ease,
+      transform 100ms var(--ease-out);
+  }
+  .chip:active {
+    transform: scale(0.97);
+  }
+  .chip[aria-pressed="true"] {
+    border-color: var(--mango);
+    background: var(--mango);
+    color: #0e1726;
+  }
+  @media (hover: hover) {
+    .chip:hover:not([aria-pressed="true"]) {
+      background: var(--line);
+    }
+  }
+  .day-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .day {
+    min-width: 44px;
+    padding: 0 8px;
+  }
+
+  /* The segmented control (handoff <motion>, Stretchy pills): it scrolls sideways when it doesn't fit. */
+  .segment {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    border-radius: 999px;
+    background: var(--chip);
+    scrollbar-width: none;
+  }
+  .segment::-webkit-scrollbar {
+    display: none;
+  }
+  .segment-track {
+    position: relative;
+    display: inline-flex;
+    min-width: 100%;
+    padding: 4px;
+    vertical-align: top;
+  }
+  .segment-pill {
+    position: absolute;
+    inset: 0;
+    background: var(--mango);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .segment-btn {
+    position: relative;
+    z-index: 1;
+    flex: 1 0 auto;
+    min-height: 40px;
+    padding: 0 14px;
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      color 200ms ease,
+      transform 100ms var(--ease-out);
+  }
+  .segment-btn:active {
+    transform: scale(0.97);
+  }
+  .segment-btn:focus-visible {
+    outline-offset: -2px;
+  }
+  .segment-btn[aria-checked="true"],
+  .segment-btn[aria-selected="true"] {
+    color: #0e1726;
+  }
+  @media (hover: hover) {
+    .segment-btn:hover:not([aria-checked="true"], [aria-selected="true"]) {
+      color: var(--ink);
+    }
+  }
+
+  /* Toasts float above the tab bar on phones. */
+  .toasts {
+    position: fixed;
+    z-index: 70;
+    left: 12px;
+    right: 12px;
+    bottom: calc(92px + env(safe-area-inset-bottom));
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+    pointer-events: none;
+  }
+  .toast {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: min(440px, 100%);
+    padding: 4px 4px 4px 16px;
+    border-radius: 18px;
+    color: var(--ink);
+    font-size: 0.92rem;
+    pointer-events: auto;
+  }
+  .toast-text {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 0;
+    font-weight: 600;
+  }
+  .toast-action {
+    padding: 0 10px;
+  }
+  .toast-close {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    flex: none;
+    border-radius: 50%;
+    color: var(--muted);
+    cursor: pointer;
+    --icon: 18px;
+  }
+
+  /* Maps: Leaflet's own panes stay inside the box, under the shell's fixed bars. */
+  .map-box {
+    position: relative;
+    isolation: isolate;
+    height: 224px;
+    overflow: hidden;
+    border-radius: 14px;
+    background: var(--chip);
+  }
+  .map-fill {
+    width: 100%;
+    height: 100%;
+  }
+  .map-skel {
+    width: 100%;
+    height: 100%;
+    border-radius: 14px;
+  }
+  .pin-skel {
+    height: 224px;
+  }
+  .pin-center {
+    justify-self: start;
+    font-size: 0.85rem;
+  }
+
+  /* Sign-up's two steps share one cell, so the card never jumps. */
+  .su-steps {
+    display: grid;
+    min-width: 0;
+  }
+  .su-step {
+    grid-area: 1 / 1;
+    display: grid;
+    align-content: center;
+    gap: 12px;
+    min-width: 0;
+    visibility: inherit;
+    transition: visibility 0s linear 0s;
+  }
+  .su-step.off {
+    visibility: hidden;
+    transition: visibility 0s linear 200ms;
+  }
+  .su-step h2 {
+    font-size: 1.65rem;
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+  .su-step h2:focus {
+    outline: none;
+  }
+
+  /* Onboarding: one glass card on the sky, one question at a time. */
   .welcome-page {
     min-height: 100svh;
     place-items: center;
     padding: 24px 16px;
   }
-  .welcome-page .placeholder {
+  .welcome-card {
+    display: grid;
+    gap: 14px;
     width: 100%;
     max-width: 520px;
+    padding: 22px;
+    border-radius: 28px;
+  }
+  .welcome-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: -8px 0 -6px;
+  }
+  .progress {
+    height: 6px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--chip);
+  }
+  .progress i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--mango);
+    transform: scaleX(var(--p));
+    transform-origin: 0 50%;
+    transition: transform 300ms var(--ease-out);
+  }
+  .step {
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+  }
+  .step-head {
+    display: grid;
+    gap: 2px;
+  }
+  .step-head h1 {
+    font-size: 1.65rem;
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+  .step-head h1:focus {
+    outline: none;
+  }
+  .add-more {
+    justify-self: start;
+    --icon: 18px;
   }
 
   /* Switches */
@@ -1661,6 +1982,82 @@
   }
 }
 
+/* ---------- Leaflet's stylesheet has no layer, so these overrides don't either, and need a little more specificity ---------- */
+.map-fill.leaflet-container {
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+}
+:root[data-mode="dark"] .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.9);
+}
+.map-fill.leaflet-container .leaflet-control-attribution {
+  padding: 2px 8px;
+  border-radius: 8px 0 0 0;
+  background: var(--glass-solid);
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+.map-fill.leaflet-container .leaflet-control-attribution a {
+  color: var(--blue);
+}
+.map-fill.leaflet-container .leaflet-bar {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--glass-shadow);
+}
+.map-fill.leaflet-container .leaflet-bar a {
+  width: 44px;
+  height: 44px;
+  border-color: var(--line);
+  background: var(--glass-solid);
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 44px;
+}
+.map-fill.leaflet-container .leaflet-bar a.leaflet-disabled {
+  color: var(--muted);
+}
+.map-fill.leaflet-container .leaflet-tooltip {
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--glass-solid);
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 600;
+  box-shadow: var(--glass-shadow);
+}
+.map-fill.leaflet-container .leaflet-tooltip::before {
+  display: none;
+}
+.map-fill.leaflet-container .route-tip {
+  background: #14213d;
+  color: #eef3fa;
+  font-size: 0.75rem;
+}
+.map-pin {
+  background: none;
+  border: 0;
+}
+.map-pin span {
+  position: relative;
+  display: block;
+  width: 36px;
+  height: 44px;
+}
+.map-pin svg {
+  display: block;
+}
+.map-pin .map-pin-glyph {
+  position: absolute;
+  left: 9px;
+  top: 9px;
+}
+
 /* ---------- Breakpoints: 720px (12-column grid), 900px (two-column home page), 1024px (nav rail) ---------- */
 @media (min-width: 720px) {
   .grid12 {
@@ -1703,6 +2100,9 @@
   }
   .tabbar {
     display: none;
+  }
+  .toasts {
+    bottom: 24px;
   }
   .rail {
     position: fixed;

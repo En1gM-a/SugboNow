@@ -11,12 +11,22 @@ export interface AuthUser {
 
 type AuthStatus = 'loading' | 'signedIn' | 'signedOut';
 
+/** Everything the two-step sign-up form collects. */
+export interface SignUpDetails {
+  firstName: string;
+  email: string;
+  password: string;
+  city: string;
+  addressText: string;
+  subscribedMayor: string;
+}
+
 interface AuthContextValue {
   status: AuthStatus;
   user: AuthUser | null;
   signIn: (email: string, password: string) => Promise<void>;
   /** Resolves with needsConfirmation=true when Supabase wants the email confirmed first. */
-  signUp: (name: string, email: string, password: string) => Promise<{ needsConfirmation: boolean }>;
+  signUp: (details: SignUpDetails) => Promise<{ needsConfirmation: boolean }>;
   resetPassword: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -51,6 +61,8 @@ function friendlyAuthError(message: string): string {
   if (m.includes('invalid login')) return 'That email and password don’t match. Check them and try again.';
   if (m.includes('email not confirmed')) return 'Please confirm your email first. Check your inbox for the link.';
   if (m.includes('already registered')) return 'An account with this email already exists. Try signing in.';
+  // Without custom SMTP, Supabase only emails the project's team, and only a few times an hour (docs/handoffs/signup.md).
+  if (m.includes('rate limit') || m.includes('not authorized') || m.includes('not_authorized')) return 'We couldn’t send the confirmation email. Try again later.';
   if (m.includes('password')) return message;
   if (m.includes('fetch')) return 'Can’t reach the sign-in service. Check your connection.';
   return message;
@@ -100,11 +112,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw new Error(friendlyAuthError(error.message));
   }, []);
 
-  const signUp = useCallback(async (name: string, email: string, password: string) => {
+  const signUp = useCallback(async ({ firstName, email, password, city, addressText, subscribedMayor }: SignUpDetails) => {
     if (USE_MOCKS) {
       await new Promise((r) => setTimeout(r, 600));
+      // Lets the "check your email" screen be seen without real email.
+      if (email.toLowerCase().startsWith('confirm@')) return { needsConfirmation: true };
       try {
-        localStorage.setItem(FRESH_USER_KEY, '1');
+        localStorage.setItem(FRESH_USER_KEY, JSON.stringify({ firstName, city, addressText, subscribedMayor }));
       } catch {
         // ignore
       }
@@ -115,10 +129,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStatus('signedIn');
       return { needsConfirmation: false };
     }
+    // A database trigger saves these on the profile (supabase/migrations/0006), because with "Confirm email" on there's
+    // no session yet to call PATCH /api/profile. Read them back from the profile, never from user_metadata.
     const { data, error } = await (await getSupabase()).auth.signUp({
       email,
       password,
-      options: { data: { display_name: name }, emailRedirectTo: `${window.location.origin}/login` },
+      options: {
+        data: { display_name: firstName, first_name: firstName, city, address_text: addressText, subscribed_mayor: subscribedMayor },
+        emailRedirectTo: `${window.location.origin}/welcome`,
+      },
     });
     if (error) throw new Error(friendlyAuthError(error.message));
     return { needsConfirmation: !data.session };
