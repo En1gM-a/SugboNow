@@ -395,7 +395,15 @@ const NEWS_TITLES: Array<[NewsArticle['source'], string, string, string, NewsArt
   ['gnews', 'Province of Cebu announces class schedule for Undas', 'Towns that follow the province will have no classes on November 2.', 'Cebu Province', 'advisory', true],
 ];
 
-// No images in mock mode: the app shows its gradient placeholders, as in the design sample.
+/** An abstract picture, so mock cards show how an image sits without using photos or calling another server. */
+function art(from: string, to: string, width = 1200, height = 675): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="${width}" height="${height}" fill="url(#g)"/><g fill="#fff" fill-opacity=".12"><circle cx="${width * 0.8}" cy="${height * 0.25}" r="${height * 0.2}"/><path d="M0 ${height * 0.72} C ${width * 0.25} ${height * 0.58}, ${width * 0.55} ${height * 0.86}, ${width} ${height * 0.68} V ${height} H 0 Z"/></g></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+// Most stories have no image, so the app shows its gradient placeholders, as in the design sample.
+const NEWS_ART: Record<number, string> = { 1: art('#14213D', '#2F7BE0'), 4: art('#0E7C74', '#14213D'), 8: art('#B45309', '#14213D') };
+
 export const news: NewsArticle[] = NEWS_TITLES.map(([source, title, summary, areaName, type, isAlert], i) => ({
   id: `n${String(i + 1).padStart(7, '0')}-0000-4000-8000-000000000000`,
   source,
@@ -407,7 +415,7 @@ export const news: NewsArticle[] = NEWS_TITLES.map(([source, title, summary, are
       : source === 'cebudailynews'
         ? 'https://cebudailynews.inquirer.net/'
         : 'https://news.google.com/',
-  imageUrl: null,
+  imageUrl: NEWS_ART[i] ?? null,
   areaName,
   publishedAt: minutesAgo(18 + i * 47),
   type,

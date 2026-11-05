@@ -12,8 +12,8 @@ export function useAlerts(q: AlertsQuery = {}) {
   return useQuery({ ...queries.alerts(q), placeholderData: keepPreviousData, select: (d) => d.alerts });
 }
 
-export function useNews(limit = 20, area?: string) {
-  return useQuery({ ...queries.news(limit, area), placeholderData: keepPreviousData, select: (d) => d.articles });
+export function useNews(limit = 20, area?: string, enabled = true) {
+  return useQuery({ ...queries.news(limit, area), placeholderData: keepPreviousData, select: (d) => d.articles, enabled });
 }
 
 export function useWeatherAll() {
