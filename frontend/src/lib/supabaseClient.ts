@@ -22,6 +22,25 @@ export function getSupabase(): Promise<SupabaseClient> {
   return client;
 }
 
+const storageKey = () => `sb-${new URL(url!).hostname.split(".")[0]}-auth-token`;
+
+/** An email link's tokens in the URL, which supabase-js reads as it loads. */
+export const authLinkInUrl = () => /(^|[#?&])(access_token|refresh_token|code|token_hash|error)=/.test(window.location.hash + window.location.search);
+
+/**
+ * True when Supabase has work to do as the page loads: a saved session, even an expired one it may refresh, or an email
+ * link's tokens in the URL. Otherwise a signed-out visitor doesn't download supabase-js until they start to sign in.
+ */
+export function needsSupabaseOnLoad(): boolean {
+  if (USE_MOCKS) return false;
+  if (authLinkInUrl()) return true;
+  try {
+    return localStorage.getItem(storageKey()) !== null;
+  } catch {
+    return true;
+  }
+}
+
 export interface StoredSession {
   accessToken: string;
   user: { id: string; email: string };
@@ -37,8 +56,7 @@ export interface StoredSession {
 export function readStoredSession(): StoredSession | null {
   if (USE_MOCKS || !url) return null;
   try {
-    const ref = new URL(url).hostname.split(".")[0];
-    const raw = localStorage.getItem(`sb-${ref}-auth-token`);
+    const raw = localStorage.getItem(storageKey());
     if (!raw) return null;
     const s = JSON.parse(raw) as { access_token?: string; expires_at?: number; user?: { id?: string; email?: string } };
     // Treat tokens within a minute of expiry as expired, like supabase-js does.

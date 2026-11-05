@@ -36,7 +36,7 @@ export function WeatherNowCard({ i, city, fallback }: { i: number; city: string 
       <Card i={i} span="span-5">
         <div className="wx-skel" aria-hidden="true">
           <Skeleton className="skel-line w-28" />
-          <Skeleton className="skel-temp" />
+          <Skeleton className="skel-now" />
           <Skeleton className="skel-line w-48" />
           <Skeleton className="skel-bars" />
         </div>
