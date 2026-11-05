@@ -1,27 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Icon, type IconName } from '@/components/icons/Icon';
+import { Icon } from '@/components/icons/Icon';
+import { PLACEHOLDER, SOURCE } from '@/components/news/storyArt';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useNews } from '@/hooks/useFeeds';
 import { USE_MOCKS } from '@/lib/supabaseClient';
-import type { NewsArticle, NewsSource } from '@/types/api';
+import type { NewsArticle } from '@/types/api';
 import { cx, vars } from '@/utils/cx';
 import { ago } from '@/utils/format';
 import { Card, CardError } from './Card';
-
-const SOURCE: Record<NewsSource, string> = { sunstar: 'SunStar', cebudailynews: 'Cebu Daily News', gnews: 'GNews' };
-
-// Image placeholders (handoff <design_system>): one of four gradients with a white control icon.
-const PLACEHOLDER: Record<NewsArticle['type'], { tone: string; icon: IconName }> = {
-  weather: { tone: 't-blue', icon: 'cloud-rain' },
-  flood: { tone: 't-blue', icon: 'waves' },
-  traffic: { tone: 't-amber', icon: 'traffic-signal' },
-  closure: { tone: 't-amber', icon: 'barricade' },
-  water: { tone: 't-teal', icon: 'drop' },
-  power: { tone: 't-navy', icon: 'clock' },
-  advisory: { tone: 't-navy', icon: 'megaphone' },
-  news: { tone: 't-navy', icon: 'newspaper' },
-};
 
 /** The story's image in a fixed box, or its placeholder when there's none or it fails to load. */
 function Thumb({ article }: { article: NewsArticle }) {

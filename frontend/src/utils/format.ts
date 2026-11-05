@@ -64,6 +64,14 @@ export function ago(iso: string, now: number = Date.now()): string {
   return `${Math.round(h / 24)} d ago`;
 }
 
+/** "Updated 2 min ago", from a timestamp in milliseconds. */
+export function updatedAgo(at: number, now: number = Date.now()): string {
+  const min = Math.max(0, Math.round((now - at) / 60_000));
+  if (min < 1) return 'Updated just now';
+  if (min < 60) return `Updated ${min} min ago`;
+  return `Updated ${Math.round(min / 60)} h ago`;
+}
+
 export function formatCount(n: number | null): string {
   return n === null ? '–' : compactFmt.format(n);
 }

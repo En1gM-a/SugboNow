@@ -19,6 +19,7 @@ export function activeTab(pathname: string): number {
 
 export const loadPlaceholderPage = () => import('@/pages/PlaceholderPage');
 export const loadWelcomePage = () => import('@/pages/WelcomePage');
+export const loadNewsPage = () => import('@/pages/NewsPage');
 
 /** Today's main queries, fetched while the log-in smoke covers the screen so the page opens with its data. */
 export function prefetchToday() {
@@ -33,6 +34,12 @@ export function preloadRoute(to: string) {
   if (to === '/') {
     void queryClient.prefetchQuery(queries.brief());
     void queryClient.prefetchQuery(queries.news(3));
+    return;
+  }
+  if (to === '/news') {
+    void loadNewsPage();
+    void queryClient.prefetchQuery(queries.news(50));
+    void queryClient.prefetchQuery(queries.areas());
     return;
   }
   void loadPlaceholderPage();
