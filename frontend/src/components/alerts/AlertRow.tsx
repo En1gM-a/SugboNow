@@ -42,7 +42,7 @@ export function AlertDetails({ alert, now = Date.now() }: { alert: Alert; now?: 
   return (
     <div className="alert-details">
       {alert.summary && <p>{alert.summary}</p>}
-      <dl className="facts">
+      <dl className="alert-facts">
         <div>
           <dt>Type</dt>
           <dd>{ALERT_TYPE[alert.type]}</dd>
