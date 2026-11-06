@@ -84,7 +84,7 @@ function TripSkeleton() {
       <Skeleton className="skel-line w-32" />
       <Skeleton className="skel-hero" />
       <Skeleton className="skel-line w-64" />
-      <Skeleton className="skel-chart" />
+      {USE_MOCKS ? <Skeleton className="skel-chart" /> : <Skeleton className="skel-line w-48" />}
     </div>
   );
 }

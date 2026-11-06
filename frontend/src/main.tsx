@@ -3,7 +3,8 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import { MotionRoot } from './components/MotionRoot';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, hasSessionOnLoad } from './context/AuthContext';
+import { preloadOnStart } from './lib/nav';
 import { queryClient } from './lib/queryClient';
 import { USE_MOCKS } from './lib/supabaseClient';
 import './index.css';
@@ -17,6 +18,7 @@ async function enableMocks() {
 
 // Query defaults (staleTime per data type, refetching, retries) live in lib/queryClient.ts and lib/queries.ts.
 void enableMocks().then(() => {
+  if (hasSessionOnLoad()) preloadOnStart(window.location.pathname);
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
