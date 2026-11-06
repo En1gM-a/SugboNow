@@ -152,17 +152,39 @@ export function AlertsMap({ alerts, places = [], route, selectedId, onSelect, la
   );
 }
 
-function rainIcon(weather: Weather, hour: number) {
+// At the zoom that fits Metro Cebu the towns sit closer than their labels are wide, so each label shifts a little.
+const LABEL_NUDGE: Record<string, [number, number]> = {
+  cebu_city: [-52, 10],
+  mandaue_city: [0, -34],
+  lapu_lapu_city: [44, 14],
+  consolacion: [10, -12],
+  liloan: [50, 10],
+  talisay_city: [24, 0],
+};
+
+function rainIcon(weather: Weather, hour: number, on: boolean) {
   const h = weather.hourly[hour] ?? weather.hourly[0];
   const chance = h?.chanceOfRain ?? weather.current.chanceOfRain;
   const temp = Math.round(h?.tempC ?? weather.current.tempC);
   const step = rainStep(chance);
+  const [dx, dy] = LABEL_NUDGE[weather.area.slug] ?? [0, 0];
   return L.divIcon({
-    className: 'rain-pin',
+    className: cx('rain-pin', on && 'is-on'),
     iconSize: [96, 50],
-    iconAnchor: [48, 25],
+    iconAnchor: [48 - dx, 25 - dy],
     html: `<span class="rain-pin-name">${escapeHtml(weather.area.name)}</span><span class="rain-pin-row"><b>${temp}°</b><i style="background:${step.background};color:${step.color}">${chance}%</i></span>`,
   });
+}
+
+/** Brings the chosen area into view when it's off the map, without changing the zoom. */
+function KeepInView({ target }: { target: [number, number] | null }) {
+  const map = useMap();
+  const key = target?.join(',');
+  useEffect(() => {
+    if (target && !map.getBounds().contains(target)) map.panTo(target, { animate: !getDisplay().still });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, map]);
+  return null;
 }
 
 interface WeatherMapProps {
@@ -171,17 +193,20 @@ interface WeatherMapProps {
   hour: number;
   selected?: string;
   onSelect?: (slug: string) => void;
+  center?: [number, number];
 }
 
 /** One label per area with its temperature and rain chance for the chosen hour. The slider restyles these; the map stays. */
-export function WeatherMap({ areas, hour, selected, onSelect }: WeatherMapProps) {
-  const icons = useMemo(() => areas.map((w) => rainIcon(w, hour)), [areas, hour]);
+export function WeatherMap({ areas, hour, selected, onSelect, center = [10.31, 123.9] }: WeatherMapProps) {
+  const icons = useMemo(() => areas.map((w) => rainIcon(w, hour, w.area.slug === selected)), [areas, hour, selected]);
+  const chosen = areas.find((w) => w.area.slug === selected);
   return (
     <div className="map-fill" role="region" aria-label="Map of Metro Cebu with the temperature and rain chance for each area">
-      <MapContainer center={[10.31, 123.9]} zoom={11} preferCanvas scrollWheelZoom={false} attributionControl={false} className="map-fill">
+      <MapContainer center={center} zoom={11} preferCanvas scrollWheelZoom={false} attributionControl={false} className="map-fill">
         <Tiles />
         <AttributionControl prefix={false} />
         <AutoResize />
+        <KeepInView target={chosen ? [chosen.area.lat, chosen.area.lng] : null} />
         {areas.map((w, i) => (
           <Marker
             key={w.area.slug}
