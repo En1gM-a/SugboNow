@@ -2,13 +2,10 @@ import type { UseQueryResult } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { CountUp } from '@/components/CountUp';
 import { AllClearArt } from '@/components/EmptyArt';
-import { LiveIcon } from '@/components/LiveIcon';
 import { Card, CardError, timing } from '@/components/today/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { SeverityBadge } from '@/components/ui/Tag';
-import { alertKind } from '@/lib/weatherKind';
 import type { BriefTodayResponse } from '@/types/api';
-import { vars } from '@/utils/cx';
+import { AlertRow } from './AlertRow';
 
 /** Near your places (Today, item 6): the top 3 alerts as compact rows, then the way to the traffic map. */
 export function NearPlacesCard({ i, brief }: { i: number; brief: UseQueryResult<BriefTodayResponse> }) {
@@ -61,24 +58,20 @@ export function NearPlacesCard({ i, brief }: { i: number; brief: UseQueryResult<
           {top.map((alert, j) => {
             const near = alert.nearPlaces?.[0];
             return (
-              <li key={alert.id} className="row e-row" style={vars({ '--j': j })}>
-                <span className="row-ico">
-                  <LiveIcon kind={alertKind(alert)} />
-                </span>
-                <div className="row-main">
-                  <b>{alert.title}</b>
-                  <span className="muted small">
-                    {near ? (
-                      <>
-                        <CountUp value={near.distanceKm} decimals={1} delay={t.count} /> km from {near.label}
-                      </>
-                    ) : (
-                      (alert.areaName ?? 'All of Metro Cebu')
-                    )}
-                  </span>
-                </div>
-                <SeverityBadge severity={alert.severity} className="e-pop" />
-              </li>
+              <AlertRow
+                key={alert.id}
+                alert={alert}
+                j={j}
+                detail={
+                  near ? (
+                    <>
+                      <CountUp value={near.distanceKm} decimals={1} delay={t.count} /> km from {near.label}
+                    </>
+                  ) : (
+                    (alert.areaName ?? 'All of Metro Cebu')
+                  )
+                }
+              />
             );
           })}
         </ul>
