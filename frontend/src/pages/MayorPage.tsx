@@ -103,13 +103,14 @@ function PostMediaGrid({ media }: { media: LguPostMedia[] }) {
         const label = item.type === 'video' ? 'Video from this post' : 'Photo from this post';
         const more = extra > 0 && i === shown.length - 1 ? extra : 0;
         if (item.type === 'video') {
+          const length = item.durationSeconds !== null ? minutesSeconds(item.durationSeconds) : null;
           return (
-            <a key={item.url} className="media-tile" href={item.url} target="_blank" rel="noopener noreferrer" aria-label="Play this video on Facebook (opens in a new tab)">
+            <a key={item.url} className="media-tile" href={item.url} target="_blank" rel="noopener noreferrer" aria-label={`Play this video on Facebook${length ? `, ${length}` : ''} (opens in a new tab)`}>
               <MediaImage media={item} label={label} />
               <span className="media-play" aria-hidden="true">
                 <Icon name="play" />
               </span>
-              {item.durationSeconds !== null && <span className="media-time tabular-nums">{minutesSeconds(item.durationSeconds)}</span>}
+              {length && <span className="media-time tabular-nums">{length}</span>}
             </a>
           );
         }

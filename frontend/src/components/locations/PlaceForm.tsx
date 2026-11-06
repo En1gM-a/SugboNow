@@ -118,7 +118,8 @@ export function PlaceForm({ idBase, initial, kinds = KINDS, defaultKind = kinds[
             </option>
           ))}
         </SelectField>
-        <LazyPinDropMap lat={pin.lat} lng={pin.lng} kind={kind} jump={jump} onChange={(lat, lng) => setMoved({ lat, lng })} />
+        {/* The user's city can arrive after the map opens, so counting it as a jump brings the map to the pin. */}
+        <LazyPinDropMap lat={pin.lat} lng={pin.lng} kind={kind} jump={jump + (home ? 1 : 0)} onChange={(lat, lng) => setMoved({ lat, lng })} />
         {pinError && <p className="field-err">{pinError}</p>}
       </div>
       <div className="form-actions">

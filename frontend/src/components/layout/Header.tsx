@@ -37,7 +37,14 @@ function LiveStamp() {
     last.current = at;
   }, [at]);
 
-  if (!at) return null;
+  // Hold its place until the first data arrives, so the header doesn't grow and push the page down.
+  if (!at) {
+    return (
+      <span className="stamp is-waiting" aria-hidden="true">
+        Updated just now
+      </span>
+    );
+  }
   return (
     <span className="stamp">
       <span className="live-dot" aria-hidden="true">
@@ -54,11 +61,12 @@ function WeatherChip({ city }: { city: string | null | undefined }) {
   if (!weather.data) return city ? <Skeleton className="wx-chip-skel" /> : null;
   const kind = weatherKind(weather.data.current.iconUrl);
   const temp = Math.round(weather.data.current.tempC);
+  const word = oneWord(kind);
   return (
-    <Link to="/weather" className="wx-chip" aria-label={`Weather: ${temp}°, ${weather.data.current.condition}`}>
+    <Link to="/weather" className="wx-chip" aria-label={`${temp}° ${word}: ${weather.data.current.condition}. Open Weather.`}>
       <LiveIcon kind={kind} still />
       <span className="tabular-nums">{temp}°</span>
-      <span className="wx-chip-word">{oneWord(kind)}</span>
+      <span className="wx-chip-word">{word}</span>
     </Link>
   );
 }
@@ -111,11 +119,13 @@ export function Header() {
           )}
         </h1>
         <div className="meta-row">
-          {place && (
+          {place ? (
             <span className="loc">
               <Icon name="map-pin" />
               {place}
             </span>
+          ) : (
+            profile.isPending && <Skeleton className="loc-skel" />
           )}
           <span>{shortDate()}</span>
           <LiveStamp />

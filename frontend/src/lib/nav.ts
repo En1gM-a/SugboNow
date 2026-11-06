@@ -33,6 +33,14 @@ export function prefetchToday() {
   void queryClient.prefetchQuery(queries.alerts({ relevant: true }));
 }
 
+/** Opening a link while signed in: fetch what the header and the page need alongside the code, so none waits for another. */
+export function preloadOnStart(pathname: string) {
+  void queryClient.prefetchQuery(queries.profile());
+  void queryClient.prefetchQuery(queries.brief());
+  void queryClient.prefetchQuery(queries.alerts({ relevant: true }));
+  preloadRoute(pathname);
+}
+
 /** When a tab is hovered, focused or touched: load its page's code and prefetch its main query. */
 export function preloadRoute(to: string) {
   if (to === '/') {
