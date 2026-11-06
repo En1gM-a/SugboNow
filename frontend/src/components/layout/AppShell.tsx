@@ -3,12 +3,13 @@ import * as m from 'motion/react-m';
 import { useState } from 'react';
 import { NavLink, useLocation, useOutlet } from 'react-router-dom';
 import { Icon } from '@/components/icons/Icon';
-import { useAuth } from '@/context/AuthContext';
+import { useOnline } from '@/hooks/useBrowser';
+import { useBrief } from '@/hooks/useFeeds';
+import { useSignOut } from '@/hooks/useSignOut';
 import { useStretchyPill } from '@/hooks/useStretchyPill';
 import { useDisplay } from '@/lib/display';
-import { pages } from '@/lib/entrance';
 import { activeTab, preloadRoute, TABS } from '@/lib/nav';
-import { resetBell } from './Bell';
+import { formatTime } from '@/utils/format';
 import { Header } from './Header';
 
 /** Keeps the outlet it had when it mounted, so a leaving page keeps showing its own content while it exits. */
@@ -66,6 +67,18 @@ function TabBar() {
   );
 }
 
+/** Above the cached data when the phone loses its connection (handoff <polish>). */
+function OfflineBanner() {
+  const online = useOnline();
+  const brief = useBrief();
+  if (online) return null;
+  return (
+    <p className="offline glass" role="status">
+      You&apos;re offline.{brief.dataUpdatedAt > 0 && ` Showing info from ${formatTime(new Date(brief.dataUpdatedAt))}.`}
+    </p>
+  );
+}
+
 /**
  * The app shell for signed-in pages (handoff <layout>). Everything floats on the sky; the header, tabs and rail stay
  * still. Only the content area moves between pages: the leaving page fades, shrinks slightly and blurs (200 ms),
@@ -74,22 +87,17 @@ function TabBar() {
 export function AppShell() {
   const location = useLocation();
   const { lite, still } = useDisplay();
-  const { signOut } = useAuth();
+  const signOut = useSignOut();
 
   // Still mode keeps only a short fade (120 ms); Lite mode drops the blur.
   const leave = still ? { opacity: 0 } : { opacity: 0, scale: 0.985, ...(lite ? {} : { filter: 'blur(8px)' }) };
 
-  const handleSignOut = () => {
-    pages.forget();
-    resetBell();
-    void signOut();
-  };
-
   return (
     <div className="app">
-      <NavRail onSignOut={handleSignOut} />
+      <NavRail onSignOut={signOut} />
       <div className="shell">
         <Header />
+        <OfflineBanner />
         <main id="main" className="page-host" tabIndex={-1}>
           <AnimatePresence mode="wait" initial={false}>
             <m.div key={location.pathname} className="page-slot" exit={leave} transition={{ duration: still ? 0.12 : 0.2, ease: [0.32, 0, 0.67, 0] }}>
