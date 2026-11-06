@@ -144,6 +144,23 @@ hourly by the weather job (WeatherAPI.com); readable by signed-in users.
 | `hourly_forecast` | `jsonb` array | Current hour plus the next 24: `[{time, tempC, condition, iconUrl, chanceOfRain, precipMm}]` |
 | `fetched_at` | `timestamptz` | When the job saved it. |
 
+## public.regional_forecasts
+
+Added by `0007_add_regional_forecasts.sql`. PAGASA's regional forecast, one row per
+region (only `visayas` for now), replaced every 30 minutes by the PAGASA job; readable
+by signed-in users. The same page's Cebu thunderstorm advisories go to `alerts`.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `region` | `text`, primary key | `visayas` |
+| `issued_at` | `timestamptz` | When PAGASA issued the forecast. |
+| `periods` | `jsonb` array | `[{part: 'night' \| 'day', description, minC, maxC, wind, direction, coastal}]`, in the page's order |
+| `outlook_issued_at` | `timestamptz` | When PAGASA issued the extended outlook. |
+| `outlook` | `jsonb` array | `[{day, minC, maxC, wind, direction, coastal}]`, usually 5 days |
+| `rainfall_warning` | `text` | The heavy-rainfall warning, or `null` when none is issued. |
+| `source_url` | `text` | The page read. |
+| `fetched_at` | `timestamptz` | When the job saved it. |
+
 ## public.daily_briefs
 
 One brief per user per Manila date (`unique (user_id, brief_date)`), written by

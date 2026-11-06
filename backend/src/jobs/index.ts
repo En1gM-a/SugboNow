@@ -7,13 +7,14 @@ import type { Logger } from "../utils/logger";
 import { createGenerateBriefsJob } from "./generateBriefs";
 import { createIngestCebuDailyNewsJob, createIngestSunstarJob } from "./ingestLocalNews";
 import { createIngestNewsJob } from "./ingestNews";
+import { createIngestPagasaJob } from "./ingestPagasa";
 import { createIngestTrafficJob } from "./ingestTraffic";
 import { createIngestWeatherJob } from "./ingestWeather";
 import type { Job } from "./types";
 
 export interface JobDependencies {
   alerts: Pick<AlertsRepository, "upsert">;
-  weather: Pick<WeatherRepository, "save">;
+  weather: Pick<WeatherRepository, "save" | "saveRegionalForecast">;
   briefs: Pick<BriefService, "generateAll">;
   keys: { tomtom?: string; gnews?: string; weatherApi?: string };
   feeds: { sunstar: string; cebuDailyNews: string };
@@ -27,6 +28,7 @@ export function buildJobs(deps: JobDependencies): Job[] {
     createIngestNewsJob({ apiKey: deps.keys.gnews, alerts: deps.alerts, logger: deps.logger }),
     createIngestSunstarJob({ feedUrl: deps.feeds.sunstar, alerts: deps.alerts }),
     createIngestCebuDailyNewsJob({ feedUrl: deps.feeds.cebuDailyNews, alerts: deps.alerts }),
+    createIngestPagasaJob({ alerts: deps.alerts, weather: deps.weather }),
     createGenerateBriefsJob(deps.briefs),
   ];
 }
