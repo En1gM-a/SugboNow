@@ -12,6 +12,7 @@ import type {
   LocationsResponse,
   NewsResponse,
   Profile,
+  RegionalForecast,
   ScheduleResponse,
   Weather,
   WeatherAllResponse,
@@ -78,6 +79,8 @@ export const queries = {
   },
   weatherAll: () =>
     queryOptions({ queryKey: ['weather'], queryFn: () => apiFetch<WeatherAllResponse>('/weather'), staleTime: STALE.weather }),
+  pagasa: () =>
+    queryOptions({ queryKey: ['weather', 'pagasa'], queryFn: () => apiFetch<RegionalForecast>('/weather/pagasa'), staleTime: STALE.weather }),
   weather: (area: string) =>
     queryOptions({
       queryKey: ['weather', area],
