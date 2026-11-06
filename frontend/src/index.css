@@ -2713,6 +2713,177 @@
     font-size: 30px;
   }
 
+  /* Traffic: the map, its list and the sheet that peeks over it on phones */
+  .traffic-bar {
+    padding: 8px;
+    border-radius: 22px;
+  }
+  .map-card {
+    min-width: 0;
+    padding: 6px;
+  }
+  .map-main {
+    height: 100%;
+    border-radius: 18px;
+  }
+  .map-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 12px;
+    padding: 8px 10px 4px;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+  .map-legend li {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .map-legend i,
+  .sev-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border: 1.5px solid #fff;
+    border-radius: 50%;
+    box-sizing: content-box;
+  }
+  .sheet-section {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    padding: 8px 18px;
+  }
+  .peek-sheet {
+    --sheet-h: calc(100svh - 12px);
+    --peek: 35svh;
+    position: fixed;
+    z-index: 20;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    height: var(--sheet-h);
+    border-radius: 24px 24px 0 0;
+    color: var(--ink);
+    transform: translateY(calc(var(--sheet-h) - var(--peek)));
+    transition:
+      transform 300ms var(--ease-out),
+      opacity 200ms ease;
+    animation: sheet-up 350ms var(--ease-out) backwards;
+  }
+  .peek-sheet.is-open {
+    transform: none;
+  }
+  .peek-sheet.is-leaving {
+    opacity: 0;
+  }
+  .peek-body {
+    flex: none;
+    max-height: calc(var(--peek) - 32px);
+    padding-bottom: calc(94px + env(safe-area-inset-bottom));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .peek-sheet.is-open .peek-body {
+    max-height: calc(var(--sheet-h) - 32px);
+  }
+  .peek-sheet .map-legend {
+    padding: 4px 18px;
+  }
+  .big-side {
+    margin-top: 4px;
+    font-size: clamp(1.8rem, 5vw, 2.3rem);
+  }
+  .route {
+    overflow-wrap: anywhere;
+  }
+  .leave-panel .route {
+    margin-top: 4px;
+    font-size: 0.9rem;
+  }
+  .leave-panel .delay-chip,
+  .leave-panel .tag-quiet {
+    margin-top: 6px;
+    justify-self: start;
+    width: max-content;
+  }
+  .leave-panel.card {
+    display: grid;
+  }
+  .leave-panel .card-title {
+    white-space: nowrap;
+  }
+  .list-pill {
+    position: static;
+    justify-self: start;
+    margin: 6px 0;
+  }
+  .rows.is-stale {
+    opacity: 0.6;
+  }
+  .filter-groups {
+    display: grid;
+    gap: 10px;
+    margin-top: 6px;
+  }
+  .chip-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .sheet-actions {
+    margin-top: 14px;
+  }
+  .busy-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    margin: -10px 0;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .busy-list {
+    display: grid;
+    gap: 8px;
+    margin-top: 8px;
+    font-size: 0.9rem;
+  }
+  .busy-list li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 8px;
+  }
+  .busy-bar {
+    grid-column: 1 / -1;
+    height: 6px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--chip);
+  }
+  .busy-bar i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--blue);
+    transform-origin: 0 50%;
+  }
+  /* Narrow side columns: the severity chip drops under the title, so the title keeps its width. */
+  .traffic-side {
+    container-type: inline-size;
+  }
+  @container (max-width: 300px) {
+    .row {
+      grid-template-columns: auto minmax(0, 1fr);
+    }
+    .row .tag {
+      grid-column: 2;
+      justify-self: start;
+    }
+  }
+
   /* The "Right now" glance */
   .glance-rows {
     display: grid;
@@ -2923,6 +3094,13 @@
 .map-fill.leaflet-container .leaflet-control-attribution a {
   color: var(--blue);
 }
+/* On phones the credit sits at the top right, clear of the zoom buttons and of the sheet. */
+.map-fill.leaflet-container .leaflet-top .leaflet-control-attribution {
+  max-width: 190px;
+  margin: 0;
+  border-radius: 0 0 0 10px;
+  white-space: normal;
+}
 .map-fill.leaflet-container .leaflet-bar {
   overflow: hidden;
   border: 1px solid var(--line);
@@ -3027,9 +3205,43 @@
 }
 
 /* ---------- Breakpoints: 720px (12-column grid), 900px (two-column home page), 1024px (nav rail) ---------- */
+/* On phones the map fills the screen above the tab bar, and the header stays above it. */
+@media (max-width: 719px) {
+  .app:has(.traffic) {
+    height: 100svh;
+    min-height: 600px;
+    padding-bottom: calc(94px + env(safe-area-inset-bottom));
+  }
+  .app:has(.traffic) .shell {
+    height: 100%;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .app:has(.traffic) .page-host,
+  .app:has(.traffic) .page-slot {
+    height: 100%;
+    min-height: 0;
+  }
+  .traffic {
+    height: 100%;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .traffic .map-card {
+    min-height: 0;
+  }
+}
+
 @media (min-width: 720px) {
   .grid12 {
     grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+  /* The list can be long, so the map is what stays in view. */
+  .traffic .map-card {
+    position: sticky;
+    top: 18px;
+    align-self: start;
+  }
+  .traffic .map-main {
+    height: min(calc(100svh - 92px), 680px);
   }
   .glance-strip .glance-rows {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3094,6 +3306,9 @@
   }
   .news-page .side {
     top: 92px;
+  }
+  .side.traffic-side {
+    position: static;
   }
   .rain-layout {
     grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
@@ -3315,15 +3530,30 @@
 :root[data-still] .wi * {
   animation: none !important;
 }
-:root[data-still] .skel {
+:root[data-still] .skel,
+:root[data-still] .peek-sheet {
   animation: none;
 }
+:root[data-still] .peek-sheet,
+:root[data-still] .progress i {
+  transition: opacity 120ms ease;
+}
 @media (prefers-reduced-motion: reduce) {
-  .skel {
+  .skel,
+  .peek-sheet {
     animation: none;
+  }
+  .peek-sheet,
+  .progress i {
+    transition: opacity 120ms ease;
   }
 }
 
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
 @keyframes spin {
   to {
     transform: rotate(1turn);
