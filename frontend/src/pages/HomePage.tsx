@@ -8,6 +8,7 @@ import { flushSync } from 'react-dom';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Field, PasswordField, SelectField } from '@/components/auth/Field';
 import { CountUp } from '@/components/CountUp';
+import { GoogleLogo } from '@/components/icons/GoogleLogo';
 import { LiveIcon } from '@/components/LiveIcon';
 import { Logo } from '@/components/Logo';
 import { RiseWords } from '@/components/RiseWords';
@@ -144,6 +145,18 @@ function SignInForm({ active, play, headingRef, locked, onSwitch, onSignIn, onRe
       <div data-row style={vars({ '--k': row++ })}>
         <Button type="submit" variant="primary" busy={busy} className="w-full">
           Sign in
+        </Button>
+      </div>
+      <div data-row style={vars({ '--k': row++ })}>
+        {/* The button only for now: Google sign-in isn't connected, so a press says so instead of doing nothing. */}
+        <Button
+          variant="secondary"
+          className="w-full"
+          disabled={locked}
+          onClick={() => setMessage({ error: false, text: 'Google sign-in isn’t available yet. Use your email and password for now.' })}
+        >
+          <GoogleLogo />
+          Continue with Google
         </Button>
       </div>
       {message && (
