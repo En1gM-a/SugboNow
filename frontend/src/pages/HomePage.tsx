@@ -23,7 +23,7 @@ import { EntranceContext, type Entrance } from '@/lib/entrance';
 import { loadWelcomePage, prefetchToday } from '@/lib/nav';
 import { loadRide, loginRide } from '@/lib/rideBridge';
 import { CLASS_SUSPENSION_NOTE, HOME_CITIES, MAYORS, suggestedMayor } from '@/lib/signupOptions';
-import { USE_MOCKS } from '@/lib/supabaseClient';
+import { getSupabase, USE_MOCKS } from '@/lib/supabaseClient';
 import { cx, vars } from '@/utils/cx';
 
 type FormName = 'login' | 'signup';
@@ -722,7 +722,8 @@ export default function HomePage() {
               </b>
             </p>
           </section>
-          <div className="auth-card glass" ref={card} inert={riding}>
+          {/* Getting ready to sign in: fetch supabase-js now, so the button doesn't wait for it. */}
+          <div className="auth-card glass" ref={card} inert={riding} onFocus={USE_MOCKS ? undefined : () => void getSupabase()}>
             <SignInForm
               active={form === 'login'}
               play={formPlay?.form === 'login' ? formPlay : null}

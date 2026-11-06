@@ -5,7 +5,7 @@ import type { RouteHandle } from '@/components/layout/Header';
 import { PageSkeleton } from '@/components/layout/Page';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { RootLayout } from '@/components/layout/RootLayout';
-import { loadMayorPage, loadNewsPage, loadProfilePage, loadTrafficPage, loadWeatherPage, loadWelcomePage } from '@/lib/nav';
+import { loadMayorPage, loadNewsPage, loadProfilePage, loadResetPasswordPage, loadTrafficPage, loadWeatherPage, loadWelcomePage } from '@/lib/nav';
 import HomePage from '@/pages/HomePage';
 import TodayPage from '@/pages/TodayPage';
 
@@ -16,6 +16,7 @@ const MayorPage = lazy(loadMayorPage);
 const WeatherPage = lazy(loadWeatherPage);
 const TrafficPage = lazy(loadTrafficPage);
 const ProfilePage = lazy(loadProfilePage);
+const ResetPasswordPage = lazy(loadResetPasswordPage);
 
 const lazily = (page: ReactNode) => <Suspense fallback={<PageSkeleton />}>{page}</Suspense>;
 
@@ -35,6 +36,15 @@ const router = createBrowserRouter([
           { path: 'login', Component: PickForm },
           { path: 'signup', Component: PickForm },
         ],
+      },
+      // Open to everyone: the link in the email signs the user in, and an expired link has to say so.
+      {
+        path: 'reset-password',
+        element: (
+          <Suspense fallback={null}>
+            <ResetPasswordPage />
+          </Suspense>
+        ),
       },
       {
         element: <ProtectedRoute />,

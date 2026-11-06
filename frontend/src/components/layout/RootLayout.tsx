@@ -31,10 +31,12 @@ function useSkyWeather(): SkyWeather {
  */
 export function RootLayout() {
   const weather = useSkyWeather();
+  const { status } = useAuth();
 
+  // The ride only runs on the way in, so a signed-in visitor doesn't download it.
   useEffect(() => {
-    preloadRide();
-  }, []);
+    if (status === 'signedOut') preloadRide();
+  }, [status]);
 
   return (
     <>
