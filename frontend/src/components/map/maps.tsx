@@ -18,6 +18,12 @@ const OSM_CREDIT = '&copy; <a href="https://www.openstreetmap.org/copyright">Ope
 const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
 const round5 = (n: number) => Math.round(n * 1e5) / 1e5;
 
+/** The options every map shares. Still mode turns off Leaflet's own zoom and fade animations. */
+function useMapOptions() {
+  const { still } = useDisplay();
+  return { preferCanvas: true, scrollWheelZoom: false, attributionControl: false, zoomAnimation: !still, fadeAnimation: !still, markerZoomAnimation: !still, className: 'map-fill' };
+}
+
 function Tiles({ credit = OSM_CREDIT }: { credit?: string }) {
   return <TileLayer url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" attribution={credit} maxZoom={19} />;
 }
@@ -47,8 +53,9 @@ function FitBounds({ points, bottomInset = 0 }: { points: Array<[number, number]
   const key = points.map((p) => p.join(',')).join('|');
   useEffect(() => {
     if (points.length === 0) return;
-    if (points.length === 1) map.setView(points[0], 14);
-    else map.fitBounds(L.latLngBounds(points), { paddingTopLeft: [48, 56], paddingBottomRight: [48, 48 + bottomInset], maxZoom: 15 });
+    const animate = !getDisplay().still;
+    if (points.length === 1) map.setView(points[0], 14, { animate });
+    else map.fitBounds(L.latLngBounds(points), { paddingTopLeft: [48, 56], paddingBottomRight: [48, 48 + bottomInset], maxZoom: 15, animate });
     // Only when the places themselves change, not on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, map, bottomInset]);
@@ -95,6 +102,7 @@ interface AlertsMapProps {
 /** Alerts as circle markers colored by severity, drawn on one canvas, with the user's places as pins. */
 export function AlertsMap({ alerts, places = [], route, selectedId, onSelect, label, bottomInset = 0, creditPosition = 'bottomright' }: AlertsMapProps) {
   const { mode } = useDisplay();
+  const options = useMapOptions();
   const located = useMemo(() => alerts.filter((a) => a.lat !== null && a.lng !== null), [alerts]);
   const selected = located.find((a) => a.id === selectedId);
   const points = useMemo<Array<[number, number]>>(() => (places.length >= 2 ? places.map((p) => [p.lat, p.lng]) : []), [places]);
@@ -105,7 +113,7 @@ export function AlertsMap({ alerts, places = [], route, selectedId, onSelect, la
 
   return (
     <div className="map-fill" role="region" aria-label={label}>
-      <MapContainer center={CEBU} zoom={12} preferCanvas renderer={renderer} scrollWheelZoom={false} attributionControl={false} className="map-fill">
+      <MapContainer center={CEBU} zoom={12} renderer={renderer} {...options}>
         <Tiles credit={`${OSM_CREDIT} · Traffic data &copy; TomTom`} />
         <AttributionControl prefix={false} position={creditPosition} />
         <AutoResize />
@@ -198,11 +206,12 @@ interface WeatherMapProps {
 
 /** One label per area with its temperature and rain chance for the chosen hour. The slider restyles these; the map stays. */
 export function WeatherMap({ areas, hour, selected, onSelect, center = [10.31, 123.9] }: WeatherMapProps) {
+  const options = useMapOptions();
   const icons = useMemo(() => areas.map((w) => rainIcon(w, hour, w.area.slug === selected)), [areas, hour, selected]);
   const chosen = areas.find((w) => w.area.slug === selected);
   return (
     <div className="map-fill" role="region" aria-label="Map of Metro Cebu with the temperature and rain chance for each area">
-      <MapContainer center={center} zoom={11} preferCanvas scrollWheelZoom={false} attributionControl={false} className="map-fill">
+      <MapContainer center={center} zoom={11} {...options}>
         <Tiles />
         <AttributionControl prefix={false} />
         <AutoResize />
@@ -253,10 +262,11 @@ interface PinDropMapProps {
  */
 export function PinDropMap({ lat, lng, kind, onChange, jump = 0, className }: PinDropMapProps) {
   const [map, setMap] = useState<L.Map | null>(null);
+  const options = useMapOptions();
   return (
     <>
       <div className={cx('map-box', className)}>
-        <MapContainer ref={setMap} center={[lat, lng]} zoom={14} preferCanvas scrollWheelZoom={false} attributionControl={false} className="map-fill">
+        <MapContainer ref={setMap} center={[lat, lng]} zoom={14} {...options}>
           <Tiles />
           <AttributionControl prefix={false} />
           <AutoResize />

@@ -14,9 +14,10 @@ interface Insets {
 /**
  * The stretchy mango pill behind the active tab (handoff <motion>; sample: slidePill). The pill is a full-size element
  * clipped with clip-path: inset(... round ...). When it moves, the leading edge arrives first (360 ms) and the trailing
- * edge catches up (550 ms), so it stretches and then settles. Tabs are the box's [data-tab] children.
+ * edge catches up (550 ms), so it stretches and then settles. Tabs are the box's [data-tab] children. Pass the number of
+ * tabs as `count` when they can arrive later: a box that fills its parent doesn't change size when they do.
  */
-export function useStretchyPill(axis: 'x' | 'y', active: number, radius: number) {
+export function useStretchyPill(axis: 'x' | 'y', active: number, radius: number, count?: number) {
   const box = useRef<HTMLDivElement>(null);
   const pill = useRef<HTMLSpanElement>(null);
   const current = useRef<Insets | null>(null);
@@ -78,6 +79,10 @@ export function useStretchyPill(axis: 'x' | 'y', active: number, radius: number)
     latest.current = place;
     place(true);
   }, [place]);
+
+  useLayoutEffect(() => {
+    latest.current(false);
+  }, [count]);
 
   // Follow the box's size: the window resizing, the rail or tab bar appearing at its breakpoint, or a segmented
   // control's options arriving from the API. Only a real change counts: the observer also fires once when it starts,

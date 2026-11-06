@@ -17,12 +17,12 @@ export function activeTab(pathname: string): number {
   return TABS.findIndex((t) => (t.to === '/' ? pathname === '/' : pathname === t.to || pathname.startsWith(`${t.to}/`)));
 }
 
-export const loadPlaceholderPage = () => import('@/pages/PlaceholderPage');
 export const loadWelcomePage = () => import('@/pages/WelcomePage');
 export const loadNewsPage = () => import('@/pages/NewsPage');
 export const loadMayorPage = () => import('@/pages/MayorPage');
 export const loadWeatherPage = () => import('@/pages/WeatherPage');
 export const loadTrafficPage = () => import('@/pages/TrafficPage');
+export const loadProfilePage = () => import('@/pages/ProfilePage');
 
 /** Today's main queries, fetched while the log-in smoke covers the screen so the page opens with its data. */
 export function prefetchToday() {
@@ -61,7 +61,5 @@ export function preloadRoute(to: string) {
     void queryClient.prefetchQuery(queries.locations());
     void queryClient.prefetchQuery(queries.schedule());
     void queryClient.prefetchQuery(queries.alerts({ relevant: true }));
-    return;
   }
-  void loadPlaceholderPage();
 }
