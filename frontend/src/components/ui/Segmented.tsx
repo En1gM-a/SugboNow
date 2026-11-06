@@ -26,7 +26,7 @@ interface SegmentedProps<T extends string> {
  */
 export function Segmented<T extends string>({ label, options, value, onChange, kind = 'radio', panelId, className }: SegmentedProps<T>) {
   const index = options.findIndex((o) => o.value === value);
-  const { box, pill } = useStretchyPill('x', index, 999);
+  const { box, pill } = useStretchyPill('x', index, 999, options.length);
   const { still } = useDisplay();
   const isTabs = kind === 'tab';
 
