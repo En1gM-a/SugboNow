@@ -17,6 +17,7 @@ import { ThemeSwitch } from '@/components/ThemeSwitch';
 import { Button } from '@/components/ui/Button';
 import { Tag } from '@/components/ui/Tag';
 import { useAuth, type SignUpDetails } from '@/context/AuthContext';
+import { useProfile, useUpdateProfile } from '@/hooks/useProfile';
 import { useDisplay } from '@/lib/display';
 import { EntranceContext, type Entrance } from '@/lib/entrance';
 import { loadWelcomePage, prefetchToday } from '@/lib/nav';
@@ -45,11 +46,45 @@ interface FormProps {
   /** True while a ride runs: the card is inert. */
   locked: boolean;
   onSwitch: () => void;
+  /** Starts the Google sign-in. Resolves with a message if it couldn't start. */
+  onGoogle: () => Promise<string | null>;
 }
 
 const playAttr = (play: FormPlay | null) => (play ? (play.token % 2 ? 'b' : 'a') : undefined);
 
-function SignInForm({ active, play, headingRef, locked, onSwitch, onSignIn, onReset }: FormProps & {
+/** Stays busy after a press, because the page is about to leave for Google. */
+function GoogleButton({ row, locked, onGoogle }: { row: number; locked: boolean; onGoogle: FormProps['onGoogle'] }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function press() {
+    setBusy(true);
+    setError(null);
+    const message = await onGoogle();
+    if (message) {
+      setBusy(false);
+      setError(message);
+    }
+  }
+
+  return (
+    <>
+      <div data-row style={vars({ '--k': row })}>
+        <Button variant="secondary" className="w-full" busy={busy} disabled={locked} onClick={() => void press()}>
+          <GoogleLogo />
+          Continue with Google
+        </Button>
+      </div>
+      {error && (
+        <p className="form-msg is-error" role="alert">
+          {error}
+        </p>
+      )}
+    </>
+  );
+}
+
+function SignInForm({ active, play, headingRef, locked, onSwitch, onGoogle, onSignIn, onReset }: FormProps & {
   onSignIn: (email: string, password: string) => Promise<string | null>;
   onReset: (email: string) => Promise<string | null>;
 }) {
@@ -147,18 +182,7 @@ function SignInForm({ active, play, headingRef, locked, onSwitch, onSignIn, onRe
           Sign in
         </Button>
       </div>
-      <div data-row style={vars({ '--k': row++ })}>
-        {/* The button only for now: Google sign-in isn't connected, so a press says so instead of doing nothing. */}
-        <Button
-          variant="secondary"
-          className="w-full"
-          disabled={locked}
-          onClick={() => setMessage({ error: false, text: 'Google sign-in isn’t available yet. Use your email and password for now.' })}
-        >
-          <GoogleLogo />
-          Continue with Google
-        </Button>
-      </div>
+      <GoogleButton row={row++} locked={locked} onGoogle={onGoogle} />
       {message && (
         <p className={cx('form-msg', message.error && 'is-error')} role={message.error ? 'alert' : 'status'}>
           {message.text}
@@ -175,6 +199,10 @@ function SignInForm({ active, play, headingRef, locked, onSwitch, onSignIn, onRe
 }
 
 type SignUpErrors = Partial<Record<'firstName' | 'email' | 'password' | 'confirm' | 'city' | 'address' | 'mayor', string>>;
+type SignUpResult = { error?: string; checkEmail?: boolean };
+type SetupDetails = Omit<SignUpDetails, 'email' | 'password'>;
+/** Back from Google: still finding out about the profile, couldn't load it, or it needs step 2. */
+type GoogleReturn = 'checking' | 'failed' | 'setup' | null;
 
 // The two steps share one grid cell, so the card never jumps, and move like onboarding steps (handoff <motion>).
 const STEP_SPRING = { type: 'spring', visualDuration: 0.22, bounce: 0 } as const;
@@ -182,11 +210,20 @@ const STEP_SPRING = { type: 'spring', visualDuration: 0.22, bounce: 0 } as const
 /**
  * Sign up, in two steps (handoff: signup.md). The form is signed out, so step 2's lists come from signupOptions.ts, and
  * a database trigger saves the details when the account is created. Going back keeps what was typed.
+ *
+ * Someone back from Google already has an account and an email, so they only see step 2, with a first name field.
  */
-function SignUpForm({ active, play, headingRef, locked, onSwitch, onSignUp }: FormProps & {
-  onSignUp: (details: SignUpDetails) => Promise<{ error?: string; checkEmail?: boolean }>;
+function SignUpForm({ active, play, headingRef, locked, onSwitch, onGoogle, onSignUp, googleReturn, onRetryCheck, onFinishSetup, onSignOut }: FormProps & {
+  onSignUp: (details: SignUpDetails) => Promise<SignUpResult>;
+  googleReturn: GoogleReturn;
+  onRetryCheck: () => void;
+  onFinishSetup: (details: SetupDetails) => Promise<SignUpResult>;
+  onSignOut: () => void;
 }) {
   const [step, setStep] = useState<1 | 2>(1);
+  const setup = googleReturn === 'setup';
+  // 0 is the short wait while we find out whether they still need step 2.
+  const shown = setup ? 2 : googleReturn ? 0 : step;
   const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -203,6 +240,7 @@ function SignUpForm({ active, play, headingRef, locked, onSwitch, onSignUp }: Fo
   const stepped = useRef(false);
   const inputs = {
     firstName: useRef<HTMLInputElement>(null),
+    setupName: useRef<HTMLInputElement>(null),
     email: useRef<HTMLInputElement>(null),
     password: useRef<HTMLInputElement>(null),
     confirm: useRef<HTMLInputElement>(null),
@@ -215,6 +253,11 @@ function SignUpForm({ active, play, headingRef, locked, onSwitch, onSignUp }: Fo
   useEffect(() => {
     if (stepped.current) headingRef.current?.focus({ preventScroll: true });
   }, [step, headingRef]);
+
+  // Back from Google: on phones the card is below the hero, so this focus also scrolls to it.
+  useEffect(() => {
+    if (setup && active) headingRef.current?.focus();
+  }, [setup, active, headingRef]);
 
   // "Check your email" replaces the form, so focus moves to its title. Leaving it starts the form fresh next time.
   useEffect(() => {
@@ -252,15 +295,17 @@ function SignUpForm({ active, play, headingRef, locked, onSwitch, onSignUp }: Fo
     e.preventDefault();
     if (busy || locked) return;
     const found: SignUpErrors = {};
+    if (setup && !firstName.trim()) found.firstName = 'Enter your first name.';
     if (!city) found.city = 'Pick your city or town.';
     if (!address.trim()) found.address = 'Add your barangay or street.';
     if (!mayor) found.mayor = 'Pick the mayor to follow.';
     setErrors(found);
     setMessage(null);
-    const first = (['city', 'address', 'mayor'] as const).find((k) => found[k]);
-    if (first) return inputs[first].current?.focus();
+    const first = (['firstName', 'city', 'address', 'mayor'] as const).find((k) => found[k]);
+    if (first) return (first === 'firstName' ? inputs.setupName : inputs[first]).current?.focus();
     setBusy(true);
-    const result = await onSignUp({ firstName: firstName.trim(), email: email.trim(), password, city, addressText: address.trim(), subscribedMayor: mayor });
+    const details = { firstName: firstName.trim(), city, addressText: address.trim(), subscribedMayor: mayor };
+    const result = setup ? await onFinishSetup(details) : await onSignUp({ ...details, email: email.trim(), password });
     if (result.error) {
       setBusy(false);
       setMessage(result.error);
@@ -277,10 +322,10 @@ function SignUpForm({ active, play, headingRef, locked, onSwitch, onSignUp }: Fo
       className={cx('auth-form', !active && 'off')}
       inert={!active}
       noValidate
-      onSubmit={step === 1 ? next : submit}
+      onSubmit={shown === 1 ? next : submit}
       data-play={active ? playAttr(play) : undefined}
       style={vars({ '--form-delay': `${play?.delay ?? 0}ms` })}
-      aria-labelledby={checkEmail || step === 1 ? 'h-signup' : 'h-signup-2'}
+      aria-labelledby={checkEmail || shown === 1 ? 'h-signup' : shown === 2 ? 'h-signup-2' : 'h-signup-check'}
     >
       {checkEmail ? (
         <>
@@ -297,8 +342,29 @@ function SignUpForm({ active, play, headingRef, locked, onSwitch, onSignUp }: Fo
         </>
       ) : (
         <div className="su-steps">
-          <m.div className={cx('su-step', step !== 1 && 'off')} inert={step !== 1} initial={false} animate={{ opacity: step === 1 ? 1 : 0, x: step === 1 ? 0 : -16 }} transition={STEP_SPRING}>
-            <h2 id="h-signup" ref={step === 1 ? headingRef : undefined} tabIndex={-1}>
+          {shown === 0 && (
+            <div className="su-step">
+              <h2 id="h-signup-check" ref={headingRef} tabIndex={-1}>
+                {googleReturn === 'failed' ? 'We couldn’t load your account' : 'One moment'}
+              </h2>
+              {googleReturn === 'failed' ? (
+                <>
+                  <p className="sub">Check your connection, then try again.</p>
+                  <Button variant="primary" className="w-full" onClick={onRetryCheck}>
+                    Retry
+                  </Button>
+                </>
+              ) : (
+                <p className="sub" role="status">
+                  Checking your account.
+                </p>
+              )}
+            </div>
+          )}
+          {/* The key remounts both steps when Google's return changes which one shows, so they start in place. Motion's
+              features load after the first paint: a target changed before then would leave the step at opacity 0. */}
+          <m.div key={`one-${googleReturn}`} className={cx('su-step', shown !== 1 && 'off')} inert={shown !== 1} initial={false} animate={{ opacity: shown === 1 ? 1 : 0, x: shown === 1 ? 0 : -16 }} transition={STEP_SPRING}>
+            <h2 id="h-signup" ref={shown === 1 ? headingRef : undefined} tabIndex={-1}>
               <RiseWords key={play?.token ?? 'still'} text="Create your account" play={active && Boolean(play)} delay={play?.delay ?? 0} />
             </h2>
             <p className="sub" data-row style={vars({ '--k': row++ })}>
@@ -342,6 +408,7 @@ function SignUpForm({ active, play, headingRef, locked, onSwitch, onSignUp }: Fo
                 Next
               </Button>
             </div>
+            <GoogleButton row={row++} locked={locked} onGoogle={onGoogle} />
             <p className="form-switch" data-row style={vars({ '--k': row++ })}>
               Already riding with us?
               <Button variant="secondary" onClick={onSwitch} disabled={locked}>
@@ -349,13 +416,16 @@ function SignUpForm({ active, play, headingRef, locked, onSwitch, onSignUp }: Fo
               </Button>
             </p>
           </m.div>
-          <m.div className={cx('su-step', step !== 2 && 'off')} inert={step !== 2} initial={false} animate={{ opacity: step === 2 ? 1 : 0, x: step === 2 ? 0 : 16 }} transition={STEP_SPRING}>
-            <h2 id="h-signup-2" ref={step === 2 ? headingRef : undefined} tabIndex={-1}>
+          <m.div key={`two-${googleReturn}`} className={cx('su-step', shown !== 2 && 'off')} inert={shown !== 2} initial={false} animate={{ opacity: shown === 2 ? 1 : 0, x: shown === 2 ? 0 : 16 }} transition={STEP_SPRING}>
+            <h2 id="h-signup-2" ref={shown === 2 ? headingRef : undefined} tabIndex={-1}>
               Where you live
             </h2>
             <p className="sub" data-row style={vars({ '--k': rowTwo++ })}>
               Asa ka nagpuyo? This sets your weather and whose class suspensions you see.
             </p>
+            {setup && (
+              <Field id="su-name-google" row={rowTwo++} label="First name" autoComplete="given-name" maxLength={40} value={firstName} onChange={(e) => setFirstName(e.target.value)} error={errors.firstName} ref={inputs.setupName} />
+            )}
             <SelectField
               id="su-city"
               row={rowTwo++}
@@ -408,11 +478,12 @@ function SignUpForm({ active, play, headingRef, locked, onSwitch, onSignUp }: Fo
               ))}
             </SelectField>
             <div className="form-actions" data-row style={vars({ '--k': rowTwo++ })}>
-              <Button variant="secondary" onClick={() => moveTo(1)} disabled={busy}>
-                Back
+              {/* Back from Google there's no step 1 to return to, so the way out is signing out. */}
+              <Button variant="secondary" onClick={setup ? onSignOut : () => moveTo(1)} disabled={busy}>
+                {setup ? 'Sign out' : 'Back'}
               </Button>
               <Button type="submit" variant="primary" busy={busy} className="grow">
-                Create account
+                {setup ? 'Finish sign-up' : 'Create account'}
               </Button>
             </div>
             {message && (
@@ -428,7 +499,9 @@ function SignUpForm({ active, play, headingRef, locked, onSwitch, onSignUp }: Fo
 }
 
 export default function HomePage() {
-  const { status, signIn, signUp, resetPassword } = useAuth();
+  const { status, signIn, signInWithGoogle, signUp, resetPassword, signOut } = useAuth();
+  const profile = useProfile();
+  const updateProfile = useUpdateProfile();
   const location = useLocation();
   const navigate = useNavigate();
   const { still } = useDisplay();
@@ -443,6 +516,8 @@ export default function HomePage() {
   const [formPlay, setFormPlay] = useState<FormPlay | null>(() => (still ? null : { form, token: 0, delay: 300 }));
   const [riding, setRiding] = useState(false);
   const [destination, setDestination] = useState<string | null>(null);
+  // Stays on through the ride, when saving has already filled the profile in.
+  const [setup, setSetup] = useState(false);
 
   useEffect(() => {
     // Coming here from inside the app (after sign-out): move focus to the form's title.
@@ -535,6 +610,33 @@ export default function HomePage() {
     return {};
   }
 
+  async function handleGoogle(): Promise<string | null> {
+    try {
+      await signInWithGoogle();
+      return null;
+    } catch (err) {
+      return messageOf(err);
+    }
+  }
+
+  async function handleFinishSetup({ firstName, city, addressText, subscribedMayor }: SetupDetails): Promise<SignUpResult> {
+    loginRide.begin();
+    try {
+      await updateProfile.mutateAsync({ displayName: firstName, firstName, city, addressText, subscribedMayor });
+    } catch (err) {
+      loginRide.cancel();
+      return { error: messageOf(err) };
+    }
+    void loadWelcomePage();
+    await rideInto('/welcome');
+    return {};
+  }
+
+  function handleSetupSignOut() {
+    setSetup(false);
+    void signOut();
+  }
+
   async function handleReset(email: string): Promise<string | null> {
     try {
       await resetPassword(email);
@@ -544,8 +646,20 @@ export default function HomePage() {
     }
   }
 
+  // Signed in on /signup is how Google brings people back: a profile with no city or mayor still needs step 2.
+  const onSignupSignedIn = form === 'signup' && status === 'signedIn' && !loginRide.holding && !destination;
+  const profileDone = Boolean(profile.data?.city && profile.data.subscribedMayor);
+  if (onSignupSignedIn && profile.data && !profileDone && !setup) setSetup(true);
+
+  // Supabase is still reading the session from the URL Google sent them back to, so don't flash step 1.
+  const readingGoogleReturn = !USE_MOCKS && form === 'signup' && status === 'loading' && /(access_token|code)=/.test(location.hash + location.search);
+  let googleReturn: GoogleReturn = null;
+  if (setup && status === 'signedIn') googleReturn = 'setup';
+  else if (onSignupSignedIn || readingGoogleReturn) googleReturn = profile.isError ? 'failed' : 'checking';
+
   // A session restored on page load goes straight to Today, with no ride.
-  if (status === 'signedIn' && !loginRide.holding && !destination) return <Navigate to="/" replace />;
+  const staysOnSignup = form === 'signup' && (setup || !profileDone);
+  if (status === 'signedIn' && !loginRide.holding && !destination && !staysOnSignup) return <Navigate to="/" replace />;
 
   const entrance: Entrance = { mode: play ? 'first' : 'none', start };
 
@@ -615,6 +729,7 @@ export default function HomePage() {
               headingRef={loginHeading}
               locked={riding}
               onSwitch={() => void switchTo('signup')}
+              onGoogle={handleGoogle}
               onSignIn={handleSignIn}
               onReset={handleReset}
             />
@@ -624,7 +739,12 @@ export default function HomePage() {
               headingRef={signupHeading}
               locked={riding}
               onSwitch={() => void switchTo('login')}
+              onGoogle={handleGoogle}
               onSignUp={handleSignUp}
+              googleReturn={googleReturn}
+              onRetryCheck={() => void profile.refetch()}
+              onFinishSetup={handleFinishSetup}
+              onSignOut={handleSetupSignOut}
             />
           </div>
         </main>

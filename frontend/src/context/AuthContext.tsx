@@ -25,6 +25,8 @@ interface AuthContextValue {
   status: AuthStatus;
   user: AuthUser | null;
   signIn: (email: string, password: string) => Promise<void>;
+  /** Leaves for Google and comes back to /signup signed in. Only rejects if the trip can't start. */
+  signInWithGoogle: () => Promise<void>;
   /** Resolves with needsConfirmation=true when Supabase wants the email confirmed first. */
   signUp: (details: SignUpDetails) => Promise<{ needsConfirmation: boolean }>;
   resetPassword: (email: string) => Promise<void>;
@@ -36,6 +38,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const MOCK_SESSION_KEY = 'sn-mock-session';
 const MOCK_USER_ID = '0b0c7a1e-0000-4000-8000-000000000001';
 const FRESH_USER_KEY = 'sn-mock-fresh-user';
+const MOCK_GOOGLE_EMAIL = 'google.user@example.com';
 
 function readMockUser(): AuthUser | null {
   try {
@@ -112,6 +115,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw new Error(friendlyAuthError(error.message));
   }, []);
 
+  const signInWithGoogle = useCallback(async () => {
+    if (USE_MOCKS) {
+      // Stands in for the trip to Google: a full page load back on /signup, signed in, with an empty profile.
+      await new Promise((r) => setTimeout(r, 500));
+      try {
+        localStorage.setItem(FRESH_USER_KEY, '{}');
+      } catch {
+        // ignore
+      }
+      writeMockUser({ id: MOCK_USER_ID, email: MOCK_GOOGLE_EMAIL });
+      window.location.assign('/signup');
+      return;
+    }
+    const { error } = await (await getSupabase()).auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/signup` },
+    });
+    if (error) throw new Error(friendlyAuthError(error.message));
+  }, []);
+
   const signUp = useCallback(async ({ firstName, email, password, city, addressText, subscribedMayor }: SignUpDetails) => {
     if (USE_MOCKS) {
       await new Promise((r) => setTimeout(r, 600));
@@ -161,8 +184,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [qc]);
 
   const value = useMemo(
-    () => ({ status, user, signIn, signUp, resetPassword, signOut }),
-    [status, user, signIn, signUp, resetPassword, signOut],
+    () => ({ status, user, signIn, signInWithGoogle, signUp, resetPassword, signOut }),
+    [status, user, signIn, signInWithGoogle, signUp, resetPassword, signOut],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

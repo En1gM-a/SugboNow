@@ -397,6 +397,10 @@
     opacity: 0;
     transition: opacity 150ms ease;
   }
+  .btn-secondary .btn-spin {
+    border-color: color-mix(in srgb, currentColor 25%, transparent);
+    border-top-color: currentColor;
+  }
   .btn[aria-busy="true"] .btn-label {
     opacity: 0;
   }

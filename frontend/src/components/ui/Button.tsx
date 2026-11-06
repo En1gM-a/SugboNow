@@ -38,7 +38,7 @@ export function Button({ variant = 'primary', busy = false, done = false, classN
           children
         )}
       </span>
-      {variant === 'primary' && <span className="btn-spin" aria-hidden="true" />}
+      {(variant === 'primary' || variant === 'secondary') && <span className="btn-spin" aria-hidden="true" />}
     </button>
   );
 }
