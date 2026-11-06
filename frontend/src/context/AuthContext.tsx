@@ -28,6 +28,8 @@ interface AuthContextValue {
   /** Resolves with needsConfirmation=true when Supabase wants the email confirmed first. */
   signUp: (details: SignUpDetails) => Promise<{ needsConfirmation: boolean }>;
   resetPassword: (email: string) => Promise<void>;
+  /** Sets a new password for the signed-in user; the reset email's link signs them in first. */
+  updatePassword: (password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -148,7 +150,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await new Promise((r) => setTimeout(r, 500));
       return;
     }
-    const { error } = await (await getSupabase()).auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/login` });
+    const { error } = await (await getSupabase()).auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password` });
+    if (error) throw new Error(friendlyAuthError(error.message));
+  }, []);
+
+  const updatePassword = useCallback(async (password: string) => {
+    if (USE_MOCKS) {
+      await new Promise((r) => setTimeout(r, 500));
+      return;
+    }
+    const { error } = await (await getSupabase()).auth.updateUser({ password });
     if (error) throw new Error(friendlyAuthError(error.message));
   }, []);
 
@@ -161,8 +172,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [qc]);
 
   const value = useMemo(
-    () => ({ status, user, signIn, signUp, resetPassword, signOut }),
-    [status, user, signIn, signUp, resetPassword, signOut],
+    () => ({ status, user, signIn, signUp, resetPassword, updatePassword, signOut }),
+    [status, user, signIn, signUp, resetPassword, updatePassword, signOut],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

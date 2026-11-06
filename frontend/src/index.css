@@ -2369,17 +2369,17 @@
     padding: 8px 0 12px;
     font-size: 0.9rem;
   }
-  .facts {
+  .alert-facts {
     display: grid;
     gap: 2px;
     width: 100%;
   }
-  .facts > div {
+  .alert-facts > div {
     display: grid;
     grid-template-columns: 72px minmax(0, 1fr);
     gap: 8px;
   }
-  .facts dt {
+  .alert-facts dt {
     color: var(--muted);
   }
   .alert-details .out-link {
