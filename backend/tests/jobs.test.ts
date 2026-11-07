@@ -23,10 +23,10 @@ function article(title: string, publishedAt = '2026-10-22T03:00:00Z'): NewsArtic
 }
 
 describe('job list', () => {
-  it('has six jobs with valid Manila cron schedules', () => {
+  it('has seven jobs with valid Manila cron schedules', () => {
     const jobs = buildJobs({
       alerts: alertsRepo(),
-      weather: { save: vi.fn() },
+      weather: { save: vi.fn(), saveRegionalForecast: vi.fn() },
       briefs: { generateAll: vi.fn() },
       keys: {},
       feeds: { sunstar: 'https://feed.example/s', cebuDailyNews: 'https://feed.example/c' },
@@ -38,6 +38,7 @@ describe('job list', () => {
       'ingestNews',
       'ingestSunstar',
       'ingestCebuDailyNews',
+      'ingestPagasa',
       'generateBriefs',
     ]);
     for (const job of jobs) expect(validate(job.schedule), job.name).toBe(true);
