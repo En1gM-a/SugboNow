@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Outlet, ScrollRestoration } from 'react-router-dom';
+import { Outlet, ScrollRestoration, useLocation } from 'react-router-dom';
 import { Sky } from '@/components/Sky';
 import { Toaster } from '@/components/ui/Toaster';
 import { useAuth } from '@/context/AuthContext';
@@ -32,11 +32,12 @@ function useSkyWeather(): SkyWeather {
 export function RootLayout() {
   const weather = useSkyWeather();
   const { status } = useAuth();
+  const { pathname } = useLocation();
 
-  // The ride only runs on the way in, so a signed-in visitor doesn't download it.
+  // The ride only runs on the way in, so a signed-in visitor doesn't download it, and nor does someone still on the landing page.
   useEffect(() => {
-    if (status === 'signedOut') preloadRide();
-  }, [status]);
+    if (status === 'signedOut' && pathname !== '/') preloadRide();
+  }, [status, pathname]);
 
   return (
     <>

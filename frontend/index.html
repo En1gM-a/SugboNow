@@ -28,6 +28,7 @@
           time = t >= 300 && t < 600 ? 'buntag' : t >= 600 && t < 960 ? 'udto' : t >= 960 && t < 1110 ? 'hapon' : 'gabii';
         } catch (e) {}
         d.dataset.time = time;
+        if (location.pathname === '/') d.dataset.path = 'home';
         var mode = get('sn-mode');
         if (mode !== 'light' && mode !== 'dark') {
           mode = (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) || time === 'gabii' ? 'dark' : 'light';
@@ -54,6 +55,7 @@
       .ss-brand { display: flex; align-items: center; gap: 9px; height: 44px; }
       .ss-mark { width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(180deg, #FFC233 0 52%, #2F7BE0 52% 100%); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.85); }
       .ss-card { margin: 10vh auto 0; max-width: 440px; height: 420px; border-radius: 28px; background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.28); }
+      [data-path="home"] .ss-card { display: none; }
     </style>
   </head>
   <body>

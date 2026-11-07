@@ -50,6 +50,37 @@ inside them and has a fallback.
 - **Speed rules relaxed, not dropped.** The Lighthouse targets stay. Glass, one web font and longer animations are
   now allowed, with a Lite mode for weak phones and a "Reduce animations" switch.
 
+## The landing page
+
+Signed-out visitors at `/` get a full scrolling landing page: `src/pages/LandingPage.tsx`, `src/components/landing/`
+and `src/lib/landing/`. Signed-in visitors at `/` still get Today, and `/login` and `/signup` are still what this prompt
+calls the home page. It loads as its own chunk, so people who are signed in never download it, and it calls no API and
+no outside source.
+
+This page sells the product instead of being used every day, so a few rules are different here, and only here:
+
+- **`<scrolling>`, "Nothing appears on scroll":** headings and text rise and fade as they scroll in, with CSS scroll
+  timelines. The phones in "Five tabs, five questions" stay pinned with `position: sticky` while each stretch of
+  scrolling changes the tab. There's still no scroll-jacking: the page always scrolls at its normal speed.
+- **`<motion>`, "Nothing is triggered by scrolling" and the timing limits:** the map tours the happenings by itself every
+  3.5 seconds, the Mornings rail and the bands of big type keep moving, scrolling speed feeds the wind and the type's
+  lean, and vehicles drive along the road. The sky walks through one day as you scroll, and each happening has its own.
+- **`<icons>`, "Where they move":** more live icons loop here, and the jeepney is on screen without a press.
+- **`<layout>`:** it has its own floating nav instead of the app shell, and the little phone screens use text under
+  0.75rem. They are drawings, hidden from screen readers.
+
+These still hold, and any change to this page has to keep them:
+
+- The pause button, the device's reduced-motion setting and Profile's "Reduce animations" stop everything, and reduced
+  motion also removes the pinning. Lite mode drops the blur.
+- The happenings are real events with a link to their source. Trips, times, briefs and alerts are examples, and the page
+  says so. Prefer a real, sourced event to an invented one.
+- The rail only ever heads right, it stops with a slight lift under the cursor, and every moving vehicle faces the way it's
+  going, even when you scroll back up.
+- Every class and keyframe in `landing.css` starts with `lp-`, because that file stays loaded after you leave the page.
+- The "next check" clocks copy the real schedules in `backend/src/jobs/`. If those change, update
+  `src/lib/landing/schedules.ts` and the copy on the page.
+
 Related: data shapes are in [`docs/api-contract.md`](../api-contract.md), and the design skills are described
 in [`docs/claude-code-skills.md`](../claude-code-skills.md). This is not
 [`docs/claude-handoff.md`](../claude-handoff.md), which is a tool that moves a long Claude Code session into a
@@ -520,7 +551,7 @@ The premium feel comes from consistency and care.
 </polish>
 
 <pages>
-Routes: /login and /signup (the home page), /welcome (onboarding), then the protected pages / (Today), /news, /mayor, /weather, /traffic and /profile. Signed-out users are redirected to /login. Add an AuthContext and a ProtectedRoute. Keep filters, tabs and sections in the URL (e.g. /news?area=cebu_city&alerts=1, /weather?tab=map, /traffic?view=all, /profile?section=trips) so they survive a refresh and can be shared.
+Routes: /login and /signup (the home page), /welcome (onboarding), then the protected pages / (Today), /news, /mayor, /weather, /traffic and /profile. Signed-out users are redirected to /login, except at /, which shows the landing page (see "The landing page" above this prompt). Add an AuthContext and a ProtectedRoute. Keep filters, tabs and sections in the URL (e.g. /news?area=cebu_city&alerts=1, /weather?tab=map, /traffic?view=all, /profile?section=trips) so they survive a refresh and can be shared.
 
 Each page lists its Content (everything PR #27 had, which is correct) and then how to arrange it. All copy in quotes is exact.
 
