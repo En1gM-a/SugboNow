@@ -27,7 +27,11 @@ interface WeatherApiCondition {
 interface WeatherApiHour {
   time_epoch: number;
   temp_c: number;
+  feelslike_c: number;
+  is_day: number;
   condition: WeatherApiCondition;
+  humidity: number;
+  wind_kph: number;
   chance_of_rain: number;
   precip_mm: number;
 }
@@ -82,6 +86,11 @@ export function toWeatherSnapshot(area: CebuArea, forecast: WeatherApiForecast, 
     iconUrl: iconUrl(hour.condition.icon),
     chanceOfRain: hour.chance_of_rain,
     precipMm: hour.precip_mm,
+    // So the API can stand an hour in for a stale reading (weather.service weatherAt).
+    feelsLikeC: hour.feelslike_c,
+    isDay: hour.is_day === 1,
+    humidity: hour.humidity,
+    windKph: hour.wind_kph,
   }));
   return {
     areaSlug: area.slug,

@@ -141,7 +141,7 @@ hourly by the weather job (WeatherAPI.com); readable by signed-in users.
 | `area_name`, `lat`, `lng` | | The area's name and the point polled. |
 | `observed_at` | `timestamptz` | When the provider last updated the observation. |
 | `current_conditions` | `jsonb` object | `{tempC, feelsLikeC, condition, iconUrl, isDay, humidity, windKph, precipMm, chanceOfRain}` |
-| `hourly_forecast` | `jsonb` array | Current hour plus the next 24: `[{time, tempC, condition, iconUrl, chanceOfRain, precipMm}]` |
+| `hourly_forecast` | `jsonb` array | Current hour plus the next 24: `[{time, tempC, condition, iconUrl, chanceOfRain, precipMm, feelsLikeC, isDay, humidity, windKph}]`. The last four are saved since 2026-11-07. |
 | `fetched_at` | `timestamptz` | When the job saved it. |
 
 ## public.daily_briefs

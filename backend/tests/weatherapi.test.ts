@@ -22,7 +22,11 @@ function forecast(rain: Record<number, HourOverride> = {}, alerts: WeatherApiFor
     return {
       time_epoch: dayStart + index * 3600,
       temp_c: 28,
+      feelslike_c: 31.5,
+      is_day: 1,
       condition: { text: override.condition ?? 'Partly cloudy', icon: '//cdn.weatherapi.com/weather/64x64/day/116.png' },
+      humidity: 75,
+      wind_kph: 9.4,
       chance_of_rain: override.chance ?? 10,
       precip_mm: override.precip ?? 0,
     };
@@ -65,7 +69,18 @@ describe('toWeatherSnapshot', () => {
     });
     // The current hour (11:00) plus the next 24.
     expect(snapshot.hourly).toHaveLength(25);
-    expect(snapshot.hourly[0].time).toBe('2026-10-22T03:00:00.000Z');
+    expect(snapshot.hourly[0]).toEqual({
+      time: '2026-10-22T03:00:00.000Z',
+      tempC: 28,
+      condition: 'Partly cloudy',
+      iconUrl: 'https://cdn.weatherapi.com/weather/64x64/day/116.png',
+      chanceOfRain: 10,
+      precipMm: 0,
+      feelsLikeC: 31.5,
+      isDay: true,
+      humidity: 75,
+      windKph: 9.4,
+    });
   });
 });
 

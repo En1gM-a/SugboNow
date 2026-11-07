@@ -19,6 +19,7 @@ import type { BriefProfile, BriefRepository } from "./brief.repository";
 import { computeLeaveTime, type LeaveTimeResult } from "./leaveTime.service";
 import { compareAlerts, matchAlertsToPlaces } from "./matching.service";
 import type { WeatherRepository } from "./weather.repository";
+import { weatherAt } from "./weather.service";
 
 const BRIEF_ALERT_LIMIT = 10;
 const BRIEF_TEXT_ALERT_LIMIT = 5;
@@ -172,7 +173,7 @@ export function createBriefService(deps: BriefServiceDeps) {
       .sort((a, b) => a.leaveAt.getTime() - b.leaveAt.getTime());
 
     const [snapshot, lguPost] = await Promise.all([
-      weather.get(pickWeatherArea(profile?.city, locations)),
+      weather.get(pickWeatherArea(profile?.city, locations)).then((row) => row && weatherAt(row, at)),
       profile?.subscribed_mayor ? latestLguPost(profile.subscribed_mayor) : Promise.resolve(null),
     ]);
 

@@ -144,6 +144,11 @@ export interface WeatherHour {
   iconUrl: string | null;
   chanceOfRain: number;
   precipMm: number;
+  // Saved since 2026-11-07, so older snapshots don't have them.
+  feelsLikeC?: number;
+  isDay?: boolean;
+  humidity?: number;
+  windKph?: number;
 }
 
 export interface WeatherSnapshotRow {
