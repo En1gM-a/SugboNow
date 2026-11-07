@@ -257,13 +257,14 @@ Frontend and backend teammates should never be blocked on each other.
 
 **Handoffs.** Work handed from one side to the other is written up in `docs/handoffs/`. Frontend team: start with [`docs/handoffs/frontend.md`](docs/handoffs/frontend.md). It covers what each page contains and how it's laid out, the design system, and the performance, motion and scrolling rules, and has a prompt your AI agent can follow.
 
-**Frontend without the backend (MSW mocks).**
-1. `cd frontend && npx msw init public/ --save`
-2. Fill `src/mocks/handlers.ts` with handlers that return the JSON in `src/mocks/data/`.
-3. In `main.tsx`, start the worker before rendering when `VITE_USE_MOCKS=true`.
-4. Set `VITE_USE_MOCKS=true` in `frontend/.env`.
+**Frontend without the backend (MSW mocks).** With `VITE_USE_MOCKS=true` in `frontend/.env`, the frontend runs completely on the fixtures in `src/mocks/` and fakes sign-in, so it needs no backend or Supabase project.
 
-The frontend then runs completely on fixtures. Flip the flag to `false` when the real API is ready.
+**Real sign-in and data.** Set these in `frontend/.env`, then run `npm run dev` from the repo root, which starts the backend too:
+- `VITE_USE_MOCKS=false`
+- `VITE_SUPABASE_URL`: the project URL
+- `VITE_SUPABASE_ANON_KEY`: the project's publishable key (Supabase → Project Settings → API Keys)
+
+Sign-up also depends on the Supabase Auth settings in [`docs/handoffs/signup.md`](docs/handoffs/signup.md): URL Configuration and "Confirm email".
 
 **Backend without the frontend.** Test endpoints with Postman, Bruno, or the VS Code *REST Client* extension. Set `CRON_ENABLED=false` while developing routes so jobs don't burn API quota, and fill the database on demand with one job at a time: `npm run job -- list`, then e.g. `npm run job -- ingestWeather` (inside `backend/`; real jobs write to Supabase).
 
