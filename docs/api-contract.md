@@ -303,14 +303,16 @@ Only the headline, a short snippet and the link are stored: link to `url` for th
     "chanceOfRain": 25
   },
   "hourly": [
-    { "time": "2026-10-22T12:00:00.000Z", "tempC": 28.1, "condition": "Patchy rain nearby", "iconUrl": "https://…", "chanceOfRain": 25, "precipMm": 0.02 }
+    { "time": "2026-10-22T12:00:00.000Z", "tempC": 28.1, "condition": "Patchy rain nearby", "iconUrl": "https://…", "chanceOfRain": 25, "precipMm": 0.02, "feelsLikeC": 32.6, "isDay": false, "humidity": 80, "windKph": 9.8 }
   ]
 }
 ```
 
 - `GET /api/weather` → `{ "areas": [Weather] }`, one per area that has been fetched.
 - `GET /api/weather/:area` → Weather for an area slug. `404` for an unknown slug, or before the first fetch.
-- `hourly` covers the current hour and the next 24. Updated hourly.
+- `hourly` starts at the current hour (hours already past are left out) and runs up to 24 hours ahead. Updated hourly.
+- `current` is the latest observation. Once that is more than 90 minutes old (the hourly weather job has stopped running), `current` is this hour from the saved forecast instead. `observedAt` still gives the observation's time.
+- `feelsLikeC`, `isDay`, `humidity` and `windKph` in `hourly` are missing from forecasts saved before 2026-11-07. Then `current` keeps those four values from the observation.
 
 ### GET /api/weather/pagasa
 
