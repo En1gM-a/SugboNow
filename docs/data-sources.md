@@ -14,6 +14,7 @@ provider's dashboard before relying on them.
 | SunStar RSS | Cebu stories | none | `ingestSunstar`, every 30 min | — |
 | Cebu Daily News (CDN Digital) RSS | Cebu stories from "Latest News" | none | `ingestCebuDailyNews`, every 30 min (offset 15 min) | — |
 | Official LGU Facebook pages | Mayors' and the governor's posts | none | On sign-in (`POST /api/lgu-posts/refresh`), at most every 10 min per page | — |
+| [PAGASA Visayas regional page](https://www.pagasa.dost.gov.ph/regional-forecast/visprsd) | Night and day forecast, extended outlook, heavy-rainfall warning, thunderstorm advisories and watches | none | `ingestPagasa`, every 30 min at :10 and :40 | 1 page request per run |
 
 ## TomTom
 
@@ -35,8 +36,8 @@ provider's dashboard before relying on them.
   - thunderstorms, or ≥ 6 mm total → `medium`
   - light rain → no alert
 - Official warnings passed through by WeatherAPI become `weather` alerts, once per warning.
-- PAGASA access (typhoon signals) still needs the formal request letter; until
-  then, typhoon and signal news comes in through the news sources.
+- PAGASA's API (TenDay) still needs the formal request letter. Its Visayas page is
+  read instead (below); typhoon signals still come in through the news sources.
 
 ## News: SunStar, Cebu Daily News, GNews
 
@@ -66,6 +67,19 @@ See `docs/data-model.md` (`lgu_sources`, `lgu_posts`). Pages are read logged
 out with headless Chromium. Captions that announce a disruption also become
 alerts (`facebook:<lgu>:<post id>`), placed at the city's centre; the province
 page's alerts have no single point.
+
+## PAGASA Visayas regional page
+
+- One request per run to `https://www.pagasa.dost.gov.ph/regional-forecast/visprsd`, PAGASA's public
+  Visayas page (`backend/src/integrations/pagasa.ts`). There is no key and no official API, so it reads the page.
+- The night and day forecast, the extended outlook and the heavy-rainfall warning replace the `regional_forecasts`
+  row for `visayas` (`GET /api/weather/pagasa`).
+- Thunderstorm advisories that name Cebu become `weather` alerts (`medium`), one per Metro Cebu town named and placed
+  at its centre, ending 2 hours after issue. Watches that name Cebu become one `low` alert for the province, for the
+  hours the watch states. Fingerprint `pagasa:<sha1 of heading, issue time and area>`.
+- Page times are Manila time. Content is DOST-PAGASA public information; the app credits PAGASA and links the page.
+- A page redesign shows up as a `failed` run ("No forecast or outlook found"); the last saved forecast stays.
+  `backend/tests/fixtures/pagasa-visprsd.html` is a trimmed copy from 2026-11-07 for the parser tests.
 
 ## Etiquette
 

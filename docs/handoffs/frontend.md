@@ -573,13 +573,13 @@ Each page lists its Content (everything PR #27 had, which is correct) and then h
    End of the feed: "That's the latest 10 posts · See more on Facebook ↗".
 
 7. Weather (/weather): "Will it rain where I'm going?"
-   Content: an area picker; current conditions (temperature, condition, feels like, rain chance, humidity, wind, observed time); the next 24 hours (temperature and rain chance) with a table alternative; a rain map with an hour slider (per-area temperature and rain %) with a table alternative; weather and flood alerts (GET /api/alerts?type=weather,flood); a "PAGASA forecast & advisories" panel (tonight and tomorrow, thunderstorm advisories for Cebu towns, a 5-day outlook) that is mock for now.
+   Content: an area picker; current conditions (temperature, condition, feels like, rain chance, humidity, wind, observed time); the next 24 hours (temperature and rain chance) with a table alternative; a rain map with an hour slider (per-area temperature and rain %) with a table alternative; weather and flood alerts (GET /api/alerts?type=weather,flood), which include PAGASA's thunderstorm advisories for Cebu towns; a "PAGASA forecast" panel (GET /api/weather/pagasa: tonight and tomorrow, any heavy-rainfall warning, a 5-day outlook, credited to DOST-PAGASA).
    Layout: one view at a time.
    - Top row: "Now" for the chosen area in a glass card (5 columns): the looping live icon (92px), the temperature, the condition, feels like and the advice line from Today; rain, humidity and wind as one small row with count-ups; the area picker as a compact control (a sheet on phones). Beside it (7 columns), the hour strip in a glass card: a horizontal row (scroll-snap) with a still live icon, temperature and rain %.
    - Below it, a glass card (12 columns) with tabs: 24-hour chart · Rain map · Advisories.
      - 24-hour chart: the chart and "Show as a table".
      - Rain map: the map with the hour slider; Leaflet loads when this tab first opens.
-     - Advisories: the weather and flood alerts as rows, then the PAGASA panel (marked "Sample" until the backend provides it) with the 5-day outlook.
+     - Advisories: the weather and flood alerts as rows, then the PAGASA panel with the 5-day outlook. The panel is hidden until the backend has saved a forecast, and the alerts then take the full width. With mock data it is marked "Sample".
 
 8. Traffic (/traffic): "What's in my way?"
    Content: "My commute": a trip picker, origin and destination markers with a dashed line labeled "approximate route", the leave time with reasons, and alerts on the way (GET /api/alerts?relevant=true) with their distance. "All Cebu": type and severity filters, a map with markers colored by severity and a legend, a list synced with the map, and a "busiest areas" ranking (alerts counted per areaName). Attribution: "© OpenStreetMap contributors" and "Traffic data © TomTom".

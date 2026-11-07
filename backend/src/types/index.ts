@@ -162,6 +162,37 @@ export interface WeatherSnapshotRow {
   fetched_at: string;
 }
 
+// PAGASA's regional forecast (public.regional_forecasts), as written on its page.
+export interface ForecastPeriod {
+  part: "night" | "day";
+  description: string;
+  minC: number | null;
+  maxC: number | null;
+  wind: string | null;
+  direction: string | null;
+  coastal: string | null;
+}
+
+export interface OutlookDay {
+  day: string; // "Friday"
+  minC: number | null;
+  maxC: number | null;
+  wind: string | null;
+  direction: string | null;
+  coastal: string | null;
+}
+
+export interface RegionalForecastRow {
+  region: string;
+  issued_at: string | null;
+  periods: ForecastPeriod[];
+  outlook_issued_at: string | null;
+  outlook: OutlookDay[];
+  rainfall_warning: string | null;
+  source_url: string;
+  fetched_at: string;
+}
+
 export interface DailyBriefRow {
   id: string;
   user_id: string;

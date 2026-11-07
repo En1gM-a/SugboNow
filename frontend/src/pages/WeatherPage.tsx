@@ -21,11 +21,11 @@ import { Tag } from '@/components/ui/Tag';
 import { TableDisclosure } from '@/components/weather/TableDisclosure';
 import { WeatherChart } from '@/components/weather/WeatherChart';
 import { useMediaQuery, useNow } from '@/hooks/useBrowser';
-import { useAlerts, useWeatherAll } from '@/hooks/useFeeds';
+import { useAlerts, usePagasa, useWeatherAll } from '@/hooks/useFeeds';
 import { useProfile } from '@/hooks/useProfile';
-import { PAGASA_SAMPLE } from '@/lib/mockOnly';
+import { USE_MOCKS } from '@/lib/supabaseClient';
 import { rainAdvice, weatherKind } from '@/lib/weatherKind';
-import type { Weather, WeatherHour } from '@/types/api';
+import type { ForecastPeriod, Weather, WeatherHour } from '@/types/api';
 import { cx, vars } from '@/utils/cx';
 import { ago, formatHour, formatTime } from '@/utils/format';
 
@@ -279,16 +279,67 @@ function RainMap({ areas, selected, wide, onPick }: { areas: Weather[]; selected
   );
 }
 
-const dayName = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', weekday: 'short' });
+const manilaHour = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', hourCycle: 'h23' });
 
-/** The next five days' names, starting tomorrow, for the sample outlook. */
-const nextDay = (k: number) => dayName.format(new Date(Date.now() + (k + 1) * 86_400_000));
+/** PAGASA marks its periods only "night" and "day"; the afternoon forecast's day is tomorrow. */
+function periodName(part: ForecastPeriod['part'], issuedAt: string | null): string {
+  if (part === 'night') return 'Tonight';
+  return issuedAt && Number(manilaHour.format(new Date(issuedAt))) >= 12 ? 'Tomorrow' : 'Today';
+}
+
+const degrees = (p: { minC: number | null; maxC: number | null }) => (p.minC !== null && p.maxC !== null ? `${p.minC}–${p.maxC}°` : null);
+
+/** PAGASA's Visayas forecast, as its page states it. Hidden until the backend has saved one; the alerts then take the full width. */
+function PagasaPanel() {
+  const { data: forecast } = usePagasa();
+  if (!forecast || (forecast.periods.length === 0 && forecast.outlook.length === 0)) return null;
+  return (
+    <section className="pagasa" aria-labelledby="pagasa-h">
+      <div className="card-head">
+        <h3 id="pagasa-h" className="sub-title">
+          PAGASA forecast
+        </h3>
+        {USE_MOCKS && <Tag tone="quiet">Sample</Tag>}
+      </div>
+      {forecast.periods.map((period) => (
+        <p key={period.part} className="small">
+          <b>{periodName(period.part, forecast.issuedAt)}.</b> {period.description}
+          {degrees(period) && <span className="tabular-nums"> · {degrees(period)}</span>}
+        </p>
+      ))}
+      {forecast.rainfallWarning && (
+        <p className="small">
+          <b>Heavy rainfall warning.</b> {forecast.rainfallWarning}
+        </p>
+      )}
+      {forecast.outlook.length > 0 && (
+        <ol className="outlook" aria-label={`${forecast.outlook.length}-day outlook`}>
+          {forecast.outlook.map((day) => (
+            <li key={day.day}>
+              <span className="muted small">{day.day.slice(0, 3)}</span>
+              <b className="tabular-nums small">
+                {day.maxC ?? '–'}° <span className="muted">{day.minC ?? '–'}°</span>
+              </b>
+            </li>
+          ))}
+        </ol>
+      )}
+      <p className="muted small">
+        Source:{' '}
+        <a href={forecast.sourceUrl} target="_blank" rel="noopener noreferrer">
+          DOST-PAGASA
+          <span className="sr-only"> (opens in a new tab)</span>
+        </a>
+        {forecast.issuedAt && `, issued ${formatTime(forecast.issuedAt)}`}
+      </p>
+    </section>
+  );
+}
 
 function Advisories({ wide, now }: { wide: boolean; now: number }) {
   const alerts = useAlerts({ type: ['weather', 'flood'] });
   const [selected, setSelected] = useState<string | null>(null);
   const chosen = alerts.data?.find((a) => a.id === selected);
-  const pagasa = PAGASA_SAMPLE;
 
   return (
     <div className="advisories">
@@ -326,33 +377,7 @@ function Advisories({ wide, now }: { wide: boolean; now: number }) {
           </Sheet>
         )}
       </section>
-      <section className="pagasa" aria-labelledby="pagasa-h">
-        <div className="card-head">
-          <h3 id="pagasa-h" className="sub-title">
-            PAGASA forecast and advisories
-          </h3>
-          <Tag tone="quiet">Sample</Tag>
-        </div>
-        <p className="small">
-          <b>Tonight and tomorrow.</b> {pagasa.tonight}
-        </p>
-        <p className="small">
-          <b>{pagasa.advisory.title}.</b> {pagasa.advisory.text}
-        </p>
-        <ol className="outlook" aria-label="5-day outlook">
-          {pagasa.outlook.map((day, k) => (
-            <li key={k}>
-              <span className="muted small">{nextDay(k)}</span>
-              <LiveIcon kind={day.kind} still label={day.label} />
-              <b className="tabular-nums small">
-                {day.high}° <span className="muted">{day.low}°</span>
-              </b>
-              <span className="tabular-nums small hour-rain">{day.rain}%</span>
-            </li>
-          ))}
-        </ol>
-        <p className="muted small">Sample content. Official PAGASA forecasts appear here once the backend provides them.</p>
-      </section>
+      <PagasaPanel />
     </div>
   );
 }

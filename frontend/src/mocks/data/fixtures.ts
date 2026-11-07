@@ -10,6 +10,7 @@ import type {
   Location,
   NewsArticle,
   Profile,
+  RegionalForecast,
   ScheduleEntry,
   Weather,
   WeatherHour,
@@ -436,6 +437,28 @@ function conditionFor(rain: number, isDay: boolean): [string, number] {
 function manilaHour(d: Date): number {
   return (d.getUTCHours() + 8) % 24;
 }
+
+// PAGASA's Visayas forecast, shaped like GET /api/weather/pagasa, with the values its page had on 2026-11-06.
+const longDay = (k: number) => new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', weekday: 'long' }).format(new Date(now + k * 86_400_000));
+const seas = { wind: 'Light to Moderate', direction: 'Northeast', coastal: 'Slight to Moderate' };
+const showers = 'Partly cloudy skies to at times cloudy with rainshowers or thunderstorm';
+// The latest 5 PM issue (09:00 UTC), so "night" and "day" read as tonight and tomorrow.
+const pagasaIssued = new Date(now);
+pagasaIssued.setUTCHours(9, 0, 0, 0);
+if (pagasaIssued.getTime() > now) pagasaIssued.setUTCDate(pagasaIssued.getUTCDate() - 1);
+export const pagasa: RegionalForecast = {
+  region: 'visayas',
+  issuedAt: pagasaIssued.toISOString(),
+  periods: [
+    { part: 'night', description: showers, minC: 27, maxC: 30, ...seas },
+    { part: 'day', description: showers, minC: 27, maxC: 32, ...seas },
+  ],
+  outlookIssuedAt: minutesAgo(600),
+  outlook: [32, 32, 33, 33, 33].map((maxC, k) => ({ day: longDay(k), minC: k < 2 ? 27 : 26, maxC, ...seas })),
+  rainfallWarning: null,
+  sourceUrl: 'https://www.pagasa.dost.gov.ph/regional-forecast/visprsd',
+  fetchedAt: minutesAgo(12),
+};
 
 // Rain chance for the current hour and the next 24: heavy now, easing off, then a lighter band later.
 const RAIN_CURVE = [80, 70, 55, 40, 25, 15, 12, 10, 10, 14, 20, 26, 30, 35, 38, 35, 30, 24, 18, 14, 12, 10, 10, 12, 15];

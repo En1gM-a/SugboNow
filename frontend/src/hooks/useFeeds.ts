@@ -20,6 +20,11 @@ export function useWeatherAll() {
   return useQuery({ ...queries.weatherAll(), select: (d) => d.areas });
 }
 
+/** PAGASA's Visayas forecast. A 404 (nothing saved yet) is an error, and the panel stays hidden. */
+export function usePagasa() {
+  return useQuery(queries.pagasa());
+}
+
 /** One area's weather, e.g. the user's home city. Waits until the area is known. */
 export function useWeather(area: string | null | undefined) {
   return useQuery({ ...queries.weather(area ?? ''), enabled: Boolean(area) });

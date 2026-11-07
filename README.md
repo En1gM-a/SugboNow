@@ -317,6 +317,7 @@ Quotas below were current when this README was written. Re-check each provider's
 | Local news and advisories | SunStar (RSS) | No | Local-news feed, filtered to Cebu stories |
 | Local news and advisories | Cebu Daily News / CDN Digital (RSS) | No | "Latest News" category feed, filtered to Cebu stories |
 | Class suspensions and LGU advisories | Official mayors'/governor's Facebook pages | No | Read on sign-in with headless Chromium, throttled |
+| Regional forecast, outlook, thunderstorm advisories | [PAGASA Visayas regional page](https://www.pagasa.dost.gov.ph/regional-forecast/visprsd) | No | Public page read every 30 minutes; no official API without a request letter |
 
 Details, quotas and normalization rules for each source are in [`docs/data-sources.md`](docs/data-sources.md). Cebu City reference point: `10.3157, 123.8854` (lat, lng).
 

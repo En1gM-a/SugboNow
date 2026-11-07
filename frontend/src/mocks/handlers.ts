@@ -24,6 +24,7 @@ import {
   initialSchedule,
   lguSources,
   news,
+  pagasa,
   postsFor,
   USER_ID,
   weather,
@@ -402,6 +403,12 @@ export const handlers = [
   http.get(`${API}/weather`, async () => {
     await latency();
     return HttpResponse.json({ areas: weather });
+  }),
+
+  // Before /weather/:area, which would read "pagasa" as an area slug.
+  http.get(`${API}/weather/pagasa`, async () => {
+    await latency();
+    return HttpResponse.json(pagasa);
   }),
 
   http.get(`${API}/weather/:area`, async ({ params }) => {

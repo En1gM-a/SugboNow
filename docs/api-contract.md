@@ -19,6 +19,7 @@ The frontend mirrors these shapes in `frontend/src/types/api.ts`.
 | GET | `/api/alerts/:id` | One alert |
 | GET | `/api/news` | Latest Cebu news |
 | GET | `/api/weather` | Weather for every Metro Cebu area |
+| GET | `/api/weather/pagasa` | PAGASA's Visayas forecast and outlook |
 | GET | `/api/weather/:area` | Weather for one area |
 | GET | `/api/brief/today` | Today's Cebu Daily Brief with leave times |
 | POST | `/api/lgu-posts/refresh` | Check the followed mayor's page, return latest posts |
@@ -194,14 +195,14 @@ an alert; it appears only in `/api/news`.
 | `type` | What | Typical source | Severity |
 | --- | --- | --- | --- |
 | `advisory` | Class suspensions (`high`); class advisories such as resumptions (`medium`) | Mayors' Facebook posts, news | `high`/`medium` |
-| `weather` | Typhoons, storm signals, heavy rain, thunderstorms, official warnings | WeatherAPI, news | `high`/`medium` |
+| `weather` | Typhoons, storm signals, heavy rain, thunderstorms, official warnings | WeatherAPI, PAGASA, news | `high`/`medium`; PAGASA thunderstorm watches `low` |
 | `flood` | Flooding | TomTom, news, Facebook posts | `high` |
 | `closure` | Road closures, rerouting, landslides; lane closures and road works | TomTom, news | `high` (closures) to `low` |
 | `traffic` | Congestion, accidents, traffic advisories | TomTom, news | by delay: `high`/`medium`/`low` |
 | `power` | Brownouts, power interruptions | News, Facebook posts | `low` |
 | `water` | Water interruptions | News, Facebook posts | `low` |
 
-`source` is one of `tomtom`, `weatherapi`, `facebook`, `sunstar`, `cebudailynews`, `gnews`, `manual`.
+`source` is one of `tomtom`, `weatherapi`, `pagasa`, `facebook`, `sunstar`, `cebudailynews`, `gnews`, `manual`.
 
 ```json
 {
@@ -312,6 +313,35 @@ Only the headline, a short snippet and the link are stored: link to `url` for th
 - `hourly` starts at the current hour (hours already past are left out) and runs up to 24 hours ahead. Updated hourly.
 - `current` is the latest observation. Once that is more than 90 minutes old (the hourly weather job has stopped running), `current` is this hour from the saved forecast instead. `observedAt` still gives the observation's time.
 - `feelsLikeC`, `isDay`, `humidity` and `windKph` in `hourly` are missing from forecasts saved before 2026-11-07. Then `current` keeps those four values from the observation.
+
+### GET /api/weather/pagasa
+
+PAGASA's forecast for the Visayas, as its regional page states it, for the Weather page's PAGASA panel.
+Cebu's thunderstorm advisories and watches from the same page come as `weather` alerts (`source: "pagasa"`).
+`404` before the first fetch. Updated every 30 minutes.
+
+```json
+{
+  "region": "visayas",
+  "issuedAt": "2026-11-06T09:00:00.000Z",
+  "periods": [
+    { "part": "night", "description": "Partly cloudy skies to at times cloudy with rainshowers or thunderstorm", "minC": 27, "maxC": 30, "wind": "Light to Moderate", "direction": "Northeast", "coastal": "Slight to Moderate" },
+    { "part": "day", "description": "Partly cloudy skies to at times cloudy with rainshowers or thunderstorm", "minC": 27, "maxC": 32, "wind": "Light to Moderate", "direction": "Northeast", "coastal": "Slight to Moderate" }
+  ],
+  "outlookIssuedAt": "2026-11-06T01:00:00.000Z",
+  "outlook": [
+    { "day": "Friday", "minC": 27, "maxC": 32, "wind": "Light to Moderate", "direction": "Northeast", "coastal": "Slight to Moderate" }
+  ],
+  "rainfallWarning": null,
+  "sourceUrl": "https://www.pagasa.dost.gov.ph/regional-forecast/visprsd",
+  "fetchedAt": "2026-11-06T18:10:02.000Z"
+}
+```
+
+- `periods` are in the page's order. `part` is `night` or `day`; which night and day follows from `issuedAt`.
+- `outlook` is usually 5 days, starting on the day it was issued.
+- `rainfallWarning` is PAGASA's heavy-rainfall warning text, or `null` when none is issued.
+- Any temperature or condition PAGASA leaves out is `null`. Show "Source: DOST-PAGASA" with a link to `sourceUrl`.
 
 ## GET /api/brief/today
 
@@ -456,6 +486,7 @@ database; the API only reads it.
 | --- | --- |
 | Traffic alerts (TomTom) | Every 15 minutes, 05:00–22:45 |
 | Weather and weather alerts (WeatherAPI) | Hourly at :05 |
+| PAGASA Visayas forecast and Cebu thunderstorm alerts | Every 30 minutes (:10, :40) |
 | SunStar / Cebu Daily News stories | Every 30 minutes |
 | GNews stories | Every 3 hours |
 | Daily briefs | 05:30 (and on first open) |

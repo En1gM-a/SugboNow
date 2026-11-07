@@ -3431,6 +3431,10 @@
     grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
     align-items: start;
   }
+  /* Without the PAGASA panel (real data), the alerts take the full width. */
+  .advisories > :only-child {
+    grid-column: 1 / -1;
+  }
   .span-12 {
     grid-column: span 12;
   }

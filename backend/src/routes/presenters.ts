@@ -10,6 +10,7 @@ import type {
   LocationRef,
   LocationRow,
   ProfileRow,
+  RegionalForecastRow,
   ScheduleRow,
   WeatherSnapshotRow,
 } from "../types";
@@ -121,6 +122,19 @@ export function presentWeather(row: WeatherSnapshotRow) {
     fetchedAt: row.fetched_at,
     current: row.current_conditions,
     hourly: row.hourly_forecast,
+  };
+}
+
+export function presentRegionalForecast(row: RegionalForecastRow) {
+  return {
+    region: row.region,
+    issuedAt: row.issued_at,
+    periods: row.periods,
+    outlookIssuedAt: row.outlook_issued_at,
+    outlook: row.outlook,
+    rainfallWarning: row.rainfall_warning,
+    sourceUrl: row.source_url,
+    fetchedAt: row.fetched_at,
   };
 }
 

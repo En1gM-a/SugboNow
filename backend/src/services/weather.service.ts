@@ -2,7 +2,7 @@
 // by the weather job.
 
 import { getArea } from "../config/areas";
-import type { WeatherSnapshotRow } from "../types";
+import type { RegionalForecastRow, WeatherSnapshotRow } from "../types";
 import { notFound } from "../utils/errors";
 import type { WeatherRepository } from "./weather.repository";
 
@@ -30,6 +30,12 @@ export function createWeatherService(weather: WeatherRepository) {
     list(): Promise<WeatherSnapshotRow[]> {
       const now = new Date();
       return weather.list().then((rows) => rows.map((row) => weatherAt(row, now)));
+    },
+
+    async pagasa(): Promise<RegionalForecastRow> {
+      const forecast = await weather.getRegionalForecast("visayas");
+      if (!forecast) throw notFound("No PAGASA forecast saved yet.");
+      return forecast;
     },
 
     async get(areaSlug: string): Promise<WeatherSnapshotRow> {
