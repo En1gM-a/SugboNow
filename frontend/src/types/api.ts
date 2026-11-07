@@ -127,7 +127,7 @@ export interface ScheduleResponse {
 
 export type AlertType = 'advisory' | 'weather' | 'flood' | 'closure' | 'traffic' | 'power' | 'water';
 export type Severity = 'low' | 'medium' | 'high';
-export type AlertSource = 'tomtom' | 'weatherapi' | 'facebook' | 'sunstar' | 'cebudailynews' | 'gnews' | 'manual';
+export type AlertSource = 'tomtom' | 'weatherapi' | 'pagasa' | 'facebook' | 'sunstar' | 'cebudailynews' | 'gnews' | 'manual';
 
 export interface NearPlace {
   id: string;
@@ -220,6 +220,38 @@ export interface Weather {
 
 export interface WeatherAllResponse {
   areas: Weather[];
+}
+
+// PAGASA's Visayas forecast (GET /api/weather/pagasa), as its page states it.
+
+export interface ForecastPeriod {
+  part: 'night' | 'day';
+  description: string;
+  minC: number | null;
+  maxC: number | null;
+  wind: string | null;
+  direction: string | null;
+  coastal: string | null;
+}
+
+export interface OutlookDay {
+  day: string;
+  minC: number | null;
+  maxC: number | null;
+  wind: string | null;
+  direction: string | null;
+  coastal: string | null;
+}
+
+export interface RegionalForecast {
+  region: string;
+  issuedAt: string | null;
+  periods: ForecastPeriod[];
+  outlookIssuedAt: string | null;
+  outlook: OutlookDay[];
+  rainfallWarning: string | null;
+  sourceUrl: string;
+  fetchedAt: string;
 }
 
 // Daily brief

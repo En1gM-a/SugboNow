@@ -23,6 +23,7 @@ const SEVERITY: Record<Severity, string> = { high: 'High', medium: 'Medium', low
 const SOURCE: Record<AlertSource, string> = {
   tomtom: 'TomTom',
   weatherapi: 'WeatherAPI',
+  pagasa: 'PAGASA',
   facebook: 'Facebook',
   sunstar: 'SunStar',
   cebudailynews: 'Cebu Daily News',
