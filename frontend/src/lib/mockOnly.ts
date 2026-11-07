@@ -14,7 +14,7 @@ export const THIS_WEEK = { onTime: 4, total: 5, note: 'One late on Tuesday, in t
 
 /**
  * The Weather page's "PAGASA forecast and advisories" panel. PAGASA needs a formal request letter for API access, so
- * until the backend provides it, the panel shows this, marked "Sample" (handoff <pages>, page 7).
+ * until the backend provides it, the panel shows this only with VITE_USE_MOCKS=true, marked "Sample" (handoff <pages>, page 7).
  */
 export const PAGASA_SAMPLE: {
   tonight: string;

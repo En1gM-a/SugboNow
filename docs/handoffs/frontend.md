@@ -579,7 +579,7 @@ Each page lists its Content (everything PR #27 had, which is correct) and then h
    - Below it, a glass card (12 columns) with tabs: 24-hour chart · Rain map · Advisories.
      - 24-hour chart: the chart and "Show as a table".
      - Rain map: the map with the hour slider; Leaflet loads when this tab first opens.
-     - Advisories: the weather and flood alerts as rows, then the PAGASA panel (marked "Sample" until the backend provides it) with the 5-day outlook.
+     - Advisories: the weather and flood alerts as rows, then the PAGASA panel with the 5-day outlook. Until the backend provides PAGASA data, the panel shows only with mock data (`VITE_USE_MOCKS=true`), marked "Sample", and the alerts take the full width without it.
 
 8. Traffic (/traffic): "What's in my way?"
    Content: "My commute": a trip picker, origin and destination markers with a dashed line labeled "approximate route", the leave time with reasons, and alerts on the way (GET /api/alerts?relevant=true) with their distance. "All Cebu": type and severity filters, a map with markers colored by severity and a legend, a list synced with the map, and a "busiest areas" ranking (alerts counted per areaName). Attribution: "© OpenStreetMap contributors" and "Traffic data © TomTom".

@@ -24,6 +24,7 @@ import { useMediaQuery, useNow } from '@/hooks/useBrowser';
 import { useAlerts, useWeatherAll } from '@/hooks/useFeeds';
 import { useProfile } from '@/hooks/useProfile';
 import { PAGASA_SAMPLE } from '@/lib/mockOnly';
+import { USE_MOCKS } from '@/lib/supabaseClient';
 import { rainAdvice, weatherKind } from '@/lib/weatherKind';
 import type { Weather, WeatherHour } from '@/types/api';
 import { cx, vars } from '@/utils/cx';
@@ -326,33 +327,36 @@ function Advisories({ wide, now }: { wide: boolean; now: number }) {
           </Sheet>
         )}
       </section>
-      <section className="pagasa" aria-labelledby="pagasa-h">
-        <div className="card-head">
-          <h3 id="pagasa-h" className="sub-title">
-            PAGASA forecast and advisories
-          </h3>
-          <Tag tone="quiet">Sample</Tag>
-        </div>
-        <p className="small">
-          <b>Tonight and tomorrow.</b> {pagasa.tonight}
-        </p>
-        <p className="small">
-          <b>{pagasa.advisory.title}.</b> {pagasa.advisory.text}
-        </p>
-        <ol className="outlook" aria-label="5-day outlook">
-          {pagasa.outlook.map((day, k) => (
-            <li key={k}>
-              <span className="muted small">{nextDay(k)}</span>
-              <LiveIcon kind={day.kind} still label={day.label} />
-              <b className="tabular-nums small">
-                {day.high}° <span className="muted">{day.low}°</span>
-              </b>
-              <span className="tabular-nums small hour-rain">{day.rain}%</span>
-            </li>
-          ))}
-        </ol>
-        <p className="muted small">Sample content. Official PAGASA forecasts appear here once the backend provides them.</p>
-      </section>
+      {/* Made-up content, so real users never see it: a fake storm warning could be acted on. */}
+      {USE_MOCKS && (
+        <section className="pagasa" aria-labelledby="pagasa-h">
+          <div className="card-head">
+            <h3 id="pagasa-h" className="sub-title">
+              PAGASA forecast and advisories
+            </h3>
+            <Tag tone="quiet">Sample</Tag>
+          </div>
+          <p className="small">
+            <b>Tonight and tomorrow.</b> {pagasa.tonight}
+          </p>
+          <p className="small">
+            <b>{pagasa.advisory.title}.</b> {pagasa.advisory.text}
+          </p>
+          <ol className="outlook" aria-label="5-day outlook">
+            {pagasa.outlook.map((day, k) => (
+              <li key={k}>
+                <span className="muted small">{nextDay(k)}</span>
+                <LiveIcon kind={day.kind} still label={day.label} />
+                <b className="tabular-nums small">
+                  {day.high}° <span className="muted">{day.low}°</span>
+                </b>
+                <span className="tabular-nums small hour-rain">{day.rain}%</span>
+              </li>
+            ))}
+          </ol>
+          <p className="muted small">Sample content. Official PAGASA forecasts appear here once the backend provides them.</p>
+        </section>
+      )}
     </div>
   );
 }
