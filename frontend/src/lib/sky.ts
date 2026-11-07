@@ -4,7 +4,7 @@
 
 import type { TimeName } from './time';
 
-export type SkyWeather = 'clear' | 'cloudy' | 'rain' | 'storm';
+export type SkyWeather = 'clear' | 'cloudy' | 'rain' | 'storm' | 'haze';
 
 type RGB = [number, number, number];
 type Stops = [string, string, string];
@@ -23,12 +23,14 @@ const BLEND: Record<Exclude<SkyWeather, 'clear'>, [Stops, number]> = {
   cloudy: [['#5A7090', '#8EA3BE', '#C9D5E3'], 0.35],
   rain: [['#334155', '#4B5A6E', '#6E7E92'], 0.6],
   storm: [['#151B26', '#232D3B', '#36424F'], 0.82],
+  haze: [['#6E6252', '#A8947A', '#DCC39A'], 0.62],
 };
-const WEATHER: Record<SkyWeather, { clouds: number; rain: number; storm: number; sunVis: number }> = {
-  clear: { clouds: 3, rain: 0, storm: 0, sunVis: 1 },
-  cloudy: { clouds: 9, rain: 0, storm: 0, sunVis: 0.45 },
-  rain: { clouds: 10, rain: 0.65, storm: 0, sunVis: 0.12 },
-  storm: { clouds: 12, rain: 1, storm: 1, sunVis: 0.12 },
+const WEATHER: Record<SkyWeather, { clouds: number; rain: number; storm: number; sunVis: number; haze: number }> = {
+  clear: { clouds: 3, rain: 0, storm: 0, sunVis: 1, haze: 0 },
+  cloudy: { clouds: 9, rain: 0, storm: 0, sunVis: 0.45, haze: 0 },
+  rain: { clouds: 10, rain: 0.65, storm: 0, sunVis: 0.12, haze: 0 },
+  storm: { clouds: 12, rain: 1, storm: 1, sunVis: 0.12, haze: 0 },
+  haze: { clouds: 2, rain: 0, storm: 0, sunVis: 0.75, haze: 0.8 },
 };
 // Where the sun (or the moon at gabii) sits, as a fraction of the width and height.
 const SUN: Record<TimeName, [number, number]> = { buntag: [0.18, 0.34], udto: [0.64, 0.14], hapon: [0.82, 0.3], gabii: [0.8, 0.16] };
@@ -41,16 +43,23 @@ interface SkyState {
   night: number;
   sun: [number, number];
   sunVis: number;
+  haze: number;
 }
+/** Overrides for one weather's numbers, for a sky that moves between weathers (a landing page scene's dial). */
+export type SkyMix = Partial<Pick<SkyState, 'clouds' | 'rain' | 'storm' | 'sunVis' | 'haze'>>;
 interface Star { x: number; y: number; r: number; ph: number; sp: number }
 interface Cloud { x: number; y: number; s: number; v: number; a: number; i: number }
 interface Drop { x: number; y: number; l: number; v: number }
 interface Bead { x: number; y: number; r: number; v: number; stick: number }
 
 export interface SkyHandle {
-  setTarget(time: TimeName, weather: SkyWeather): void;
+  setTarget(time: TimeName, weather: SkyWeather, mix?: SkyMix): void;
   setLite(on: boolean): void;
   setStill(on: boolean): void;
+  /** A gust that pushes the clouds along and dies away: `speed` is in px per ms, such as how fast the page is scrolling. */
+  setWind(speed: number): void;
+  /** Where the pointer is, from -0.5 to 0.5 across the screen. The clouds lean away from it a little. */
+  setPointer(x: number, y: number): void;
   destroy(): void;
 }
 
@@ -66,7 +75,13 @@ function stateFor(time: TimeName, weather: SkyWeather): SkyState {
     cols = cols.map((col, i) => col.map((v, j) => Math.round(v + (hex(to[i])[j] - v) * k)) as RGB);
   }
   const w = WEATHER[weather];
-  return { cols, clouds: w.clouds, rain: w.rain, storm: w.storm, night: time === 'gabii' ? 1 : 0, sun: SUN[time], sunVis: w.sunVis };
+  return { cols, clouds: w.clouds, rain: w.rain, storm: w.storm, night: time === 'gabii' ? 1 : 0, sun: SUN[time], sunVis: w.sunVis, haze: w.haze };
+}
+
+/** A sky as a CSS gradient, for small surfaces that show the same sky, like the landing page's phone screens. */
+export function skyGradient(time: TimeName, weather: SkyWeather): string {
+  const [top, middle, bottom] = stateFor(time, weather).cols.map((c) => `rgb(${c.join(',')})`);
+  return `linear-gradient(180deg, ${top} 0%, ${middle} 55%, ${bottom} 100%)`;
 }
 
 /**
@@ -75,7 +90,7 @@ function stateFor(time: TimeName, weather: SkyWeather): SkyState {
  */
 export function createSky(canvas: HTMLCanvasElement, onTone: (tone: 'dark' | 'light', top: string) => void): SkyHandle {
   const ctx = canvas.getContext('2d');
-  if (!ctx) return { setTarget() {}, setLite() {}, setStill() {}, destroy() {} };
+  if (!ctx) return { setTarget() {}, setLite() {}, setStill() {}, setWind() {}, setPointer() {}, destroy() {} };
 
   let width = 0;
   let height = 0;
@@ -93,11 +108,16 @@ export function createSky(canvas: HTMLCanvasElement, onTone: (tone: 'dark' | 'li
   let flash = 0;
   let bolt: Array<[number, number]> | null = null;
   let nextFlash = 0;
+  let gust = 0;
+  let leanX = 0;
+  let leanY = 0;
+  let pointerX = 0;
+  let pointerY = 0;
 
   // One soft cloud, drawn once and stamped at different sizes.
   const sprite = document.createElement('canvas');
   sprite.width = 256;
-  sprite.height = 128;
+  sprite.height = 150;
   const s = sprite.getContext('2d');
   if (s) {
     for (const [x, y, r] of [[70, 78, 46], [118, 60, 56], [170, 76, 44], [128, 88, 50], [92, 92, 38], [196, 92, 30]]) {
@@ -142,7 +162,13 @@ export function createSky(canvas: HTMLCanvasElement, onTone: (tone: 'dark' | 'li
     cur.storm = lerp(cur.storm, target.storm, k);
     cur.night = lerp(cur.night, target.night, k);
     cur.sunVis = lerp(cur.sunVis, target.sunVis, k);
+    cur.haze = lerp(cur.haze, target.haze, k);
     cur.sun = [lerp(cur.sun[0], target.sun[0], k), lerp(cur.sun[1], target.sun[1], k)];
+    if (dt) {
+      leanX = lerp(leanX, pointerX, 1 - Math.exp(-dt * 2.4));
+      leanY = lerp(leanY, pointerY, 1 - Math.exp(-dt * 2.4));
+      gust *= Math.exp(-dt * 2.2);
+    }
 
     const g = c.createLinearGradient(0, 0, 0, height);
     g.addColorStop(0, `rgb(${cur.cols[0].map(Math.round)})`);
@@ -189,13 +215,13 @@ export function createSky(canvas: HTMLCanvasElement, onTone: (tone: 'dark' | 'li
     const grey = Math.min(1, cur.rain * 0.9 + cur.storm * 0.2);
     for (const cl of clouds) {
       if (cl.i >= visible + 0.5) continue;
-      cl.x += cl.v * dt * (1 + cur.storm);
+      cl.x += (cl.v + gust) * dt * (1 + cur.storm);
       if (cl.x > width + 60) {
         cl.x = -280 * cl.s;
         cl.y = rnd(height * 0.04, height * 0.5);
       }
       c.globalAlpha = cl.a * Math.min(1, visible - cl.i + 0.5) * (cur.night > 0.5 ? 0.35 : 1) * (1 - grey * 0.35);
-      c.drawImage(sprite, cl.x, cl.y, 256 * cl.s, 128 * cl.s);
+      c.drawImage(sprite, cl.x - leanX * 46 * cl.s, cl.y - leanY * 18 * cl.s, 256 * cl.s, 150 * cl.s);
     }
     c.globalAlpha = 1;
     if (grey > 0.05) {
@@ -243,6 +269,15 @@ export function createSky(canvas: HTMLCanvasElement, onTone: (tone: 'dark' | 'li
         c.fill();
       }
       c.globalAlpha = 1;
+    }
+
+    // Haze: a warm veil, thicker toward the horizon.
+    if (cur.haze > 0.01) {
+      const veil = c.createLinearGradient(0, 0, 0, height);
+      veil.addColorStop(0, `rgba(170,146,118,${0.42 * cur.haze})`);
+      veil.addColorStop(1, `rgba(226,196,150,${0.82 * cur.haze})`);
+      c.fillStyle = veil;
+      c.fillRect(0, 0, width, height);
     }
 
     // Lightning: one flash and one bolt at most every 4.2–8.2 s, never brighter than 28%, for people sensitive to flashing.
@@ -309,8 +344,16 @@ export function createSky(canvas: HTMLCanvasElement, onTone: (tone: 'dark' | 'li
   resize();
 
   return {
-    setTarget(time, weather) {
+    setWind(speed) {
+      gust = Math.max(gust, Math.min(320, speed * 120));
+    },
+    setPointer(x, y) {
+      pointerX = x;
+      pointerY = y;
+    },
+    setTarget(time, weather, mix) {
       target = stateFor(time, weather);
+      if (mix) Object.assign(target, mix);
       if (!cur || still) cur = clone(target);
       report();
       draw(0, performance.now());

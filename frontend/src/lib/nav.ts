@@ -17,6 +17,7 @@ export function activeTab(pathname: string): number {
   return TABS.findIndex((t) => (t.to === '/' ? pathname === '/' : pathname === t.to || pathname.startsWith(`${t.to}/`)));
 }
 
+export const loadLandingPage = () => import('@/pages/LandingPage');
 export const loadWelcomePage = () => import('@/pages/WelcomePage');
 export const loadNewsPage = () => import('@/pages/NewsPage');
 export const loadMayorPage = () => import('@/pages/MayorPage');

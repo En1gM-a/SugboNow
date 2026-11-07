@@ -5,7 +5,7 @@
 import * as m from 'motion/react-m';
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react';
 import { flushSync } from 'react-dom';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Field, PasswordField, SelectField } from '@/components/auth/Field';
 import { CountUp } from '@/components/CountUp';
 import { GoogleLogo } from '@/components/icons/GoogleLogo';
@@ -668,7 +668,9 @@ export default function HomePage() {
       <div className="home" data-play={play ? '' : undefined}>
         <div className="home-shade" aria-hidden="true" />
         <header className="home-top">
-          <Logo onSky />
+          <Link to="/" aria-label="SugboNow home">
+            <Logo onSky />
+          </Link>
           <ThemeSwitch onSky />
         </header>
         <main id="main" className="home-grid" tabIndex={-1}>
