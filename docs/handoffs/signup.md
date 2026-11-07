@@ -214,8 +214,8 @@ With `VITE_USE_MOCKS=true`:
 
 Once against the real project, after Part 1:
 
-- [ ] A real sign-up either shows "check your email" and the link opens `/welcome` signed in, or goes straight to `/welcome` if "Confirm email" is off.
-- [ ] This query shows what was typed:
+- [x] A real sign-up either shows "check your email" and the link opens `/welcome` signed in, or goes straight to `/welcome` if "Confirm email" is off. Checked on 2026-11-07, with "Confirm email" off.
+- [x] This query shows what was typed:
 
 ```sql
 select first_name, display_name, city, address_text, subscribed_mayor
