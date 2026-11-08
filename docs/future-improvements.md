@@ -135,3 +135,21 @@ The code references were checked on 2026-11-06 against `main`, after #49 landed.
 - **Either way, a clearer route line:** a solid line with a dark or white outline under it stands out on light and dark maps. This matters more once the route follows the roads (item 7), because it will sit on top of the road it follows.
 
 **Settle first:** whether the map stays light or gets a real dark map, and whether all three maps follow the same choice.
+
+## 9. The bell shows what's new instead of leaving the page
+
+**Asked for:** tapping the notification bell jumps to the Traffic page. Instead, open a small pop-up that says what each new alert is about.
+
+**Today:**
+- **What tapping does:** `Bell` in `frontend/src/components/layout/Bell.tsx` marks every alert as seen and goes to `/traffic`. The frontend spec asks for exactly that ("Tapping it opens /traffic and marks everything as seen", under "The bell" in `docs/handoffs/frontend.md`), so the spec changes with the code.
+- **What the badge counts:** unread alerts, meaning alerts near the user's places (`GET /api/alerts?relevant=true`) whose ids aren't in the seen list saved in the browser (`useUnreadAlerts`).
+
+**Suggested:**
+- **The pop-up:** tapping the bell opens a pop-up under it (a sheet from the bottom on phones). It lists the unread alerts, newest first: the type's icon, the title, the area and how long ago ("Flooding in Talisay · 20 min ago").
+- **Going further:** tapping an alert opens it on the Traffic map. A "See all on Traffic" link at the bottom keeps today's route to the full list.
+- **When they count as seen:** the alerts stay in the list while it's open and count as seen once it closes, so the badge doesn't empty before the list has been read.
+- **Empty:** "No new alerts near your places."
+- **Keyboard and screen readers:** the bell says whether the pop-up is open. Esc or a tap outside closes it, and focus goes back to the bell.
+- **No new API:** the bell already fetches these alerts.
+
+**Settle first:** how many alerts the pop-up shows before "See all" (for example the 5 newest), and whether tapping one goes to the Traffic map or shows its details right in the pop-up.
