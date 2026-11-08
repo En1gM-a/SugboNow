@@ -120,3 +120,18 @@ The code references were checked on 2026-11-06 against `main`, after #49 landed.
   - **Ride time:** TomTom plans driving routes, so for someone taking UDOTCO the time is the time on the road, not counting the wait for the ride.
 - **Leave time:** with real routes, the suggested leave time can use the live travel time instead of the fixed base time plus buffers (README, Core Logic 2).
 - **Landing page:** its sample map also says "Approximate route · Home → School" (`frontend/src/components/landing/AppTabs.tsx`). It needs new wording once this ships.
+
+## 8. A clear map in dark mode
+
+**Asked for:** in dark mode, the route on the map is hard to see. Either keep the map light, or make the dark map clearer.
+
+**Today:**
+- **The dark map:** there's no real dark map. One CSS rule flips the normal light map tiles in dark mode (`filter: invert(1) hue-rotate(180deg) brightness(0.9)` on `.leaflet-tile-pane`, in `frontend/src/index.css`). It applies to all three maps: Traffic, Weather's rain map, and the pin picker.
+- **The route:** in dark mode, the route turns mango (`#FFC233`, in `AlertsMap` in `frontend/src/components/map/maps.tsx`). On the flipped map it competes with the roads around it.
+
+**Options:**
+- **Keep the map light (simplest):** delete that CSS rule, so the map stays light while the page around it is dark. To cut the glare at night, it could be dimmed a little (`brightness(0.85)`) instead of flipped.
+- **A real dark map:** use tiles drawn dark, such as CARTO's "Dark Matter", instead of flipping light ones. That's a different tile address and credit in dark mode. Check the provider's current free-use terms first: the project has no budget and no card.
+- **Either way, a clearer route line:** a solid line with a dark or white outline under it stands out on light and dark maps. This matters more once the route follows the roads (item 7), because it will sit on top of the road it follows.
+
+**Settle first:** whether the map stays light or gets a real dark map, and whether all three maps follow the same choice.
