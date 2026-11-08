@@ -1,0 +1,68 @@
+name: Scheduled jobs
+
+# Runs the backend's jobs that fetch outside APIs and feeds (backend/src/jobs/)
+# and write to Supabase. GitHub's cron is in UTC and Manila is UTC+8, so each
+# line keeps that job's Manila schedule. GitHub can start a run a few minutes
+# late, and only runs schedules from the default branch.
+on:
+  schedule:
+    - cron: "*/15 0-14,21-23 * * *" # ingestTraffic: every 15 min, 05:00–22:45 Manila
+    - cron: "5 * * * *" # ingestWeather: hourly at :05
+    - cron: "20 1,4,7,10,13,16,19,22 * * *" # ingestNews: every 3 hours at :20 Manila
+    - cron: "0,30 * * * *" # ingestSunstar
+    - cron: "15,45 * * * *" # ingestCebuDailyNews
+    - cron: "10,40 * * * *" # ingestPagasa
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Job to run now
+        type: choice
+        options: [ingestTraffic, ingestWeather, ingestNews, ingestSunstar, ingestCebuDailyNews, ingestPagasa]
+
+permissions:
+  contents: read
+
+# Like the server's scheduler (noOverlap): a job never runs twice at once.
+concurrency:
+  group: jobs-${{ github.event.schedule || inputs.job }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      TOMTOM_API_KEY: ${{ secrets.TOMTOM_API_KEY }}
+      GNEWS_API_KEY: ${{ secrets.GNEWS_API_KEY }}
+      WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
+      TZ: Asia/Manila
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - name: Run the job
+        env:
+          SCHEDULE: ${{ github.event.schedule }}
+          CHOSEN: ${{ inputs.job }}
+        run: |
+          case "$SCHEDULE" in
+            "*/15 0-14,21-23 * * *") job=ingestTraffic ;;
+            "5 * * * *") job=ingestWeather ;;
+            "20 1,4,7,10,13,16,19,22 * * *") job=ingestNews ;;
+            "0,30 * * * *") job=ingestSunstar ;;
+            "15,45 * * * *") job=ingestCebuDailyNews ;;
+            "10,40 * * * *") job=ingestPagasa ;;
+            "") job="$CHOSEN" ;;
+            *) echo "::error::No job for schedule '$SCHEDULE'"; exit 1 ;;
+          esac
+          npm run job -- "$job"

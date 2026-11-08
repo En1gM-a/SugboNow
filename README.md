@@ -19,7 +19,7 @@ This repo is a **monorepo with two fully independent apps**: `frontend/` and `ba
 | Maps | Leaflet (`react-leaflet`) | TomTom traffic overlay optional |
 | Backend | Node.js 20+ / Express / TypeScript | CommonJS build, `tsx` for dev |
 | Validation | Zod | Request bodies and env vars |
-| Scheduled jobs | node-cron | Timezone `Asia/Manila` |
+| Scheduled jobs | GitHub Actions | `.github/workflows/jobs.yml`; node-cron in the server is the fallback (`CRON_ENABLED`) |
 | Scraping | cheerio | SunStar Cebu |
 | Database + Auth | Supabase (Postgres, Auth, RLS) | |
 | AI brief | LLM provider TBD | Isolated behind `services/ai.service.ts` |
@@ -298,7 +298,7 @@ Sign-up also depends on the Supabase Auth settings in [`docs/handoffs/signup.md`
 | `AI_API_KEY` | Key for the LLM provider used for briefs (not chosen yet; briefs are rule-based meanwhile) |
 | `SUNSTAR_RSS_URL` | SunStar feed (default: the local-news feed, filtered to Cebu) |
 | `CDN_RSS_URL` | Cebu Daily News feed (default: the Latest News category feed) |
-| `CRON_ENABLED` | `true` to run scheduled jobs |
+| `CRON_ENABLED` | `true` to run scheduled jobs inside the server. Keep it `false` while GitHub Actions runs them, or every job runs twice |
 | `FB_SCRAPE_ENABLED` | `false` turns off the sign-in Facebook check |
 | `FB_REFRESH_INTERVAL_MINUTES` | Minimum minutes between Facebook checks of one page (default `10`) |
 | `TZ` | `Asia/Manila` |
@@ -331,7 +331,7 @@ Details, quotas and normalization rules for each source are in [`docs/data-sourc
 
 ## Scheduled Jobs
 
-All schedules use `timezone: 'Asia/Manila'`.
+All times are Manila time (`Asia/Manila`).
 
 | Job | Schedule | Quota check |
 | --- | --- | --- |
@@ -340,9 +340,12 @@ All schedules use `timezone: 'Asia/Manila'`.
 | `ingestNews` | Every 3 hours at :20 | 3 queries, so 24 calls/day, under 100 |
 | `ingestSunstar` | Every 30 min | Be polite, cache aggressively |
 | `ingestCebuDailyNews` | Every 30 min (offset 15 min) | Be polite, cache aggressively |
-| `generateBriefs` | Daily, 05:30 | One brief per user with a schedule that day |
+| `ingestPagasa` | Every 30 min (:10, :40) | Public page, no key |
+| `generateBriefs` | Daily, 05:30, only with `CRON_ENABLED=true` | One brief per user with a schedule that day. Otherwise each brief is written the first time its user opens it that day |
 
-Every job writes normalized rows into `alerts` with a unique `fingerprint` so re-runs never create duplicates; the weather job also replaces each area's row in `weather_snapshots`. Jobs run only when `CRON_ENABLED=true`; `npm run job -- <name>` (inside `backend/`) runs one immediately.
+Every job writes normalized rows into `alerts` with a unique `fingerprint` so re-runs never create duplicates; the weather job also replaces each area's row in `weather_snapshots`. `npm run job -- <name>` (inside `backend/`) runs one immediately.
+
+**Where they run:** GitHub Actions runs the jobs that fetch outside APIs and feeds (all but `generateBriefs`) on these schedules (`.github/workflows/jobs.yml`), so no server has to stay on. GitHub's cron is in UTC, so the workflow's times are shifted 8 hours. Runs can start a few minutes late, and GitHub pauses scheduled workflows after 60 days without activity in the repo. Each job is also in the Actions tab under **Scheduled jobs → Run workflow**, to run one by hand. A repo admin adds these repository secrets (Settings → Secrets and variables → Actions): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `WEATHER_API_KEY`, `TOMTOM_API_KEY`, `GNEWS_API_KEY`. A job whose key is missing is skipped. The server's own scheduler (`CRON_ENABLED=true`) still works on a long-running host; use one or the other, not both.
 
 ---
 
@@ -435,7 +438,7 @@ If you use Claude Code, install the session handoff once: `node tools/claude-han
 ## Deployment (Suggested)
 
 - **Frontend:** Vercel or Netlify (static Vite build).
-- **Backend:** Render or Railway. It needs a long-running process for cron jobs, so avoid serverless-only hosts for it.
+- **Backend:** Render or Railway. The data jobs run on GitHub Actions, so the API host doesn't need cron.
 - **Database/Auth:** Supabase hosted project.
 - Set all environment variables in each host's dashboard and update `FRONTEND_ORIGIN` and `VITE_API_URL` to the deployed URLs.
 
