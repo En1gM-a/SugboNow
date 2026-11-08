@@ -17,7 +17,7 @@ This repo is a **monorepo with two fully independent apps**: `frontend/` and `ba
 | Data fetching | TanStack Query | Caching, loading and error states |
 | Routing | React Router | |
 | Maps | Leaflet (`react-leaflet`) | TomTom traffic overlay optional |
-| Backend | Node.js 20+ / Express / TypeScript | CommonJS build, `tsx` for dev |
+| Backend | Node.js 22+ / Express / TypeScript | CommonJS build, `tsx` for dev |
 | Validation | Zod | Request bodies and env vars |
 | Scheduled jobs | GitHub Actions | `.github/workflows/jobs.yml`; node-cron in the server is the fallback (`CRON_ENABLED`) |
 | Scraping | cheerio | SunStar Cebu |
@@ -137,7 +137,7 @@ sugbo-now/
 
 ## Prerequisites
 
-- Node.js 20 or newer (built-in `fetch` is used, no axios needed)
+- Node.js 22 or newer (the Supabase client needs its built-in WebSocket; built-in `fetch` is used, no axios needed)
 - npm, Git, VS Code
 - A free [Supabase](https://supabase.com) project
 - API keys (see [API Keys](#api-keys))
