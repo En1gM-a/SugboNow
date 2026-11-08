@@ -130,6 +130,12 @@ lead to it. Ordinary news is stored here too, with `type = 'news'`, so
 Traffic and weather alerts are refreshed on every run (upsert updates the row);
 news and Facebook alerts are kept as first saved.
 
+**Kept for about a day** (`0008_delete_old_job_data.sql`): every 5 minutes,
+Supabase Cron deletes rows that started over 24 hours ago and have ended. A
+plain story ends 24 hours after it's published, so it goes then. An alert
+still in effect, such as a road closure until Friday, stays until it ends.
+`manual` rows are never deleted.
+
 ## public.weather_snapshots
 
 Added by `0005_core_api_support.sql`. One row per Metro Cebu area, replaced
@@ -167,4 +173,5 @@ One brief per user per Manila date (`unique (user_id, brief_date)`), written by
 the 05:30 job for users with a trip that day, or on the user's first
 `GET /api/brief/today` that day. `content` is the brief text; `alert_ids` are
 the alerts near the user's places when it was written. Leave times are not
-stored: the API recomputes them from current alerts on every request.
+stored: the API recomputes them from current alerts on every request. Only
+today's brief is kept: the same cleanup deletes briefs from earlier dates.

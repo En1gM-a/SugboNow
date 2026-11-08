@@ -11,8 +11,9 @@ import { addHours } from "../utils/time";
 import { newsFingerprint, truncate } from "../utils/text";
 import { classifyAdvisory } from "./alertClassifier";
 
-// Older articles are not ingested.
-export const MAX_ARTICLE_AGE_HOURS = 72;
+// Older articles are not ingested, so stories the 24-hour cleanup (migration 0008)
+// deleted aren't saved again.
+export const MAX_ARTICLE_AGE_HOURS = 24;
 
 export function articleToAlert(article: NewsArticle, source: string, now: Date): NewAlert | null {
   const title = article.title.trim();

@@ -146,8 +146,9 @@ describe('articleToAlert', () => {
     expect(alert).toMatchObject({ type: 'news', severity: 'low', lat: null, lng: null, areaName: 'Cebu' });
   });
 
-  it('drops articles older than 72 hours or from the future', () => {
-    expect(articleToAlert(article({ publishedAt: new Date('2026-10-19T12:00:00Z') }), 'sunstar', now)).toBeNull();
+  it('drops articles older than 24 hours or from the future', () => {
+    expect(articleToAlert(article({ publishedAt: new Date('2026-10-21T12:00:00Z') }), 'sunstar', now)).toBeNull();
+    expect(articleToAlert(article({ publishedAt: new Date('2026-10-21T13:00:00Z') }), 'sunstar', now)).not.toBeNull();
     expect(articleToAlert(article({ publishedAt: new Date('2026-10-22T15:00:00Z') }), 'sunstar', now)).toBeNull();
     expect(articleToAlert(article({ publishedAt: null }), 'sunstar', now)).toBeNull();
   });

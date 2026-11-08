@@ -1,6 +1,6 @@
 import { GNEWS_QUERIES, GNEWS_SOURCE, searchGnews } from "../integrations/gnews";
 import type { AlertsRepository } from "../services/alerts.repository";
-import { articlesToAlerts } from "../services/newsAlerts";
+import { articlesToAlerts, MAX_ARTICLE_AGE_HOURS } from "../services/newsAlerts";
 import type { NewsArticle } from "../types";
 import { addHours } from "../utils/time";
 import type { Logger } from "../utils/logger";
@@ -28,7 +28,7 @@ export function createIngestNewsJob(deps: IngestNewsDeps): Job {
     description: "GNews searches for Cebu advisories",
     async run(now) {
       if (!deps.apiKey) return { status: "skipped", detail: "GNEWS_API_KEY is not set" };
-      const since = addHours(now, -48);
+      const since = addHours(now, -MAX_ARTICLE_AGE_HOURS);
       const articles: NewsArticle[] = [];
       let failed = 0;
       for (const [index, query] of GNEWS_QUERIES.entries()) {

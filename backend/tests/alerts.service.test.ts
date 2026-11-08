@@ -82,10 +82,10 @@ describe('alerts service', () => {
     expect(items[0].places).toEqual([{ id: 'home', label: 'Home', distanceKm: 0.1 }]);
   });
 
-  it('lists news from the news sources for the last 72 hours', async () => {
+  it('lists news from the news sources for the last 24 hours', async () => {
     const { alerts, service } = setup([]);
     await service.news({ limit: 20, area: 'Mandaue' });
-    expect(alerts.listNews).toHaveBeenCalledWith({ since: new Date('2026-10-19T22:00:00Z'), sources: NEWS_SOURCES, area: 'Mandaue', limit: 20 });
+    expect(alerts.listNews).toHaveBeenCalledWith({ since: new Date('2026-10-21T22:00:00Z'), sources: NEWS_SOURCES, area: 'Mandaue', limit: 20 });
   });
 
   it('returns 404 for an unknown alert', async () => {
