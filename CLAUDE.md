@@ -22,7 +22,7 @@ They communicate only through the REST contract in `docs/api-contract.md`.
 ## Technology
 
 - Frontend: React, TypeScript, Vite, Tailwind CSS, React Router, TanStack Query, Supabase Auth, Leaflet, MSW.
-- Backend: Node.js 20+, Express, TypeScript, Zod, Supabase, node-cron, Cheerio, Vitest.
+- Backend: Node.js 22+, Express, TypeScript, Zod, Supabase, node-cron, Cheerio, Vitest.
 - Data/Auth: Supabase Postgres, Auth, and Row Level Security.
 - AI provider: not selected yet. Keep AI integration isolated behind `services/ai.service.ts`.
 
