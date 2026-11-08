@@ -13,7 +13,7 @@ import { compareAlerts, matchAlertsToPlaces, type NearbyPlace } from "./matching
 // Alerts starting within this many hours count as upcoming and are listed.
 export const UPCOMING_HOURS = 48;
 // News older than this is not listed.
-export const NEWS_WINDOW_HOURS = 72;
+export const NEWS_WINDOW_HOURS = 24;
 // Plain news has its own endpoint, so /api/alerts leaves it out by default.
 export const DEFAULT_ALERT_TYPES = ALERT_TYPES.filter((type) => type !== "news");
 

@@ -120,7 +120,7 @@ describe('news jobs', () => {
     );
     const result = await createIngestNewsJob({ apiKey: 'key', alerts, logger: logger(), search, delayMs: 0 }).run(now);
     expect(search).toHaveBeenCalledTimes(3);
-    expect(search.mock.calls[0][2]).toEqual(new Date('2026-10-20T04:00:00Z'));
+    expect(search.mock.calls[0][2]).toEqual(new Date('2026-10-21T04:00:00Z'));
     expect(result).toMatchObject({ status: 'ok', saved: 1 });
     expect(alerts.upsert).toHaveBeenCalledWith([expect.objectContaining({ source: 'gnews', type: 'power' })], { updateExisting: false });
   });

@@ -592,10 +592,10 @@ Each page lists its Content (everything PR #27 had, which is correct) and then h
    Empty states: with no trips, the next-trip slot becomes "Add your weekly trips to get a leave time" with one button; an incomplete profile shows one setup prompt at the top, not several.
 
 5. News (/news), a feed: "What's happening in Cebu?"
-   Content: stories from GET /api/news (SunStar, Cebu Daily News, GNews; last 3 days): source, time, area, an alert badge when isAlert (then the alert type), headline, summary, image, and "Read on [source]" (opens in a new tab; no full article text is stored); an area filter; an "Alerts only" toggle; the updated time.
+   Content: stories from GET /api/news (SunStar, Cebu Daily News, GNews; last 24 hours): source, time, area, an alert badge when isAlert (then the alert type), headline, summary, image, and "Read on [source]" (opens in a new tab; no full article text is stored); an area filter; an "Alerts only" toggle; the updated time.
    Layout: a sticky glass filter card on top: an "Alerts only" toggle chip, then a segmented control with the stretchy mango pill, holding "All Cebu" and the towns from GET /api/areas, scrolling sideways. Below it, a main column of story cards (8 columns) and the "Right now" glance in the side column (4 columns).
    Story card (a glass panel): a source mark (initials in a circle) with the source name · time · area; the headline (bold, at most 2 lines); the summary (at most 2 lines); the image (16:9) when there is one; a footer with the alert chip (if any) and "Read on SunStar ↗". The headline and image open the article.
-   Fetch limit=50 once and show 10 at a time (see <scrolling>); end with "You're all caught up · stories from the last 3 days".
+   Fetch limit=50 once and show 10 at a time (see <scrolling>); end with "You're all caught up · stories from the last 24 hours".
 
 6. Mayor (/mayor), a page like a Facebook Page: "What did my mayor post?"
    Content: the followed LGU (name, official and title, link to the official page); the note that Cebu City, Mandaue and Lapu-Lapu decide their own class suspensions and other towns follow the Province; posts from GET /api/lgu-posts/latest?limit=10 with caption ("See more"), images or video (thumbnail with a play icon, linking to Facebook), time, reaction/comment/share counts and a category badge ("Class suspension", "Traffic", …); a switcher for the other LGUs (their posts are mock for now); "Make this my mayor" (PATCH /api/profile with subscribedMayor).

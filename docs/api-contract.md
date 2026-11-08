@@ -255,7 +255,7 @@ One Alert, or `404`.
 
 ## GET /api/news
 
-Latest Cebu stories from SunStar, Cebu Daily News and GNews (last 72 hours), newest first.
+Latest Cebu stories from SunStar, Cebu Daily News and GNews (last 24 hours), newest first.
 
 | Query | Default | Notes |
 | --- | --- | --- |

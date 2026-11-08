@@ -377,6 +377,8 @@ Full request and response shapes live in [`docs/api-contract.md`](docs/api-contr
 
 **Row Level Security:** users can read and write only their own rows in `profiles`, `locations`, `schedule_entries`, and `daily_briefs`. `alerts` are readable by any signed-in user. Only the backend (service role) writes `alerts` and `daily_briefs`.
 
+**Only about a day is kept:** every 5 minutes, Supabase Cron deletes news and alerts that started over 24 hours ago and have ended, and briefs from before today (`supabase/migrations/0008_delete_old_job_data.sql`). The jobs skip articles over 24 hours old, so deleted stories aren't saved again. Users' own data (profiles, places, trips) is never touched.
+
 **Alert types:** `advisory`, `weather`, `flood`, `closure`, `traffic`, `power`, `water` (plus `news` for stories that aren't alerts)
 **Alert sources:** `tomtom`, `weatherapi`, `facebook`, `sunstar`, `cebudailynews`, `gnews`, `manual`
 

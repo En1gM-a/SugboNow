@@ -51,9 +51,9 @@ provider's dashboard before relying on them.
   - The feed labels Manila time as UTC; the integration corrects this.
   - "Latest News" also has world and entertainment stories, so only items mentioning Cebu or a Metro Cebu area are kept.
 - **GNews:** three searches (`backend/src/integrations/gnews.ts`) for Cebu plus
-  alert keywords, articles from the last 48 hours, about 1 request per second
+  alert keywords, articles from the last 24 hours, about 1 request per second
   (the free plan's rate limit).
-- Articles older than 72 hours are skipped. Each article is classified by keyword
+- Articles older than 24 hours are skipped. Each article is classified by keyword
   (`backend/src/services/alertClassifier.ts`, English, Cebuano and Tagalog):
   - class suspensions and advisories, major weather, floods, road blockages,
     traffic, and power or water interruptions become alerts
