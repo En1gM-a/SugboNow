@@ -93,6 +93,7 @@ Never commit `.env` files, API keys, Supabase service-role keys, tokens, or `nod
 Repository automation lives in `.github/`:
 
 - `workflows/ci.yml` builds both apps and runs backend tests.
+- `workflows/jobs.yml` runs the backend's data jobs (outside APIs and feeds) on GitHub's timer, using the repository's Actions secrets.
 - `dependabot.yml` proposes dependency updates.
 - `CODEOWNERS` requests reviews by area.
 - `rulesets/protect-main.json` documents the branch protection configuration.
