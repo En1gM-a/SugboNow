@@ -2521,12 +2521,33 @@
     display: grid;
     justify-items: center;
     gap: 4px;
+    width: 100%;
     padding: 10px 4px;
     border-radius: 16px;
     background: var(--chip);
+    color: inherit;
     font-size: 0.8rem;
     scroll-snap-align: start;
     white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background-color 150ms ease,
+      transform 100ms var(--ease-out);
+  }
+  .hour:active {
+    transform: scale(0.97);
+  }
+  .hour:focus-visible {
+    outline-offset: -2px;
+  }
+  /* The selected hour, shared with the chart and the rain map: the same mango ring as a selected row. */
+  .hour[aria-pressed="true"] {
+    box-shadow: inset 0 0 0 2px var(--mango);
+  }
+  @media (hover: hover) {
+    .hour:hover {
+      background: var(--line);
+    }
   }
   .hour .wi {
     font-size: 30px;
@@ -2592,6 +2613,51 @@
   .wx-rain-label {
     fill: var(--blue);
     font-weight: 700;
+  }
+  /* The selected hour: a mango bar, a guide and a dot on the line. Only colors change; nothing new moves. */
+  .wx-bar.is-on {
+    fill: var(--mango);
+  }
+  .wx-bar {
+    transition: fill 150ms ease;
+  }
+  .wx-guide {
+    stroke: var(--muted);
+    stroke-width: 1.5;
+    stroke-dasharray: 3 4;
+    pointer-events: none;
+  }
+  .wx-pick {
+    fill: var(--mango);
+    stroke: #0e1726;
+    stroke-width: 2;
+    pointer-events: none;
+  }
+  .wx-hit {
+    fill: transparent;
+    cursor: pointer;
+  }
+  .wx-readout {
+    min-height: 1.5em;
+    margin: 0 0 6px;
+    overflow: hidden;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: color 150ms ease;
+  }
+  /* While a mouse previews another hour, the readout is muted, so it's clear nothing is selected yet. */
+  .wx-readout.is-preview {
+    color: var(--muted);
+  }
+  /* On phones the line would cut off the rain chance, so it wraps, in a fixed two-line box so the chart never moves. */
+  @media (max-width: 479px) {
+    .wx-readout {
+      min-height: 3em;
+      line-height: 1.5;
+      white-space: normal;
+    }
   }
   .key-temp {
     background: var(--ink);

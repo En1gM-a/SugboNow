@@ -2,7 +2,7 @@
 // for the chosen area, then a card with tabs for the 24-hour chart, the rain map and the advisories. Leaflet loads when
 // the map tab first opens.
 
-import { useDeferredValue, useState } from 'react';
+import { useDeferredValue, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AlertDetails, AlertRow } from '@/components/alerts/AlertRow';
 import { CountUp } from '@/components/CountUp';
@@ -23,11 +23,13 @@ import { WeatherChart } from '@/components/weather/WeatherChart';
 import { useMediaQuery, useNow } from '@/hooks/useBrowser';
 import { useAlerts, usePagasa, useWeatherAll } from '@/hooks/useFeeds';
 import { useProfile } from '@/hooks/useProfile';
+import { useDisplay } from '@/lib/display';
 import { USE_MOCKS } from '@/lib/supabaseClient';
 import { rainAdvice, weatherKind } from '@/lib/weatherKind';
 import type { ForecastPeriod, Weather, WeatherHour } from '@/types/api';
 import { cx, vars } from '@/utils/cx';
 import { ago, formatHour, formatTime } from '@/utils/format';
+import { revealSideways } from '@/utils/scroll';
 
 type Tab = 'chart' | 'map' | 'advisories';
 
@@ -148,20 +150,46 @@ function NowCard({ weather, areas, mine, wide, onPick, now }: { weather: Weather
   );
 }
 
-/** The hour strip: a still live icon, the temperature and the rain chance, in a row that scrolls sideways. */
-function HourStrip({ hours }: { hours: WeatherHour[] }) {
+/**
+ * The hour strip: a still live icon, the temperature and the rain chance, in a row that scrolls sideways. Each hour is a
+ * button that selects it for the chart and the rain map too. It's one tab stop: the arrow keys move between hours.
+ */
+function HourStrip({ hours, selected, onSelect }: { hours: WeatherHour[]; selected: number; onSelect: (k: number) => void }) {
+  const { still } = useDisplay();
+  const list = useRef<HTMLOListElement>(null);
+
+  // A selection made elsewhere (the chart, the slider) brings that hour into view.
+  useEffect(() => {
+    revealSideways(list.current, list.current?.querySelectorAll('.hour')[selected] ?? null, still);
+  }, [selected, still]);
+
+  function onKeyDown(e: KeyboardEvent<HTMLOListElement>) {
+    const last = hours.length - 1;
+    let to = -1;
+    if (e.key === 'ArrowRight') to = Math.min(last, selected + 1);
+    else if (e.key === 'ArrowLeft') to = Math.max(0, selected - 1);
+    else if (e.key === 'Home') to = 0;
+    else if (e.key === 'End') to = last;
+    if (to < 0) return;
+    e.preventDefault();
+    onSelect(to);
+    list.current?.querySelectorAll<HTMLButtonElement>('.hour')[to]?.focus({ preventScroll: true });
+  }
+
   return (
     <article className="card glass e-card span-7 hours-card" style={vars({ '--i': 1 })} aria-labelledby="hours-h">
       <h2 id="hours-h" className="card-title">
         Next 24 hours
       </h2>
-      <ol className="hours" tabIndex={0} aria-labelledby="hours-h">
+      <ol ref={list} className="hours" aria-labelledby="hours-h" onKeyDown={onKeyDown}>
         {hours.map((h, k) => (
-          <li key={h.time} className="hour e-row" style={vars({ '--j': Math.min(k, 8) })}>
-            <span className="muted">{hourLabel(h, k)}</span>
-            <LiveIcon kind={weatherKind(h.iconUrl)} still label={h.condition} />
-            <b className="tabular-nums">{Math.round(h.tempC)}°</b>
-            <span className="tabular-nums hour-rain">{h.chanceOfRain}%</span>
+          <li key={h.time} className="e-row" style={vars({ '--j': Math.min(k, 8) })}>
+            <button type="button" className="hour" aria-pressed={k === selected} tabIndex={k === selected ? 0 : -1} onClick={() => onSelect(k)}>
+              <span className="muted">{hourLabel(h, k)}</span>
+              <LiveIcon kind={weatherKind(h.iconUrl)} still label={h.condition} />
+              <b className="tabular-nums">{Math.round(h.tempC)}°</b>
+              <span className="tabular-nums hour-rain">{h.chanceOfRain}%</span>
+            </button>
           </li>
         ))}
       </ol>
@@ -232,10 +260,14 @@ function RainTable({ areas, hour, selected, onPick }: { areas: Weather[]; hour: 
   );
 }
 
-/** The rain map with its hour slider. The slider's value is deferred, so dragging stays smooth. */
-function RainMap({ areas, selected, wide, onPick }: { areas: Weather[]; selected: string; wide: boolean; onPick: (slug: string) => void }) {
-  const [hour, setHour] = useState(0);
+/**
+ * The rain map with its hour slider. The hour is the page's selected hour, shared with the strip and the chart. The
+ * slider's value is deferred, so dragging stays smooth.
+ */
+function RainMap({ areas, selected, wide, onPick, hour, onHour }: { areas: Weather[]; selected: string; wide: boolean; onPick: (slug: string) => void; hour: number; onHour: (k: number) => void }) {
   const shownHour = useDeferredValue(hour);
+  // As many steps as the forecast has hours (24 from the API), so the last step is never an hour that isn't there.
+  const lastHour = Math.max(0, (areas[0]?.hourly.length ?? 1) - 1);
   const time = areas[0]?.hourly[hour]?.time;
   const label = hour === 0 || !time ? 'Now' : formatTime(time);
   // A phone's map can't show all of Metro Cebu at a readable zoom, so it starts at the chosen area.
@@ -249,7 +281,7 @@ function RainMap({ areas, selected, wide, onPick }: { areas: Weather[]; selected
           <label htmlFor="rain-hour" className="field-legend">
             Forecast hour
           </label>
-          <input id="rain-hour" type="range" min={0} max={24} step={1} value={hour} aria-valuetext={label} onChange={(e) => setHour(Number(e.target.value))} />
+          <input id="rain-hour" type="range" min={0} max={lastHour} step={1} value={Math.min(hour, lastHour)} aria-valuetext={label} onChange={(e) => onHour(Number(e.target.value))} />
           <output htmlFor="rain-hour" className="slider-value tabular-nums">
             {label}
           </output>
@@ -397,6 +429,9 @@ export default function WeatherPage() {
   const areas = weather.data ?? [];
   const slug = params.get('area') ?? profile.data?.city ?? 'cebu_city';
   const current = areas.find((w) => w.area.slug === slug) ?? areas[0];
+  // One selected hour for the strip, the chart and the rain map, counted from now (0 is "Now").
+  const [pickedHour, setHour] = useState(0);
+  const hour = Math.min(pickedHour, Math.max(0, (current?.hourly.length ?? 1) - 1));
 
   function update(next: { area?: string; tab?: Tab }) {
     const query = new URLSearchParams(params);
@@ -453,13 +488,13 @@ export default function WeatherPage() {
         ) : (
           <>
             <NowCard weather={current} areas={areas} mine={profile.data?.city} wide={wide} onPick={pickArea} now={now} />
-            <HourStrip hours={current.hourly} />
+            <HourStrip hours={current.hourly} selected={hour} onSelect={setHour} />
             <article className="card glass e-card span-12 wx-tabs" style={vars({ '--i': 2 })} aria-label="More about the weather">
               <Segmented kind="tab" label="More about the weather" panelId={PANEL} options={TABS} value={tab} onChange={(value) => update({ tab: value })} className="tabs-fit" />
               <div id={`${PANEL}-chart`} role="tabpanel" aria-labelledby={`${PANEL}-tab-chart`} hidden={tab !== 'chart'} className="tab-panel">
                 {opened.has('chart') && (
                   <>
-                    <WeatherChart hours={current.hourly} />
+                    <WeatherChart hours={current.hourly} selected={hour} onSelect={setHour} />
                     <TableDisclosure>
                       <HourTable hours={current.hourly} />
                     </TableDisclosure>
@@ -467,7 +502,7 @@ export default function WeatherPage() {
                 )}
               </div>
               <div id={`${PANEL}-map`} role="tabpanel" aria-labelledby={`${PANEL}-tab-map`} hidden={tab !== 'map'} className="tab-panel">
-                {opened.has('map') && <RainMap areas={areas} selected={current.area.slug} wide={wide} onPick={pickArea} />}
+                {opened.has('map') && <RainMap areas={areas} selected={current.area.slug} wide={wide} onPick={pickArea} hour={hour} onHour={setHour} />}
               </div>
               <div id={`${PANEL}-advisories`} role="tabpanel" aria-labelledby={`${PANEL}-tab-advisories`} hidden={tab !== 'advisories'} className="tab-panel">
                 {opened.has('advisories') && <Advisories wide={wide} now={now} />}
