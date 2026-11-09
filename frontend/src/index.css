@@ -821,6 +821,17 @@
     font-size: 0.85rem;
     font-weight: 700;
     cursor: pointer;
+    transition:
+      background-color 150ms ease,
+      transform 100ms var(--ease-out);
+  }
+  .show-btn:active {
+    transform: scale(0.97);
+  }
+  @media (hover: hover) {
+    .show-btn:hover {
+      background: var(--chip);
+    }
   }
   /* A 44px hit area that doesn't make the label row taller. */
   .forgot {
@@ -1192,6 +1203,22 @@
   }
   .status-line:active {
     transform: scale(0.99);
+  }
+  /* The hover tint sits on ::before, because ::after holds the high-alert candle glow. */
+  .status-line::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--ink);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 150ms ease;
+  }
+  @media (hover: hover) {
+    .status-line:hover::before {
+      opacity: 0.04;
+    }
   }
   .status-dot {
     width: 10px;
@@ -1851,7 +1878,20 @@
     border-radius: 50%;
     color: var(--muted);
     cursor: pointer;
+    transition:
+      background-color 150ms ease,
+      color 150ms ease,
+      transform 100ms var(--ease-out);
     --icon: 18px;
+  }
+  .toast-close:active {
+    transform: scale(0.97);
+  }
+  @media (hover: hover) {
+    .toast-close:hover {
+      background: var(--chip);
+      color: var(--ink);
+    }
   }
 
   /* Maps: Leaflet's own panes stay inside the box, under the shell's fixed bars. */
@@ -1952,10 +1992,18 @@
     font-weight: 800;
     box-shadow: var(--glass-shadow);
     cursor: pointer;
+    transition:
+      transform 100ms var(--ease-out),
+      filter 150ms ease;
     --icon: 16px;
   }
   .new-pill:active {
     transform: scale(0.97);
+  }
+  @media (hover: hover) {
+    .new-pill:hover {
+      filter: brightness(1.06);
+    }
   }
 
   /* A story card */
@@ -2041,7 +2089,11 @@
     color: var(--blue);
     font-size: 0.88rem;
     font-weight: 700;
+    transition: transform 100ms var(--ease-out);
     --icon: 14px;
+  }
+  .out-link:active {
+    transform: scale(0.97);
   }
   @media (hover: hover) {
     .out-link:hover {
@@ -2208,6 +2260,12 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: filter 150ms ease;
+  }
+  @media (hover: hover) {
+    a.media-tile:hover img {
+      filter: brightness(1.06);
+    }
   }
   .media-art {
     display: grid;
@@ -2275,7 +2333,16 @@
     text-decoration: underline;
     text-underline-offset: 3px;
     vertical-align: middle;
+    transition: transform 100ms var(--ease-out);
     --icon: 14px;
+  }
+  .feed-link:active {
+    transform: scale(0.97);
+  }
+  @media (hover: hover) {
+    .feed-link:hover {
+      text-decoration-thickness: 2px;
+    }
   }
   .about {
     display: grid;
@@ -2325,6 +2392,17 @@
     border-radius: 999px;
     background: var(--muted);
   }
+  .sheet-handle span {
+    transition: background-color 100ms ease;
+  }
+  .sheet-handle:active span {
+    background: var(--ink);
+  }
+  @media (hover: hover) {
+    .sheet-handle:hover span {
+      background: var(--ink);
+    }
+  }
   .sheet-handle:focus-visible {
     outline-offset: -4px;
   }
@@ -2355,7 +2433,18 @@
     border-top: 1px solid var(--line);
     text-align: left;
     cursor: pointer;
+    transition:
+      background-color 150ms ease,
+      transform 100ms var(--ease-out);
     --icon: 18px;
+  }
+  .pick-row:active {
+    transform: scale(0.99);
+  }
+  @media (hover: hover) {
+    .pick-row:hover {
+      background: var(--chip);
+    }
   }
   .pick-list li:first-child .pick-row {
     border-top: 0;
@@ -2446,7 +2535,18 @@
     font-weight: 700;
     white-space: nowrap;
     cursor: pointer;
+    transition:
+      background-color 150ms ease,
+      transform 100ms var(--ease-out);
     --icon: 14px;
+  }
+  .select-chip:active {
+    transform: scale(0.97);
+  }
+  @media (hover: hover) {
+    .select-chip:hover {
+      background: var(--line);
+    }
   }
   button.select-chip {
     padding: 0 12px 0 14px;
@@ -2776,6 +2876,17 @@
     font-weight: 700;
     text-align: left;
     cursor: pointer;
+    transition:
+      background-color 150ms ease,
+      transform 100ms var(--ease-out);
+  }
+  .table-pick:active {
+    transform: scale(0.99);
+  }
+  @media (hover: hover) {
+    .table-pick:hover {
+      background: var(--chip);
+    }
   }
   .rain-table tbody th,
   .rain-table tbody td {
@@ -2962,6 +3073,16 @@
     margin: -10px 0;
     font-weight: 700;
     cursor: pointer;
+    transition: transform 100ms var(--ease-out);
+  }
+  .busy-toggle:active {
+    transform: scale(0.97);
+  }
+  @media (hover: hover) {
+    .busy-toggle:hover {
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
   }
   .busy-list {
     display: grid;
@@ -3100,6 +3221,11 @@
     font-weight: 700;
     text-decoration: underline;
     text-underline-offset: 3px;
+  }
+  @media (hover: hover) {
+    .inline-link:hover {
+      text-decoration-thickness: 2px;
+    }
   }
   .settings-switches .switch-row:first-of-type {
     margin-top: 0;
@@ -3290,7 +3416,9 @@
     border-radius: 999px;
     background: var(--chip);
     cursor: pointer;
-    transition: background-color 200ms ease;
+    transition:
+      background-color 200ms ease,
+      filter 150ms ease;
   }
   .switch::before {
     content: "";
@@ -3306,7 +3434,18 @@
     border-radius: 50%;
     background: #fff;
     box-shadow: 0 1px 3px rgba(14, 23, 38, 0.3);
-    transition: transform 200ms var(--ease-out);
+    transition:
+      transform 200ms var(--ease-out),
+      scale 100ms var(--ease-out);
+  }
+  /* The press uses its own scale property, so it never interrupts the thumb's 200 ms slide. */
+  .switch:active .switch-thumb {
+    scale: 0.9;
+  }
+  @media (hover: hover) {
+    .switch:hover {
+      filter: brightness(1.06);
+    }
   }
   .switch[aria-checked="true"] {
     border-color: var(--mango);

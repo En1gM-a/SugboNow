@@ -39,10 +39,15 @@ export function useStretchyPill(axis: 'x' | 'y', active: number, radius: number,
       shape.style.opacity = '1';
       const r = container.getBoundingClientRect();
       const t = tab.getBoundingClientRect();
-      const next: Insets =
-        axis === 'x'
-          ? { a: t.left - r.left, b: r.right - t.right, c: t.top - r.top, d: r.bottom - t.bottom }
-          : { a: t.top - r.top, b: r.bottom - t.bottom, c: t.left - r.left, d: r.right - t.right };
+      // Screen sizes include any scale on an ancestor, such as a card's entrance (scale .96) or a page's exit, but the
+      // clip-path is drawn in the box's own pixels. Dividing by that scale keeps the pill on its tab once it ends.
+      const sx = container.offsetWidth ? r.width / container.offsetWidth : 1;
+      const sy = container.offsetHeight ? r.height / container.offsetHeight : 1;
+      const left = (t.left - r.left) / sx;
+      const right = (r.right - t.right) / sx;
+      const top = (t.top - r.top) / sy;
+      const bottom = (r.bottom - t.bottom) / sy;
+      const next: Insets = axis === 'x' ? { a: left, b: right, c: top, d: bottom } : { a: top, b: bottom, c: left, d: right };
       const write = (v: Insets) => {
         shape.style.clipPath =
           axis === 'x'
