@@ -2,7 +2,7 @@
 
 None of these is scheduled yet. They were waiting on the frontend stack (#45 to #49), which landed on 2026-11-06. Each item says what was asked for, what the code does today, and what to settle first.
 
-The code references were checked on 2026-11-06 against `main`, after #49 landed.
+The code references were checked on 2026-11-06 against `main`, after #49 landed. Item 7's were checked on 2026-11-08.
 
 ## 1. Password rules at sign-up
 
@@ -84,3 +84,72 @@ The code references were checked on 2026-11-06 against `main`, after #49 landed.
     - This is the same choice as item 5: Metro Cebu or the whole province.
 - **The step's title:** step 2 is called "Where you live" ("Asa ka nagpuyo?"), and its address is the home address. With a city to follow, home and that city can be in different towns, so the title and the line under it need new wording.
 - **One city or several:** following more than one city would turn the profile's `city` into a list. That's a database and API change.
+
+## 7. The fastest route on land, with traffic only along it
+
+**Asked for:** the Traffic map's "approximate route" is a straight line, so a trip from Mactan to Cebu City crosses the sea. Instead:
+- **The fastest land route:** show only the fastest route a person could actually drive from the trip's start to its end, over whichever crossing is fastest: the Mactan–Mandaue Bridge, the Marcelo Fernan Bridge or CCLEX.
+- **Traffic on that route only:** show the traffic on that route, not on every road.
+- **A CCLEX switch:** let people choose whether the route may use CCLEX, for example with an "Allow CCLEX" switch.
+
+**Today:**
+- **The line:** `AlertsMap` in `frontend/src/components/map/maps.tsx` draws one dashed straight line between the two saved places, labelled "approximate route".
+- **The traffic:** the map shows every located alert in Metro Cebu as a dot, filtered only by type and severity (`frontend/src/pages/TrafficPage.tsx`). Alerts reach a trip by distance from the user's saved places (`backend/src/services/matching.service.ts`). The README already calls route-corridor matching "a later upgrade".
+- **No routing yet:** the backend has no road routing, so nothing knows where the roads go.
+
+**Settle first:**
+- **Which router:** TomTom Routing is the likely pick.
+  - It uses the TomTom key we already have.
+  - One request returns the fastest route for the current traffic, with its live travel time. `sectionType=traffic` lists its slow stretches.
+  - It counts toward the same free 2,500 requests a day as the traffic job, which uses 72. Check TomTom's current terms first.
+  - Other free options need a new key: OpenRouteService and GraphHopper. OSRM's public server isn't meant for app traffic.
+- **When to ask for routes:** the browser must never call the router (CLAUDE.md's golden rule). The backend could ask:
+  - **in a job:** for example, in the hour before each saved trip.
+  - **when a trip is saved:** this is a new user-triggered outside call, which needs the team's agreement.
+- **What "traffic on the route" means:**
+  - **Alerts near the route:** keep only the TomTom incidents and news alerts within about 100 m of the route line. This uses data we already collect, so the route only needs fetching once per trip.
+  - **Live slowdowns:** colour each stretch by its speed, from TomTom's traffic sections. This is closer to what was asked for, but it costs one routing request per trip every time it refreshes. Every 15 minutes, the free quota covers only about 30 trips a day, so limit it, for example to the hour before each trip.
+- **Storing the route:** one route line per trip needs a new table, or a `jsonb` column on `schedule_entries`, in a new migration. It also needs a contract change to send the line with the trip (`GET /api/schedule` or `leaveTimes` in `GET /api/brief/today`).
+- **The map:** draw the route along the roads, with its travel time beside it. Show only the alerts or slow stretches on it.
+- **When the fastest route changes:** traffic can make a different crossing the fastest one. If routes are only fetched once per trip, the line can be out of date. Refreshing it costs quota (see above).
+- **Allow CCLEX or not:** the fastest route may use CCLEX, the toll expressway between Cordova and Cebu City. It isn't only for drivers: UDOTCO takes riders onto the CCLEX route from near Babag and Cordova. So the choice should be the user's:
+  - **On:** the route may use CCLEX, and the map says when it does.
+  - **Off:** the backend asks TomTom to skip toll roads (`avoid=tollRoads`), so the route takes one of the bridges.
+  - **Where it's saved:** with each trip, or once on the profile, so the backend fetches the route with the right setting. A switch on the map that flips between two ready routes would cost two routing requests per trip.
+  - **Default:** settle whether it starts on or off.
+  - **Ride time:** TomTom plans driving routes, so for someone taking UDOTCO the time is the time on the road, not counting the wait for the ride.
+- **Leave time:** with real routes, the suggested leave time can use the live travel time instead of the fixed base time plus buffers (README, Core Logic 2).
+- **Landing page:** its sample map also says "Approximate route · Home → School" (`frontend/src/components/landing/AppTabs.tsx`). It needs new wording once this ships.
+
+## 8. A clear map in dark mode
+
+**Asked for:** in dark mode, the route on the map is hard to see. Either keep the map light, or make the dark map clearer.
+
+**Today:**
+- **The dark map:** there's no real dark map. One CSS rule flips the normal light map tiles in dark mode (`filter: invert(1) hue-rotate(180deg) brightness(0.9)` on `.leaflet-tile-pane`, in `frontend/src/index.css`). It applies to all three maps: Traffic, Weather's rain map, and the pin picker.
+- **The route:** in dark mode, the route turns mango (`#FFC233`, in `AlertsMap` in `frontend/src/components/map/maps.tsx`). On the flipped map it competes with the roads around it.
+
+**Options:**
+- **Keep the map light (simplest):** delete that CSS rule, so the map stays light while the page around it is dark. To cut the glare at night, it could be dimmed a little (`brightness(0.85)`) instead of flipped.
+- **A real dark map:** use tiles drawn dark, such as CARTO's "Dark Matter", instead of flipping light ones. That's a different tile address and credit in dark mode. Check the provider's current free-use terms first: the project has no budget and no card.
+- **Either way, a clearer route line:** a solid line with a dark or white outline under it stands out on light and dark maps. This matters more once the route follows the roads (item 7), because it will sit on top of the road it follows.
+
+**Settle first:** whether the map stays light or gets a real dark map, and whether all three maps follow the same choice.
+
+## 9. The bell shows what's new instead of leaving the page
+
+**Asked for:** tapping the notification bell jumps to the Traffic page. Instead, open a small pop-up that says what each new alert is about.
+
+**Today:**
+- **What tapping does:** `Bell` in `frontend/src/components/layout/Bell.tsx` marks every alert as seen and goes to `/traffic`. The frontend spec asks for exactly that ("Tapping it opens /traffic and marks everything as seen", under "The bell" in `docs/handoffs/frontend.md`), so the spec changes with the code.
+- **What the badge counts:** unread alerts, meaning alerts near the user's places (`GET /api/alerts?relevant=true`) whose ids aren't in the seen list saved in the browser (`useUnreadAlerts`).
+
+**Suggested:**
+- **The pop-up:** tapping the bell opens a pop-up under it (a sheet from the bottom on phones). It lists the unread alerts, newest first: the type's icon, the title, the area and how long ago ("Flooding in Talisay · 20 min ago").
+- **Going further:** tapping an alert opens it on the Traffic map. A "See all on Traffic" link at the bottom keeps today's route to the full list.
+- **When they count as seen:** the alerts stay in the list while it's open and count as seen once it closes, so the badge doesn't empty before the list has been read.
+- **Empty:** "No new alerts near your places."
+- **Keyboard and screen readers:** the bell says whether the pop-up is open. Esc or a tap outside closes it, and focus goes back to the bell.
+- **No new API:** the bell already fetches these alerts.
+
+**Settle first:** how many alerts the pop-up shows before "See all" (for example the 5 newest), and whether tapping one goes to the Traffic map or shows its details right in the pop-up.
