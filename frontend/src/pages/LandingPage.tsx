@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { AppTabs } from '@/components/landing/AppTabs';
 import { Checks } from '@/components/landing/Checks';
 import { Explore } from '@/components/landing/Explore';
+import { Journey, JourneyNote } from '@/components/landing/Journey';
 import { LandingNav } from '@/components/landing/LandingNav';
 import { Faq, FinalCta, HowItWorks, Kinetic, LandingFooter, MadeForCebu } from '@/components/landing/LowerSections';
 import { Mornings } from '@/components/landing/Mornings';
@@ -27,6 +28,8 @@ const SECTION_SKY: Record<string, [TimeName, SkyWeather]> = {
   faq: ['gabii', 'clear'],
   start: ['gabii', 'clear'],
 };
+
+const NIGHT: SkyScene = { time: 'gabii', weather: 'clear' };
 
 /**
  * The signed-out front door at /: what SugboNow does, shown on real Cebu happenings, with the way into sign up and sign
@@ -61,9 +64,13 @@ export default function LandingPage() {
   }, [section, sceneSky, still, clock]);
   const screenSky = useMemo(() => skyGradient(sky.time, sky.weather), [sky.time, sky.weather]);
 
+  // Sample: the photos cover the sky, so it holds one dark frame, which still sets the page's tone. Inside one of the
+  // hero's scenes the photos step away and that scene's own sky plays.
+  const inScene = section === 'top' && sceneSky !== null;
   useEffect(() => {
-    controlSky(sky, paused);
-  }, [sky, paused]);
+    if (inScene && sceneSky) controlSky(sceneSky, paused);
+    else controlSky(NIGHT, true);
+  }, [inScene, sceneSky, paused]);
   useEffect(() => releaseSky, []);
 
   useLayoutEffect(() => {
@@ -101,6 +108,7 @@ export default function LandingPage() {
 
   return (
     <div ref={root} className="lp" data-still={still ? '' : undefined} data-play={play ? '' : undefined} data-pin={layout.pin ? '' : undefined} data-tall={layout.tall ? '' : undefined}>
+      <Journey section={section} away={inScene} />
       <svg className="lp-sprite" aria-hidden="true">
         <defs dangerouslySetInnerHTML={html(SPRITE)} />
       </svg>
@@ -122,6 +130,7 @@ export default function LandingPage() {
           <LandingFooter />
         </div>
       </main>
+      <JourneyNote section={section} away={inScene} />
     </div>
   );
 }
