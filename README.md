@@ -435,12 +435,15 @@ If you use Claude Code, install the session handoff once: `node tools/claude-han
 - Frontend: data fetching only through `hooks/`, never directly inside components.
 - Validate all request bodies with Zod. Validate `process.env` once in `config/env.ts`.
 
-## Deployment (Suggested)
+## Deployment
 
-- **Frontend:** Vercel or Netlify (static Vite build).
-- **Backend:** Render or Railway. The data jobs run on GitHub Actions, so the API host doesn't need cron.
-- **Database/Auth:** Supabase hosted project.
-- Set all environment variables in each host's dashboard and update `FRONTEND_ORIGIN` and `VITE_API_URL` to the deployed URLs.
+Both apps deploy from `main` on Vercel's free Hobby plan, as two projects linked to this repository. Every merge to `main` redeploys them, and every pull request gets preview links.
+
+- **Frontend:** the `sugbonow` project, root directory `frontend`, at https://sugbonow.vercel.app. `frontend/vercel.json` sends every page to `index.html` and forwards `/api/*` to the API, so the site calls `/api` just as it does locally, with no CORS setup. API responses are never cached.
+- **Backend:** the `sugbonow-api` project, root directory `backend`, at https://sugbonow-api.vercel.app. It runs the Express app as one Vercel Function in Seoul (`icn1`), next to the Supabase project. `FB_SCRAPE_ENABLED` is `false` there, because Vercel has no Chromium and Facebook shows servers a log-in wall.
+- **Data jobs:** GitHub Actions (`.github/workflows/jobs.yml`), so the API host needs no cron.
+- **Database/Auth:** the hosted Supabase project.
+- **Settings:** each Vercel project keeps its own environment variables. Secrets (the Supabase keys) are entered in Vercel's dashboard, never committed.
 
 ---
 
