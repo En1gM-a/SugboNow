@@ -2485,7 +2485,9 @@
     box-shadow: inset 0 0 0 2px var(--mango);
   }
   @media (hover: hover) {
-    .row-btn:hover {
+    /* Its map dot is hovered on Traffic: the same tint as hovering the row itself. */
+    .row-btn:hover,
+    .row-pick.is-preview .row-btn {
       background: var(--chip);
     }
   }
