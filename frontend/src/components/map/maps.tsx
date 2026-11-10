@@ -3,7 +3,7 @@
 
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AttributionControl, CircleMarker, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import { ICON_PATHS } from '@/components/icons/paths';
 import { getDisplay, useDisplay } from '@/lib/display';
@@ -91,6 +91,10 @@ interface AlertsMapProps {
   route?: [MapPlace, MapPlace] | null;
   selectedId?: string | null;
   onSelect?: (id: string) => void;
+  /** An alert whose row is hovered or focused: its dot gets a lighter mango ring and is drawn above the others. */
+  previewId?: string | null;
+  /** Called as a mouse enters a dot (with its id) or leaves it (null), so the list can tint its row. */
+  onPreview?: (id: string | null) => void;
   /** Describes the map for screen readers; the list beside it is the keyboard alternative. */
   label: string;
   /** Pixels at the bottom covered by the phone's sheet, so the fitted places stay in view. */
@@ -99,8 +103,37 @@ interface AlertsMapProps {
   creditPosition?: L.ControlPosition;
 }
 
+/** One alert's dot. A selected or previewed dot is redrawn on top, so a neighbour never hides its ring. */
+function AlertDot({ alert, selected, previewed, onSelect, onPreview }: { alert: Alert; selected: boolean; previewed: boolean; onSelect?: (id: string) => void; onPreview?: (id: string | null) => void }) {
+  const dot = useRef<L.CircleMarker>(null);
+  const raised = selected || previewed;
+  useEffect(() => {
+    if (raised) dot.current?.bringToFront();
+  }, [raised]);
+  const base = alert.severity === 'high' ? 10 : 8;
+  const handlers: L.LeafletEventHandlerFnMap = {};
+  if (onSelect) handlers.click = () => onSelect(alert.id);
+  if (onPreview) {
+    handlers.mouseover = () => onPreview(alert.id);
+    handlers.mouseout = () => onPreview(null);
+  }
+  return (
+    <CircleMarker
+      ref={dot}
+      center={[alert.lat as number, alert.lng as number]}
+      radius={selected ? 13 : previewed ? base + 2 : base}
+      pathOptions={{ color: selected || previewed ? '#FFC233' : '#FFFFFF', weight: selected ? 4 : previewed ? 3 : 2, fillColor: SEVERITY_COLOR[alert.severity], fillOpacity: 0.95 }}
+      eventHandlers={handlers}
+    >
+      <Tooltip direction="top" offset={[0, -8]}>
+        {alert.title}
+      </Tooltip>
+    </CircleMarker>
+  );
+}
+
 /** Alerts as circle markers colored by severity, drawn on one canvas, with the user's places as pins. */
-export function AlertsMap({ alerts, places = [], route, selectedId, onSelect, label, bottomInset = 0, creditPosition = 'bottomright' }: AlertsMapProps) {
+export function AlertsMap({ alerts, places = [], route, selectedId, onSelect, previewId, onPreview, label, bottomInset = 0, creditPosition = 'bottomright' }: AlertsMapProps) {
   const { mode } = useDisplay();
   const options = useMapOptions();
   const located = useMemo(() => alerts.filter((a) => a.lat !== null && a.lng !== null), [alerts]);
@@ -132,22 +165,9 @@ export function AlertsMap({ alerts, places = [], route, selectedId, onSelect, la
             </Tooltip>
           </Polyline>
         )}
-        {located.map((alert) => {
-          const on = alert.id === selectedId;
-          return (
-            <CircleMarker
-              key={alert.id}
-              center={[alert.lat as number, alert.lng as number]}
-              radius={on ? 13 : alert.severity === 'high' ? 10 : 8}
-              pathOptions={{ color: on ? '#FFC233' : '#FFFFFF', weight: on ? 4 : 2, fillColor: SEVERITY_COLOR[alert.severity], fillOpacity: 0.95 }}
-              eventHandlers={onSelect ? { click: () => onSelect(alert.id) } : undefined}
-            >
-              <Tooltip direction="top" offset={[0, -8]}>
-                {alert.title}
-              </Tooltip>
-            </CircleMarker>
-          );
-        })}
+        {located.map((alert) => (
+          <AlertDot key={alert.id} alert={alert} selected={alert.id === selectedId} previewed={alert.id === previewId} onSelect={onSelect} onPreview={onPreview} />
+        ))}
         {places.map((place) => (
           <Marker key={place.id} position={[place.lat, place.lng]} icon={placeIcon(place.kind, place.label)} keyboard={false}>
             <Tooltip direction="top" offset={[0, -40]}>

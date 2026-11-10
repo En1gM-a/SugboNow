@@ -98,9 +98,16 @@ function MapLayout({ wide, map, label, showLegend = false, children }: { wide: b
   );
 }
 
-/** Selecting from the map scrolls its row into view: inside the phone's sheet, or on the page on desktop. */
+/**
+ * Selecting from the map scrolls its row into view: inside the phone's sheet, or on the page on desktop.
+ *
+ * With a mouse there's also a preview: hovering (or focusing) a row rings its dot, and hovering a dot tints its row,
+ * without selecting either or scrolling anything. `previewProps` is undefined on touch screens, which have no hover.
+ */
 function useAlertSelection() {
   const [selected, setSelected] = useState<string | null>(null);
+  const [previewed, setPreviewed] = useState<string | null>(null);
+  const canHover = useMediaQuery('(hover: hover) and (pointer: fine)');
   const rows = useRef(new Map<string, HTMLLIElement>());
 
   useEffect(() => {
@@ -120,7 +127,18 @@ function useAlertSelection() {
     [],
   );
   const toggle = useCallback((id: string) => setSelected((current) => (current === id ? null : id)), []);
-  return { selected, select: setSelected, toggle, rowRef };
+  // Leaving one row (or dot) fires before entering the next, so clearing only our own id never wipes the new preview.
+  const previewRow = useCallback((id: string) => (on: boolean) => setPreviewed((current) => (on ? id : current === id ? null : current)), []);
+  const previewDot = useCallback((id: string | null) => setPreviewed(id), []);
+  return {
+    selected,
+    select: setSelected,
+    toggle,
+    rowRef,
+    previewed: canHover ? previewed : null,
+    previewRow: canHover ? previewRow : undefined,
+    previewDot: canHover ? previewDot : undefined,
+  };
 }
 
 function RowsSkeleton() {
@@ -185,7 +203,7 @@ function CommuteView({ wide }: { wide: boolean }) {
   const brief = useBrief();
   const relevant = useAlerts({ relevant: true });
   const [params, setParams] = useSearchParams();
-  const { selected, toggle, select, rowRef } = useAlertSelection();
+  const { selected, toggle, select, rowRef, previewed, previewRow, previewDot } = useAlertSelection();
 
   const tripId = params.get('trip');
   const trip = schedule.data?.find((s) => s.id === tripId);
@@ -259,6 +277,8 @@ function CommuteView({ wide }: { wide: boolean }) {
           route={route}
           selectedId={selected}
           onSelect={select}
+          previewId={previewed}
+          onPreview={previewDot}
           bottomInset={wide ? 0 : sheetInset()}
           creditPosition={wide ? 'bottomright' : 'topright'}
         />
@@ -315,7 +335,17 @@ function CommuteView({ wide }: { wide: boolean }) {
         ) : (
           <ul className="rows">
             {visible.map((alert, j) => (
-              <AlertRow key={alert.id} ref={rowRef(alert.id)} alert={alert} j={Math.min(j, 5)} detail={detail(alert)} selected={alert.id === selected} onSelect={() => toggle(alert.id)} />
+              <AlertRow
+                key={alert.id}
+                ref={rowRef(alert.id)}
+                alert={alert}
+                j={Math.min(j, 5)}
+                detail={detail(alert)}
+                selected={alert.id === selected}
+                onSelect={() => toggle(alert.id)}
+                previewed={alert.id === previewed}
+                onPreview={previewRow?.(alert.id)}
+              />
             ))}
           </ul>
         )}
@@ -395,7 +425,7 @@ function AllCebuView({ wide }: { wide: boolean }) {
   const types = (params.get('type')?.split(',') ?? []).filter((t): t is AlertType => (TYPES as readonly string[]).includes(t));
   const severities = (params.get('severity')?.split(',') ?? []).filter((s): s is Severity => (SEVERITIES as readonly string[]).includes(s));
   const alerts = useAlerts({ type: types.length ? types : undefined, severity: severities.length ? severities : undefined, limit: 200 });
-  const { selected, toggle, select, rowRef } = useAlertSelection();
+  const { selected, toggle, select, rowRef, previewed, previewRow, previewDot } = useAlertSelection();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const { visible, newCount, showNew } = useHeldList(alerts.data, `${params.get('type') ?? ''}|${params.get('severity') ?? ''}`, alerts.isSuccess && !alerts.isPlaceholderData);
   const filterCount = types.length + severities.length;
@@ -422,7 +452,17 @@ function AllCebuView({ wide }: { wide: boolean }) {
       wide={wide}
       label="Alerts across Cebu"
       showLegend
-      map={<LazyAlertsMap label="Map of alerts across Metro Cebu, colored by severity" alerts={visible} selectedId={selected} onSelect={select} creditPosition={wide ? 'bottomright' : 'topright'} />}
+      map={
+        <LazyAlertsMap
+          label="Map of alerts across Metro Cebu, colored by severity"
+          alerts={visible}
+          selectedId={selected}
+          onSelect={select}
+          previewId={previewed}
+          onPreview={previewDot}
+          creditPosition={wide ? 'bottomright' : 'topright'}
+        />
+      }
     >
       {wide && (
         <Panel wide={wide} i={2} id="filters-h" title="Filters" aside={filterCount > 0 ? <button type="button" className="btn btn-quiet" onClick={clearFilters}>Clear</button> : undefined}>
@@ -458,7 +498,17 @@ function AllCebuView({ wide }: { wide: boolean }) {
         ) : (
           <ul className={cx('rows', alerts.isPlaceholderData && 'is-stale')}>
             {visible.map((alert, j) => (
-              <AlertRow key={alert.id} ref={rowRef(alert.id)} alert={alert} j={Math.min(j, 5)} detail={alert.areaName ?? 'All of Metro Cebu'} selected={alert.id === selected} onSelect={() => toggle(alert.id)} />
+              <AlertRow
+                key={alert.id}
+                ref={rowRef(alert.id)}
+                alert={alert}
+                j={Math.min(j, 5)}
+                detail={alert.areaName ?? 'All of Metro Cebu'}
+                selected={alert.id === selected}
+                onSelect={() => toggle(alert.id)}
+                previewed={alert.id === previewed}
+                onPreview={previewRow?.(alert.id)}
+              />
             ))}
           </ul>
         )}

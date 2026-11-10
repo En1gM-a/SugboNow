@@ -93,11 +93,15 @@ interface AlertRowProps {
   selected?: boolean;
   /** False when the details open somewhere else, like a phone's bottom sheet. */
   expands?: boolean;
+  /** Its map dot is hovered: the row takes the same tint as its own hover. */
+  previewed?: boolean;
+  /** Called as a mouse enters or leaves the row, or as it gains or loses focus, so its map dot can be ringed. */
+  onPreview?: (on: boolean) => void;
   ref?: Ref<HTMLLIElement>;
 }
 
 /** An alert: its live icon, title, one line of detail and severity chip. */
-export function AlertRow({ alert, detail, j = 0, onSelect, selected = false, expands = true, ref }: AlertRowProps) {
+export function AlertRow({ alert, detail, j = 0, onSelect, selected = false, expands = true, previewed = false, onPreview, ref }: AlertRowProps) {
   const panel = useId();
   const body = (
     <>
@@ -120,8 +124,19 @@ export function AlertRow({ alert, detail, j = 0, onSelect, selected = false, exp
     );
   }
   return (
-    <li ref={ref} className={cx('row-pick e-row', selected && 'is-on')} style={vars({ '--j': j })}>
-      <button type="button" className="row row-btn" aria-expanded={expands ? selected : undefined} aria-controls={expands ? panel : undefined} aria-pressed={expands ? undefined : selected} onClick={onSelect}>
+    <li ref={ref} className={cx('row-pick e-row', selected && 'is-on', previewed && 'is-preview')} style={vars({ '--j': j })}>
+      <button
+        type="button"
+        className="row row-btn"
+        aria-expanded={expands ? selected : undefined}
+        aria-controls={expands ? panel : undefined}
+        aria-pressed={expands ? undefined : selected}
+        onClick={onSelect}
+        onPointerEnter={onPreview && ((e) => e.pointerType === 'mouse' && onPreview(true))}
+        onPointerLeave={onPreview && ((e) => e.pointerType === 'mouse' && onPreview(false))}
+        onFocus={onPreview && (() => onPreview(true))}
+        onBlur={onPreview && (() => onPreview(false))}
+      >
         {body}
       </button>
       {expands && (
