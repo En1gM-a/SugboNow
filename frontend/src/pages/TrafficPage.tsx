@@ -19,14 +19,15 @@ import { Button } from '@/components/ui/Button';
 import { Segmented } from '@/components/ui/Segmented';
 import { Sheet } from '@/components/ui/Sheet';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { Switch } from '@/components/ui/Switch';
 import { Tag } from '@/components/ui/Tag';
 import { useMediaQuery } from '@/hooks/useBrowser';
 import { useHeldList } from '@/hooks/useFeedList';
 import { useAlerts, useBrief } from '@/hooks/useFeeds';
-import { useLocations, useSchedule } from '@/hooks/usePlaces';
-import { useProfile } from '@/hooks/useProfile';
+import { useLocations, useRoutes, useSchedule } from '@/hooks/usePlaces';
+import { useProfile, useUpdateProfile } from '@/hooks/useProfile';
 import { getDisplay } from '@/lib/display';
-import type { Alert, AlertType, LeaveTime, Severity } from '@/types/api';
+import type { Alert, AlertType, LeaveTime, RoutesResponse, Severity } from '@/types/api';
 import { cx, vars } from '@/utils/cx';
 import { formatClock, formatDays } from '@/utils/format';
 
@@ -196,6 +197,36 @@ function LeaveSummary({ leave, i }: { leave: LeaveTime; i: number }) {
   );
 }
 
+/**
+ * The road route under the leave time: its length and car time, and, only when the fastest route crosses CCLEX, a
+ * switch to avoid it. The choice is one profile setting for every trip, so the leave time follows it too.
+ */
+function RouteSummary({ routes, failed, allowCclex, onCclexChange }: { routes: RoutesResponse | undefined; failed: boolean; allowCclex: boolean; onCclexChange: (on: boolean) => void }) {
+  const road = routes ? (allowCclex ? routes.withCclex : routes.withoutCclex) : null;
+  // Only a route that crosses CCLEX gives a real choice; elsewhere both routes are the same.
+  const hasChoice = Boolean(routes?.withCclex?.usesCclex);
+  return (
+    <div className="route-summary">
+      {road ? (
+        <p className="route-line small">
+          <b>{hasChoice && !allowCclex ? 'Fastest route without CCLEX' : 'Fastest route'}</b>
+          <span className="tabular-nums">
+            {road.distanceKm} km · about {road.travelMinutes} min by car
+          </span>
+          {road.usesCclex && <Tag tone="quiet">via CCLEX</Tag>}
+        </p>
+      ) : (
+        <p className="muted small">
+          {failed ? "Couldn't load the road route." : 'Finding the road route. Until then the map shows a straight line.'}
+        </p>
+      )}
+      {hasChoice && (
+        <Switch label="Use CCLEX" description="The toll expressway between Cordova and Cebu City" checked={allowCclex} onChange={onCclexChange} />
+      )}
+    </div>
+  );
+}
+
 function CommuteView({ wide }: { wide: boolean }) {
   const profile = useProfile();
   const locations = useLocations();
@@ -216,6 +247,12 @@ function CommuteView({ wide }: { wide: boolean }) {
   const destination = places.find((p) => p.id === destinationId);
   const route: [MapPlace, MapPlace] | null = origin && destination ? [origin, destination] : null;
   const leave = brief.data?.leaveTimes.find((lt) => (trip ? lt.scheduleEntryId === trip.id : lt.origin.id === originId && lt.destination.id === destinationId));
+  // The road route, by the profile's CCLEX choice (allowed unless it's turned off). Until the backend has fetched it,
+  // the map keeps the straight "approximate route".
+  const roads = useRoutes(originId, destinationId);
+  const updateProfile = useUpdateProfile();
+  const allowCclex = profile.data?.allowCclex !== false;
+  const road = roads.data ? (allowCclex ? roads.data.withCclex : roads.data.withoutCclex) : null;
 
   const onTheWay = useMemo(
     () => (relevant.data ?? []).filter((a) => a.lat === null || !route || a.nearPlaces?.some((p) => p.id === originId || p.id === destinationId)),
@@ -275,6 +312,8 @@ function CommuteView({ wide }: { wide: boolean }) {
           alerts={visible}
           places={route ?? places}
           route={route}
+          routeLine={road?.line}
+          routeLabel={road ? `${road.travelMinutes} min · ${road.distanceKm} km` : undefined}
           selectedId={selected}
           onSelect={select}
           previewId={previewed}
@@ -322,6 +361,14 @@ function CommuteView({ wide }: { wide: boolean }) {
           <LeaveSummary leave={leave} i={2} />
         ) : (
           <p className="muted small">No trip on this route today. Pick another trip to see its leave time.</p>
+        )}
+        {route && (
+          <RouteSummary
+            routes={roads.data}
+            failed={roads.isError}
+            allowCclex={allowCclex}
+            onCclexChange={(on) => updateProfile.mutate({ allowCclex: on })}
+          />
         )}
       </Panel>
       <Panel wide={wide} i={3} id="way-h" title="On your way" aside={<span className="muted small tabular-nums">{visible.length} near these places</span>}>

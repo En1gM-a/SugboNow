@@ -13,6 +13,7 @@ import type {
   NewsResponse,
   Profile,
   RegionalForecast,
+  RoutesResponse,
   ScheduleResponse,
   Weather,
   WeatherAllResponse,
@@ -27,6 +28,7 @@ export const STALE = {
   weather: 15 * MIN,
   news: 10 * MIN,
   posts: 10 * MIN,
+  routes: 30 * MIN,
   forever: Infinity,
 } as const;
 
@@ -45,6 +47,14 @@ export const queries = {
     queryOptions({ queryKey: ['locations'], queryFn: () => apiFetch<LocationsResponse>('/locations'), staleTime: STALE.forever }),
   schedule: () =>
     queryOptions({ queryKey: ['schedule'], queryFn: () => apiFetch<ScheduleResponse>('/schedule'), staleTime: STALE.forever }),
+  // The routes job fetches a new pair within about 30 minutes, so look again every 5 until it has.
+  routes: (from: string, to: string) =>
+    queryOptions({
+      queryKey: ['routes', from, to],
+      queryFn: () => apiFetch<RoutesResponse>(`/routes?${new URLSearchParams({ from, to })}`),
+      staleTime: STALE.routes,
+      refetchInterval: (query) => (query.state.data?.withCclex ? false : 5 * MIN),
+    }),
   brief: () =>
     queryOptions({
       queryKey: ['brief', 'today'],

@@ -1,6 +1,7 @@
-// Leave time, v1 (rule-based, README "Core Logic"): estimated travel time from
-// straight-line distance, plus a buffer for each travel-affecting alert near
-// the origin or destination around the trip. v2 can use TomTom Routing.
+// Leave time (rule-based, README "Core Logic"): estimated travel time from the
+// trip's road route when the routes job has fetched it (TomTom Routing), else
+// from straight-line distance, plus a buffer for each travel-affecting alert
+// near the origin or destination around the trip.
 
 import type { AlertSeverity, AlertType } from "../types";
 import { haversineKm, roundKm } from "../utils/geo";
@@ -37,6 +38,8 @@ export interface LeaveTimeInput {
   origin: PlacePoint;
   destination: PlacePoint;
   alerts: LeaveTimeAlert[];
+  // The trip's road route (GET /api/routes), following the profile's CCLEX choice, once fetched.
+  route?: { distanceKm: number; travelMinutes: number };
 }
 
 export interface LeaveTimeReason {
@@ -63,8 +66,12 @@ function roundDownToFiveMinutes(date: Date): Date {
 
 export function computeLeaveTime(input: LeaveTimeInput): LeaveTimeResult {
   const arriveAt = manilaDateTime(input.date, input.arriveBy);
-  const distanceKm = roundKm(haversineKm(input.origin, input.destination) * ROAD_FACTOR);
-  const baseMinutes = Math.max(MIN_TRAVEL_MINUTES, Math.ceil((distanceKm / AVERAGE_SPEED_KMH) * 60));
+  // The road distance when there's a route; otherwise the straight line, stretched to allow for roads.
+  const distanceKm = roundKm(input.route ? input.route.distanceKm : haversineKm(input.origin, input.destination) * ROAD_FACTOR);
+  // TomTom's time is for a car. Many trips here are by jeepney with a walk at each end, so the
+  // estimate never drops below the door-to-door speed over the same road distance.
+  const doorToDoorMinutes = (distanceKm / AVERAGE_SPEED_KMH) * 60;
+  const baseMinutes = Math.max(MIN_TRAVEL_MINUTES, Math.ceil(Math.max(doorToDoorMinutes, input.route?.travelMinutes ?? 0)));
   // Alerts active in the hour before departure through arrival affect the trip.
   const windowStart = addMinutes(arriveAt, -(baseMinutes + 60));
 

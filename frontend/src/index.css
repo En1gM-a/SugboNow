@@ -3046,6 +3046,22 @@
   .leave-panel .card-title {
     white-space: nowrap;
   }
+  /* The road route under the leave time, with the CCLEX switch when the route crosses it. */
+  .route-summary {
+    display: grid;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+  }
+  .route-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 8px;
+  }
+  .route-summary .switch-row:first-of-type {
+    margin-top: 10px;
+  }
   .list-pill {
     position: static;
     justify-self: start;

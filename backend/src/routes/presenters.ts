@@ -9,11 +9,13 @@ import type {
   LguSource,
   LocationRef,
   LocationRow,
+  PlaceRouteRow,
   ProfileRow,
   RegionalForecastRow,
   ScheduleRow,
   WeatherSnapshotRow,
 } from "../types";
+import { roundKm } from "../utils/geo";
 import { manilaClock } from "../utils/time";
 
 export function presentProfile(row: ProfileRow) {
@@ -26,8 +28,20 @@ export function presentProfile(row: ProfileRow) {
     subscribedMayor: row.subscribed_mayor,
     commuteOriginLocationId: row.commute_origin_location_id,
     commuteDestinationLocationId: row.commute_destination_location_id,
+    allowCclex: row.allow_cclex,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+export function presentRoute(row: PlaceRouteRow | null) {
+  if (!row) return null;
+  return {
+    distanceKm: roundKm(row.distance_m / 1000),
+    travelMinutes: Math.round(row.travel_s / 60),
+    usesCclex: row.uses_cclex,
+    line: row.line,
+    updatedAt: row.fetched_at,
   };
 }
 

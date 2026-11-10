@@ -4,9 +4,9 @@
 // slowdowns are low severity, so they sort last.
 
 import type { AlertSeverity, AlertType, NewAlert } from "../types";
-import { nearestArea, type LatLng } from "../utils/geo";
+import { nearestArea, simplifyLine, type LatLng, type LatLngPair } from "../utils/geo";
 import { addMinutes } from "../utils/time";
-import { fetchJson } from "./http";
+import { fetchJson, IntegrationError } from "./http";
 
 export const TOMTOM_SOURCE = "tomtom";
 
@@ -132,4 +132,74 @@ export async function fetchTomtomIncidents(apiKey: string): Promise<TomtomIncide
     `https://api.tomtom.com/traffic/services/5/incidentDetails?${params}`,
   );
   return response.incidents ?? [];
+}
+
+// ---------------------------------------------------------------------------
+// TomTom Routing API (v1, Calculate Route). Same key and the same free 2,500
+// non-tile requests a day as the incidents above. The ingestRoutes job calls it
+// only for new or moved places and weekly otherwise, so it uses a few a day.
+// ---------------------------------------------------------------------------
+
+export interface TomtomRouteResponse {
+  routes?: Array<{
+    summary: {
+      lengthInMeters: number;
+      travelTimeInSeconds: number;
+      // With computeTravelTimeFor=all: the time with typical traffic for this hour.
+      historicTrafficTravelTimeInSeconds?: number;
+    };
+    legs: Array<{ points: Array<{ latitude: number; longitude: number }> }>;
+    // With sectionType=tollRoad: one TOLL_ROAD section per stretch of toll road.
+    sections?: Array<{ sectionType: string; startPointIndex?: number; endPointIndex?: number }>;
+  }>;
+}
+
+export interface RoadRoute {
+  distanceM: number;
+  // Typical car travel time, in seconds (historic traffic, not live).
+  travelS: number;
+  // CCLEX is Metro Cebu's only toll road, so a toll section means the route crosses it.
+  usesCclex: boolean;
+  line: LatLngPair[];
+}
+
+// The first route in TomTom's answer, with its line simplified for storage.
+export function parseTomtomRoute(body: TomtomRouteResponse): RoadRoute | null {
+  const route = body.routes?.[0];
+  if (!route) return null;
+  const points = route.legs.flatMap((leg) => leg.points.map((point): LatLngPair => [point.latitude, point.longitude]));
+  if (points.length < 2) return null;
+  return {
+    distanceM: Math.round(route.summary.lengthInMeters),
+    travelS: Math.round(route.summary.historicTrafficTravelTimeInSeconds ?? route.summary.travelTimeInSeconds),
+    usesCclex: (route.sections ?? []).some((section) => section.sectionType === "TOLL_ROAD"),
+    line: simplifyLine(points),
+  };
+}
+
+// The fastest car route from one point to another. With allowCclex false it
+// avoids toll roads, which in Metro Cebu means taking a bridge instead of CCLEX.
+export async function fetchTomtomRoute(
+  apiKey: string,
+  from: LatLng,
+  to: LatLng,
+  options: { allowCclex: boolean },
+): Promise<RoadRoute> {
+  const params = new URLSearchParams({
+    key: apiKey,
+    travelMode: "car",
+    routeType: "fastest",
+    traffic: "false",
+    computeTravelTimeFor: "all",
+    sectionType: "tollRoad",
+    routeRepresentation: "polyline",
+  });
+  if (!options.allowCclex) params.set("avoid", "tollRoads");
+  const body = await fetchJson<TomtomRouteResponse>(
+    "TomTom",
+    `https://api.tomtom.com/routing/1/calculateRoute/${from.lat},${from.lng}:${to.lat},${to.lng}/json?${params}`,
+  );
+  const route = parseTomtomRoute(body);
+  if (!route) throw new IntegrationError(TOMTOM_SOURCE, "TomTom returned no route");
+  return route;
 }

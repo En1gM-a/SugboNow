@@ -12,6 +12,7 @@ import type {
   Location,
   LocationInput,
   Profile,
+  RoadRoute,
   ScheduleEntry,
   ScheduleInput,
   Severity,
@@ -104,6 +105,43 @@ function km(aLat: number, aLng: number, bLat: number, bLng: number): number {
   const h =
     Math.sin(dLat / 2) ** 2 + Math.cos((aLat * Math.PI) / 180) * Math.cos((bLat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
   return 2 * r * Math.asin(Math.sqrt(h));
+}
+
+// Mock road routes (GET /api/routes). The real ones come from TomTom; these bend a little so they read as roads.
+// Mactan is east of the channel; a trip across it can take CCLEX (its south end) or a Mandaue bridge (its north).
+const MACTAN_LNG = 123.935;
+const CCLEX: Array<[number, number]> = [
+  [10.2795, 123.8795],
+  [10.2662, 123.9105],
+  [10.2585, 123.9408],
+];
+const MANDAUE_BRIDGE: Array<[number, number]> = [
+  [10.3262, 123.9192],
+  [10.3316, 123.9394],
+];
+
+function mockRoute(from: Location, to: Location, via: Array<[number, number]>, usesCclex: boolean): RoadRoute {
+  const a: [number, number] = [from.lat, from.lng];
+  const b: [number, number] = [to.lat, to.lng];
+  const bend = (p: [number, number], q: [number, number]): Array<[number, number]> => [
+    [p[0] + (q[0] - p[0]) * 0.2, p[1] + (q[1] - p[1]) * 0.45],
+    [p[0] + (q[0] - p[0]) * 0.6, p[1] + (q[1] - p[1]) * 0.55],
+  ];
+  const stops = [a, ...via, b];
+  const line = stops.flatMap((p, i) => (i === 0 ? [p] : [...bend(stops[i - 1], p), p]));
+  const distanceKm = line.slice(1).reduce((sum, p, i) => sum + km(line[i][0], line[i][1], p[0], p[1]), 0);
+  return { distanceKm: Math.round(distanceKm * 10) / 10, travelMinutes: Math.round((distanceKm / 28) * 60), usesCclex, line, updatedAt: new Date().toISOString() };
+}
+
+function mockRoutes(from: Location, to: Location): { withCclex: RoadRoute; withoutCclex: RoadRoute } {
+  const crosses = from.lng >= MACTAN_LNG !== to.lng >= MACTAN_LNG;
+  if (!crosses) {
+    const route = mockRoute(from, to, [], false);
+    return { withCclex: route, withoutCclex: route };
+  }
+  const westFirst = from.lng < to.lng;
+  const order = (stops: Array<[number, number]>) => (westFirst ? stops : [...stops].reverse());
+  return { withCclex: mockRoute(from, to, order(CCLEX), true), withoutCclex: mockRoute(from, to, order(MANDAUE_BRIDGE), false) };
 }
 
 // The API's order: severity, then type, then newest.
@@ -271,6 +309,7 @@ export const handlers = [
     await latency();
     const body = (await request.json()) as Partial<Profile>;
     const d: ApiErrorDetail[] = [];
+    if ('allowCclex' in body && typeof body.allowCclex !== 'boolean') d.push({ path: 'allowCclex', message: 'Expected true or false.' });
     if (body.city && !areas.some((a) => a.slug === body.city)) d.push({ path: 'city', message: 'Pick a Metro Cebu area.' });
     if (body.subscribedMayor && !lguSources.some((s) => s.slug === body.subscribedMayor))
       d.push({ path: 'subscribedMayor', message: 'Pick one of the listed LGUs.' });
@@ -286,6 +325,15 @@ export const handlers = [
   http.get(`${API}/areas`, async () => {
     await latency();
     return HttpResponse.json({ areas });
+  }),
+
+  http.get(`${API}/routes`, async ({ request }) => {
+    await latency();
+    const q = new URL(request.url).searchParams;
+    const from = db.locations.find((l) => l.id === q.get('from'));
+    const to = db.locations.find((l) => l.id === q.get('to'));
+    if (!from || !to) return notFound();
+    return HttpResponse.json({ from: from.id, to: to.id, ...(from.id === to.id ? { withCclex: null, withoutCclex: null } : mockRoutes(from, to)) });
   }),
 
   http.get(`${API}/lgu-sources`, async () => {

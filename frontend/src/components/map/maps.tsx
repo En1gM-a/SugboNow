@@ -87,8 +87,12 @@ interface AlertsMapProps {
   alerts: Alert[];
   /** The user's places, shown as pins. The map fits itself to them when there are two or more. */
   places?: MapPlace[];
-  /** The commute's origin and destination: a dashed straight line labeled "approximate route". */
+  /** The commute's origin and destination. Without `routeLine`, a dashed straight line labeled "approximate route". */
   route?: [MapPlace, MapPlace] | null;
+  /** The commute's road route from GET /api/routes, drawn along the roads instead of the straight line. */
+  routeLine?: Array<[number, number]> | null;
+  /** The road route's label, e.g. "about 28 min · 12.4 km". */
+  routeLabel?: string;
   selectedId?: string | null;
   onSelect?: (id: string) => void;
   /** An alert whose row is hovered or focused: its dot gets a lighter mango ring and is drawn above the others. */
@@ -133,16 +137,35 @@ function AlertDot({ alert, selected, previewed, onSelect, onPreview }: { alert: 
 }
 
 /** Alerts as circle markers colored by severity, drawn on one canvas, with the user's places as pins. */
-export function AlertsMap({ alerts, places = [], route, selectedId, onSelect, previewId, onPreview, label, bottomInset = 0, creditPosition = 'bottomright' }: AlertsMapProps) {
+export function AlertsMap({
+  alerts,
+  places = [],
+  route,
+  routeLine,
+  routeLabel,
+  selectedId,
+  onSelect,
+  previewId,
+  onPreview,
+  label,
+  bottomInset = 0,
+  creditPosition = 'bottomright',
+}: AlertsMapProps) {
   const { mode } = useDisplay();
   const options = useMapOptions();
   const located = useMemo(() => alerts.filter((a) => a.lat !== null && a.lng !== null), [alerts]);
   const selected = located.find((a) => a.id === selectedId);
-  const points = useMemo<Array<[number, number]>>(() => (places.length >= 2 ? places.map((p) => [p.lat, p.lng]) : []), [places]);
+  const road = route && routeLine && routeLine.length > 1 ? routeLine : null;
+  // A road route can bend well outside the box around its two ends (across to Mactan, say), so the map fits it too.
+  const points = useMemo<Array<[number, number]>>(
+    () => (places.length >= 2 ? [...places.map((p): [number, number] => [p.lat, p.lng]), ...(road ?? [])] : []),
+    [places, road],
+  );
   // Its tolerance widens each alert dot's tap area to about 44px without drawing it bigger.
   const renderer = useMemo(() => L.canvas({ tolerance: 12 }), []);
-  // The tiles flip in dark mode, so the route takes a color that reads on each.
+  // The tiles flip in dark mode, so the route takes a color that reads on each, over an outline that sets it off the roads.
   const routeColor = mode === 'dark' ? '#FFC233' : '#1E5AA8';
+  const routeEdge = mode === 'dark' ? '#0E1726' : '#FFFFFF';
 
   return (
     <div className="map-fill" role="region" aria-label={label}>
@@ -152,18 +175,31 @@ export function AlertsMap({ alerts, places = [], route, selectedId, onSelect, pr
         <AutoResize />
         <FitBounds points={points} bottomInset={bottomInset} />
         {selected && <FlyTo target={[selected.lat as number, selected.lng as number]} />}
-        {route && (
-          <Polyline
-            positions={[
-              [route[0].lat, route[0].lng],
-              [route[1].lat, route[1].lng],
-            ]}
-            pathOptions={{ color: routeColor, weight: 4, dashArray: '8 10', opacity: 0.9 }}
-          >
-            <Tooltip permanent direction="center" className="route-tip">
-              approximate route
-            </Tooltip>
-          </Polyline>
+        {road ? (
+          <>
+            <Polyline positions={road} interactive={false} pathOptions={{ color: routeEdge, weight: 9, opacity: 0.6, lineCap: 'round', lineJoin: 'round' }} />
+            <Polyline positions={road} pathOptions={{ color: routeColor, weight: 5, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }}>
+              {routeLabel && (
+                <Tooltip permanent direction="center" className="route-tip">
+                  {routeLabel}
+                </Tooltip>
+              )}
+            </Polyline>
+          </>
+        ) : (
+          route && (
+            <Polyline
+              positions={[
+                [route[0].lat, route[0].lng],
+                [route[1].lat, route[1].lng],
+              ]}
+              pathOptions={{ color: routeColor, weight: 4, dashArray: '8 10', opacity: 0.9 }}
+            >
+              <Tooltip permanent direction="center" className="route-tip">
+                approximate route
+              </Tooltip>
+            </Polyline>
+          )
         )}
         {located.map((alert) => (
           <AlertDot key={alert.id} alert={alert} selected={alert.id === selectedId} previewed={alert.id === previewId} onSelect={onSelect} onPreview={onPreview} />

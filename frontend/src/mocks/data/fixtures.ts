@@ -81,6 +81,7 @@ export function initialProfile(): Profile {
     subscribedMayor: 'cebu_city',
     commuteOriginLocationId: '11111111-0000-4000-8000-000000000001',
     commuteDestinationLocationId: '22222222-0000-4000-8000-000000000002',
+    allowCclex: true,
     createdAt: '2026-10-01T00:00:00Z',
     updatedAt: '2026-10-02T00:00:00Z',
   };

@@ -18,6 +18,7 @@ import type { BriefInput, BriefWriter } from "./ai.service";
 import type { BriefProfile, BriefRepository } from "./brief.repository";
 import { computeLeaveTime, type LeaveTimeResult } from "./leaveTime.service";
 import { compareAlerts, matchAlertsToPlaces } from "./matching.service";
+import { routeFitsPlaces } from "./routes.service";
 import type { WeatherRepository } from "./weather.repository";
 import { weatherAt } from "./weather.service";
 
@@ -140,12 +141,25 @@ export function createBriefService(deps: BriefServiceDeps) {
   async function buildContext(userId: string, at: Date): Promise<BriefContext> {
     const date = manilaDate(at);
     const weekday = manilaWeekday(at);
-    const [profile, locations, schedule, active] = await Promise.all([
+    const [profile, locations, schedule, routes, active] = await Promise.all([
       briefs.getProfile(userId),
       briefs.listLocations(userId),
       briefs.listSchedule(userId),
+      briefs.listRoutes(userId),
       alerts.listActive({ now: at, startsBefore: addHours(at, 24), types: DEFAULT_ALERT_TYPES, limit: 300 }),
     ]);
+    // Each trip's road route, following the profile's CCLEX choice (allowed unless it's off).
+    const allowCclex = profile?.allow_cclex ?? true;
+    const routeFor = (origin: LocationRow, destination: LocationRow) => {
+      const route = routes.find(
+        (row) =>
+          row.origin_location_id === origin.id &&
+          row.destination_location_id === destination.id &&
+          row.allow_cclex === allowCclex &&
+          routeFitsPlaces(row, origin, destination),
+      );
+      return route ? { distanceKm: route.distance_m / 1000, travelMinutes: route.travel_s / 60 } : undefined;
+    };
 
     const matched = matchAlertsToPlaces(active, locations)
       .sort((a, b) => compareAlerts(a.alert, b.alert))
@@ -158,7 +172,14 @@ export function createBriefService(deps: BriefServiceDeps) {
         const origin = byId.get(entry.origin_location_id);
         const destination = byId.get(entry.destination_location_id);
         if (!origin || !destination) return [];
-        const result = computeLeaveTime({ date, arriveBy: entry.arrive_by, origin, destination, alerts: active });
+        const result = computeLeaveTime({
+          date,
+          arriveBy: entry.arrive_by,
+          origin,
+          destination,
+          alerts: active,
+          route: routeFor(origin, destination),
+        });
         return [
           {
             scheduleEntryId: entry.id,

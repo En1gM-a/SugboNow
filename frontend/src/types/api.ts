@@ -20,6 +20,8 @@ export interface Profile {
   subscribedMayor: string | null;
   commuteOriginLocationId: string | null;
   commuteDestinationLocationId: string | null;
+  /** Routes and leave times may use CCLEX, the toll expressway between Cordova and Cebu City. One setting for every trip. */
+  allowCclex: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -34,8 +36,30 @@ export type ProfilePatch = Partial<
     | 'subscribedMayor'
     | 'commuteOriginLocationId'
     | 'commuteDestinationLocationId'
+    | 'allowCclex'
   >
 >;
+
+// GET /api/routes: the road route between two saved places, fetched by the backend's routes job.
+
+export interface RoadRoute {
+  distanceKm: number;
+  /** Typical car travel time (historic traffic), not live. */
+  travelMinutes: number;
+  usesCclex: boolean;
+  /** [lat, lng] along the roads, at most 300 points. */
+  line: Array<[number, number]>;
+  updatedAt: string;
+}
+
+export interface RoutesResponse {
+  from: string;
+  to: string;
+  /** The fastest route, which may use CCLEX. Null until the routes job has fetched it. */
+  withCclex: RoadRoute | null;
+  /** The fastest route avoiding toll roads; the same as withCclex when that one doesn't use CCLEX. */
+  withoutCclex: RoadRoute | null;
+}
 
 // Reference lists
 

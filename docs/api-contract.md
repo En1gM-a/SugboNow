@@ -15,6 +15,7 @@ The frontend mirrors these shapes in `frontend/src/types/api.ts`.
 | PUT, DELETE | `/api/locations/:id` | Change or delete a saved place |
 | GET, POST | `/api/schedule` | Recurring trips |
 | PUT, DELETE | `/api/schedule/:id` | Change or delete a trip |
+| GET | `/api/routes` | Road route between two saved places, with and without CCLEX |
 | GET | `/api/alerts` | Active and upcoming alerts |
 | GET | `/api/alerts/:id` | One alert |
 | GET | `/api/news` | Latest Cebu news |
@@ -83,6 +84,7 @@ No auth. Returns `{ "ok": true }`.
   "subscribedMayor": "cebu_city",
   "commuteOriginLocationId": "1111…",
   "commuteDestinationLocationId": null,
+  "allowCclex": true,
   "createdAt": "2026-10-01T00:00:00Z",
   "updatedAt": "2026-10-02T00:00:00Z"
 }
@@ -93,6 +95,7 @@ No auth. Returns `{ "ok": true }`.
 | `city` | Area slug from `GET /api/areas`. Picks the weather shown in the brief. |
 | `subscribedMayor` | LGU slug from `GET /api/lgu-sources`. Whose Facebook posts to show. |
 | `commuteOriginLocationId`, `commuteDestinationLocationId` | The user's own saved places, or `null`. |
+| `allowCclex` | Whether routes and leave times may use CCLEX, the toll expressway between Cordova and Cebu City. One setting for every trip. `true` by default. |
 
 ### PATCH /api/profile
 
@@ -101,6 +104,8 @@ Send only the fields to change; `null` clears a field. Unknown fields are reject
 ```json
 { "firstName": "Thea", "city": "mandaue_city", "subscribedMayor": "mandaue_city" }
 ```
+
+`allowCclex` takes `true` or `false`, never `null`.
 
 Returns the updated profile. `400` with `details` for an unknown `city` or
 `subscribedMayor`, or a commute place that isn't one of the user's places.
@@ -185,6 +190,48 @@ The frontend geocodes addresses (e.g. with the map); the API stores the coordina
   - Origin and destination must be two different places of the user's.
 - `PUT /api/schedule/:id` → ScheduleEntry. Same body (full replacement).
 - `DELETE /api/schedule/:id` → `204`.
+
+## GET /api/routes
+
+The road route between two of the user's saved places, as a car would drive it:
+one route that may use CCLEX (the toll expressway between Cordova and Cebu City)
+and one that avoids it. The routes job fetches them (`ingestRoutes`, see Data
+freshness), never the browser.
+
+`GET /api/routes?from=1111…&to=2222…`
+
+```json
+{
+  "from": "1111…",
+  "to": "2222…",
+  "withCclex": {
+    "distanceKm": 14.2,
+    "travelMinutes": 27,
+    "usesCclex": true,
+    "line": [[10.3157, 123.8854], [10.3149, 123.8871], [10.2954, 123.9472]],
+    "updatedAt": "2026-11-10T02:20:00Z"
+  },
+  "withoutCclex": {
+    "distanceKm": 17.9,
+    "travelMinutes": 41,
+    "usesCclex": false,
+    "line": [[10.3157, 123.8854], [10.3233, 123.9310], [10.2954, 123.9472]],
+    "updatedAt": "2026-11-10T02:20:00Z"
+  }
+}
+```
+
+| Field | Notes |
+| --- | --- |
+| `from`, `to` | Query: ids of two of the user's saved places. `404` when either isn't theirs. |
+| `withCclex` | The fastest route, which may use CCLEX. `null` until the routes job has fetched it. |
+| `withoutCclex` | The fastest route that avoids toll roads. The same as `withCclex` when that one doesn't use CCLEX. |
+| `usesCclex` | Whether this route crosses CCLEX. Show a CCLEX choice only when `withCclex.usesCclex` is `true`. |
+| `travelMinutes` | Typical car travel time for the route (TomTom's historic traffic), not live traffic. |
+| `line` | `[lat, lng]` points along the roads, simplified to at most 300. |
+
+- Show `withCclex` or `withoutCclex` by the profile's `allowCclex`. When the one you need is `null`, draw the straight line between the two places, labeled "approximate route".
+- Routes are fetched only for pairs a trip or the usual commute uses, within about 30 minutes of saving them, and again when a place moves or the route is a week old. Other pairs stay `null`.
 
 ## Alerts
 
@@ -385,7 +432,8 @@ recomputed on every request, so they stay current.
 | `brief.content` | Plain text with `\n` line breaks and `•` bullets. Render with `white-space: pre-line`. |
 | `leaveTimes` | Today's trips (by `daysOfWeek`), earliest departure first. Empty when there are none. |
 | `leaveTimes[].leaveAt` | Suggested departure, `"HH:MM"` Manila, rounded down to 5 minutes. |
-| `leaveTimes[].baseMinutes` | Estimated trip time without disruptions. |
+| `leaveTimes[].distanceKm` | Road distance of the trip's route (`GET /api/routes`, following `allowCclex`). Until that route is fetched: the straight-line distance × 1.3. |
+| `leaveTimes[].baseMinutes` | Estimated trip time without disruptions: the longer of the route's typical car time and its distance at 20 km/h door to door (jeepneys and walking included), at least 10. |
 | `leaveTimes[].delayMinutes` | Extra time for alerts near the start or end of the trip (max 45). |
 | `alerts` | Up to 10 alerts near the user's places, most important first, each with `nearPlaces`. |
 | `weather` | The profile's `city`, else the area nearest the user's home; `null` before the first fetch. |
@@ -490,4 +538,5 @@ database; the API only reads it.
 | SunStar / Cebu Daily News stories | Every 30 minutes |
 | GNews stories | Every 3 hours |
 | Daily briefs | 05:30 (and on first open) |
+| Road routes (TomTom Routing) | Every 30 minutes (:20, :50), only for new or moved places; otherwise weekly |
 | Mayor's Facebook posts | On sign-in, at most every 10 minutes per page |

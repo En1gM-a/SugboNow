@@ -6,11 +6,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DailyBriefRow, LocationRow, ProfileRow, ScheduleRow } from "../types";
 import { dbError } from "../utils/db";
 import { LOCATION_COLUMNS } from "./locations.repository";
+import { ROUTE_META_COLUMNS, type PlaceRouteMeta } from "./routes.repository";
 import { SCHEDULE_COLUMNS } from "./schedule.repository";
 
 const BRIEF_COLUMNS = "id, user_id, brief_date, content, alert_ids, created_at, updated_at";
 
-export type BriefProfile = Pick<ProfileRow, "first_name" | "display_name" | "city" | "subscribed_mayor">;
+export type BriefProfile = Pick<ProfileRow, "first_name" | "display_name" | "city" | "subscribed_mayor" | "allow_cclex">;
 
 export interface SaveBriefInput {
   userId: string;
@@ -23,6 +24,8 @@ export interface BriefRepository {
   getProfile(userId: string): Promise<BriefProfile | null>;
   listLocations(userId: string): Promise<LocationRow[]>;
   listSchedule(userId: string): Promise<ScheduleRow[]>;
+  // Saved road routes that start at one of the user's places (summaries only, no lines).
+  listRoutes(userId: string): Promise<PlaceRouteMeta[]>;
   // Users with at least one schedule entry on this weekday (0 = Sunday).
   listUserIdsWithScheduleOn(weekday: number): Promise<string[]>;
   getBrief(userId: string, date: string): Promise<DailyBriefRow | null>;
@@ -35,7 +38,7 @@ export function createBriefRepository(db: SupabaseClient): BriefRepository {
     async getProfile(userId) {
       const { data, error } = await db
         .from("profiles")
-        .select("first_name, display_name, city, subscribed_mayor")
+        .select("first_name, display_name, city, subscribed_mayor, allow_cclex")
         .eq("id", userId)
         .maybeSingle();
       if (error) throw dbError(error);
@@ -60,6 +63,16 @@ export function createBriefRepository(db: SupabaseClient): BriefRepository {
         .order("arrive_by", { ascending: true });
       if (error) throw dbError(error);
       return (data ?? []) as unknown as ScheduleRow[];
+    },
+
+    async listRoutes(userId) {
+      // The !inner join keeps only routes whose origin is one of this user's places.
+      const { data, error } = await db
+        .from("place_routes")
+        .select(`${ROUTE_META_COLUMNS}, origin:locations!place_routes_origin_location_id_fkey!inner(user_id)`)
+        .eq("origin.user_id", userId);
+      if (error) throw dbError(error);
+      return ((data ?? []) as Array<PlaceRouteMeta & { origin?: unknown }>).map(({ origin: _origin, ...route }) => route);
     },
 
     async listUserIdsWithScheduleOn(weekday) {
