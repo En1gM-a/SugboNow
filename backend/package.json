@@ -8,7 +8,33 @@
     "start": "node dist/src/server.js",
     "test": "vitest run tests",
     "job": "tsx scripts/run-job.ts",
-    "fb:demo": "tsx scripts/fb-demo.ts"
+    "fb:demo": "tsx scripts/fb-demo.ts",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "overrides": {
+    "typescript-eslint": {
+      "typescript": "$typescript"
+    },
+    "@typescript-eslint/parser": {
+      "typescript": "$typescript"
+    },
+    "@typescript-eslint/eslint-plugin": {
+      "typescript": "$typescript"
+    },
+    "@typescript-eslint/typescript-estree": {
+      "typescript": "$typescript"
+    },
+    "@typescript-eslint/type-utils": {
+      "typescript": "$typescript"
+    },
+    "ts-api-utils": {
+      "typescript": "$typescript"
+    }
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
@@ -21,11 +47,18 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.6",
+    "@typescript/typescript6": "^6.0.2",
+    "eslint": "^10.14.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.14.0",
+    "prettier": "^3.10.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
+    "typescript-eslint": "^8.72.2",
     "vitest": "^5.0.5"
   }
 }

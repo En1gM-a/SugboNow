@@ -52,6 +52,10 @@ Useful commands from the repository root:
 npm run dev
 npm run build
 npm --prefix backend test
+npm --prefix frontend run lint
+npm --prefix backend run lint
+npm --prefix frontend run format    # or npm --prefix <app> run format
+npm --prefix backend run format
 ```
 
 Environment files are local-only:
@@ -79,20 +83,24 @@ Never commit `.env` files, API keys, Supabase service-role keys, tokens, or `nod
 - `docs/api-contract.md` — frontend/backend API contract.
 - `docs/data-model.md` — data-model documentation.
 - `docs/data-sources.md` — source-specific notes and quotas.
+- `docs/git-workflow.md` — git branching, rebasing against `origin/main`, lockfile conflict resolution, and conflict prevention.
 - `docs/handoffs/` — work handed from one teammate to another. `frontend.md` is the frontend spec (page content and layout, design system, performance, motion and scrolling rules) with a prompt for AI agents.
 - `supabase/migrations/0001_init_schema.sql` — executable initial database schema.
 
 ## Collaboration and GitHub workflow
 
-- Make one focused branch per task, for example `frontend/dashboard-layout`, `backend/alerts-route`, or `docs/api-contract`.
+- Full guidance on Git conventions is in [`docs/git-workflow.md`](docs/git-workflow.md).
+- Always branch from a fresh `origin/main`: `git fetch origin && git switch -c <area>/<topic> origin/main` (e.g. `frontend/dashboard-layout`, `backend/alerts-route`, or `docs/api-contract`).
 - Do not push directly to `main` or `dev`.
-- Open a pull request, wait for the `frontend` and `backend` CI checks, and obtain a teammate approval before squash-merging.
+- Update feature branches with `git fetch origin && git rebase origin/main` rather than `git merge main`, and delete local branches after merge (`git fetch --prune`).
+- Always run linters and formatters before pushing: `npm --prefix frontend run lint`, `npm --prefix backend run lint`, and `npm --prefix <app> run format`.
+- Open a pull request, wait for the `frontend` and `backend` CI checks (which run ESLint, Prettier check on changed files, builds, and backend tests), and obtain a teammate approval before squash-merging.
 - New commits may dismiss approvals; review the latest commit before merging.
 - Preserve unrelated working-tree changes. Check `git status` before starting work.
 
 Repository automation lives in `.github/`:
 
-- `workflows/ci.yml` builds both apps and runs backend tests.
+- `workflows/ci.yml` builds both apps, runs ESLint and Prettier on changed files, and runs backend tests.
 - `workflows/jobs.yml` runs the backend's data jobs (outside APIs and feeds) on GitHub's timer, using the repository's Actions secrets.
 - `dependabot.yml` proposes dependency updates.
 - `CODEOWNERS` requests reviews by area.
