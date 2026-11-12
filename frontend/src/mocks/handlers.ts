@@ -30,6 +30,8 @@ import {
   news,
   pagasa,
   postsFor,
+  recordedRoutes,
+  type RecordedRoute,
   USER_ID,
   weather,
 } from './data/fixtures';
@@ -110,33 +112,27 @@ function km(aLat: number, aLng: number, bLat: number, bLng: number): number {
   return 2 * r * Math.asin(Math.sqrt(h));
 }
 
-// Mock road routes (GET /api/routes). The real ones come from TomTom; these bend a little so they read as roads.
-// Mactan is east of the channel; a trip across it can take CCLEX (its south end) or a Mandaue bridge (its north).
-const MACTAN_LNG = 123.935;
-const CCLEX: Array<[number, number]> = [
-  [10.2795, 123.8795],
-  [10.2662, 123.9105],
-  [10.2585, 123.9408],
-];
-const MANDAUE_BRIDGE: Array<[number, number]> = [
-  [10.3262, 123.9192],
-  [10.3316, 123.9394],
-];
+// Mock road routes (GET /api/routes): real TomTom lines recorded between the sample places (recordedRoutes), never
+// invented ones. A recorded line counts only while its places are still where it was recorded (within 300 m of its
+// ends), just as the real API hides a route saved before a place moved.
+const MOVED_KM = 0.3;
 
-function mockRoute(from: Location, to: Location, via: Array<[number, number]>, usesCclex: boolean): RoadRoute {
-  const a: [number, number] = [from.lat, from.lng];
-  const b: [number, number] = [to.lat, to.lng];
-  const bend = (p: [number, number], q: [number, number]): Array<[number, number]> => [
-    [p[0] + (q[0] - p[0]) * 0.2, p[1] + (q[1] - p[1]) * 0.45],
-    [p[0] + (q[0] - p[0]) * 0.6, p[1] + (q[1] - p[1]) * 0.55],
-  ];
-  const stops = [a, ...via, b];
-  const line = stops.flatMap((p, i) => (i === 0 ? [p] : [...bend(stops[i - 1], p), p]));
-  const distanceKm = line.slice(1).reduce((sum, p, i) => sum + km(line[i][0], line[i][1], p[0], p[1]), 0);
+function recordedLine(from: Location, to: Location): RecordedRoute | null {
+  const forward = recordedRoutes.find((r) => r.from === from.id && r.to === to.id);
+  const back = forward ? null : recordedRoutes.find((r) => r.from === to.id && r.to === from.id);
+  const rec = forward ?? (back && { ...back, from: back.to, to: back.from, line: [...back.line].reverse() });
+  if (!rec) return null;
+  const [first, last] = [rec.line[0], rec.line[rec.line.length - 1]];
+  const inPlace = km(first[0], first[1], from.lat, from.lng) <= MOVED_KM && km(last[0], last[1], to.lat, to.lng) <= MOVED_KM;
+  return inPlace ? rec : null;
+}
+
+function mockRoute(rec: RecordedRoute): RoadRoute {
+  const { line } = rec;
   return {
-    distanceKm: Math.round(distanceKm * 10) / 10,
-    travelMinutes: Math.round((distanceKm / 28) * 60),
-    usesCclex,
+    distanceKm: rec.distanceKm,
+    travelMinutes: rec.travelMinutes,
+    usesCclex: rec.usesCclex,
     line,
     updatedAt: new Date().toISOString(),
     traffic: mockTraffic(line),
@@ -144,29 +140,26 @@ function mockRoute(from: Location, to: Location, via: Array<[number, number]>, u
   };
 }
 
-// Mock traffic: each piece of a mock line gets a level, heavy wherever a traffic alert sits within 400 m, otherwise a
-// fixed pattern so sample mode shows every color, including a stretch with no speed (null).
-const TRAFFIC_PATTERN: ReadonlyArray<TrafficLevel | null> = ['free', 'medium', 'free', 'free', null, 'medium'];
+// Mock traffic: the line in stretches of 4 pieces, heavy wherever a traffic alert sits within 400 m, otherwise a fixed
+// pattern so sample mode shows every color, including a stretch with no speed (null).
+const TRAFFIC_PATTERN: ReadonlyArray<TrafficLevel | null> = [null, 'free', 'medium', 'free', 'free', 'medium', null];
+const STRETCH = 4;
 
 function mockTraffic(line: Array<[number, number]>): RouteTrafficStretch[] {
   const jams = alerts.filter((a) => a.type === 'traffic' && a.lat !== null && a.lng !== null);
-  return line.slice(1).map((p, i) => {
-    const piece: Array<[number, number]> = [line[i], p];
+  const out: RouteTrafficStretch[] = [];
+  for (let i = 0, n = 0; i < line.length - 1; i += STRETCH, n++) {
+    const piece = line.slice(i, Math.min(i + STRETCH, line.length - 1) + 1);
     const jammed = jams.some((a) => kmToLine(a.lat!, a.lng!, piece) <= 0.4);
-    return { level: jammed ? 'heavy' : TRAFFIC_PATTERN[i % TRAFFIC_PATTERN.length], line: piece };
-  });
+    out.push({ level: jammed ? 'heavy' : TRAFFIC_PATTERN[n % TRAFFIC_PATTERN.length], line: piece });
+  }
+  return out;
 }
 
-/** GET /api/traffic-flow: the mock roads are the sample routes between every pair of saved places, by their mock traffic. */
+/** GET /api/traffic-flow: the mock roads are the recorded sample routes, by their mock traffic. */
 function mockTrafficFlow(): TrafficFlowResponse {
   const flow: TrafficFlowResponse = { updatedAt: new Date().toISOString(), heavy: [], medium: [], free: [] };
-  for (const from of db.locations)
-    for (const to of db.locations) {
-      if (from.id >= to.id) continue;
-      const { withCclex, withoutCclex } = mockRoutes(from, to);
-      for (const route of withCclex === withoutCclex ? [withCclex] : [withCclex, withoutCclex])
-        for (const s of route.traffic) if (s.level) flow[s.level].push(s.line);
-    }
+  for (const rec of recordedRoutes) for (const s of mockTraffic(rec.line)) if (s.level) flow[s.level].push(s.line);
   return flow;
 }
 
@@ -192,15 +185,11 @@ function kmToLine(lat: number, lng: number, line: Array<[number, number]>): numb
 const isOnRoute = (a: Alert, line: Array<[number, number]>) =>
   ROUTE_TYPES.includes(a.type) && a.lat !== null && a.lng !== null && kmToLine(a.lat, a.lng, line) <= ON_ROUTE_KM;
 
-function mockRoutes(from: Location, to: Location): { withCclex: RoadRoute; withoutCclex: RoadRoute } {
-  const crosses = from.lng >= MACTAN_LNG !== to.lng >= MACTAN_LNG;
-  if (!crosses) {
-    const route = mockRoute(from, to, [], false);
-    return { withCclex: route, withoutCclex: route };
-  }
-  const westFirst = from.lng < to.lng;
-  const order = (stops: Array<[number, number]>) => (westFirst ? stops : [...stops].reverse());
-  return { withCclex: mockRoute(from, to, order(CCLEX), true), withoutCclex: mockRoute(from, to, order(MANDAUE_BRIDGE), false) };
+/** Both routes for a pair. None of the recorded routes uses CCLEX, so both are the same, as the API sends them. */
+function mockRoutes(from: Location, to: Location): { withCclex: RoadRoute | null; withoutCclex: RoadRoute | null } {
+  const rec = from.id === to.id ? null : recordedLine(from, to);
+  const route = rec ? mockRoute(rec) : null;
+  return { withCclex: route, withoutCclex: route };
 }
 
 // The API's order: severity, then type, then newest.
@@ -240,8 +229,8 @@ function leaveTimes(): LeaveTime[] {
       const distanceKm = Math.round(km(o.lat, o.lng, d.lat, d.lng) * 10) / 10;
       const baseMinutes = Math.max(8, Math.round(distanceKm * 3 + 2));
       // Like the API: traffic, closures and floods count only on the trip's route; weather and advisories near either end.
-      const routes = o.id === d.id ? null : mockRoutes(o, d);
-      const line = routes ? (db.profile.allowCclex !== false ? routes.withCclex : routes.withoutCclex).line : null;
+      const routes = mockRoutes(o, d);
+      const line = (db.profile.allowCclex !== false ? routes.withCclex : routes.withoutCclex)?.line ?? null;
       const reasons = alerts
         .filter((a) => a.lat !== null && a.status === 'active' && a.type !== 'power' && a.type !== 'water')
         .flatMap((a) => {
@@ -404,7 +393,7 @@ export const handlers = [
     const from = db.locations.find((l) => l.id === q.get('from'));
     const to = db.locations.find((l) => l.id === q.get('to'));
     if (!from || !to) return notFound();
-    return HttpResponse.json({ from: from.id, to: to.id, ...(from.id === to.id ? { withCclex: null, withoutCclex: null } : mockRoutes(from, to)) });
+    return HttpResponse.json({ from: from.id, to: to.id, ...mockRoutes(from, to) });
   }),
 
   http.get(`${API}/lgu-sources`, async () => {

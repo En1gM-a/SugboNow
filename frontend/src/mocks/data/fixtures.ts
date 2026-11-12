@@ -122,6 +122,58 @@ export function initialLocations(): Location[] {
   ];
 }
 
+/**
+ * Real TomTom routes between the sample places (GET /api/routes), recorded once with the same call ingestRoutes makes,
+ * so sample mode draws lines that follow the streets. Neither uses CCLEX, so sample mode shows no CCLEX switch; the
+ * way back is the same line reversed. A pair that isn't here has no route yet, like the real API before the job runs.
+ */
+export interface RecordedRoute {
+  from: string;
+  to: string;
+  distanceKm: number;
+  travelMinutes: number;
+  usesCclex: boolean;
+  line: Array<[number, number]>;
+}
+
+const HOME_ID = '11111111-0000-4000-8000-000000000001';
+const SCHOOL_ID = '22222222-0000-4000-8000-000000000002';
+const JOB_ID = '33333333-0000-4000-8000-000000000003';
+
+export const recordedRoutes: RecordedRoute[] = [
+  {
+    from: HOME_ID,
+    to: SCHOOL_ID,
+    distanceKm: 4.5,
+    travelMinutes: 12,
+    usesCclex: false,
+    line: [
+      [10.32447, 123.8874], [10.32412, 123.88751], [10.32439, 123.88834], [10.32356, 123.88831], [10.32322, 123.88507],
+      [10.32294, 123.88386], [10.31213, 123.88615], [10.30904, 123.88656], [10.30399, 123.88674], [10.30034, 123.88667],
+      [10.29742, 123.88811], [10.29727, 123.88805], [10.29706, 123.8867], [10.29651, 123.88495], [10.29608, 123.8841],
+      [10.29425, 123.88147], [10.2946, 123.88128],
+    ],
+  },
+  {
+    from: HOME_ID,
+    to: JOB_ID,
+    distanceKm: 5.0,
+    travelMinutes: 20,
+    usesCclex: false,
+    line: [
+      [10.32447, 123.8874], [10.32412, 123.88751], [10.32439, 123.88834], [10.32537, 123.88833], [10.32606, 123.88786],
+      [10.3264, 123.88792], [10.32682, 123.8884], [10.32719, 123.88929], [10.32721, 123.88963], [10.32829, 123.88942],
+      [10.32844, 123.89001], [10.32889, 123.88994], [10.32948, 123.8904], [10.3299, 123.89139], [10.33002, 123.89136],
+      [10.33027, 123.89155], [10.33053, 123.89189], [10.33062, 123.8925], [10.32969, 123.8941], [10.32916, 123.89538],
+      [10.32851, 123.89581], [10.32844, 123.89607], [10.32868, 123.89742], [10.32906, 123.89744], [10.33075, 123.89796],
+      [10.33095, 123.89853], [10.3279, 123.90462], [10.32694, 123.90626], [10.32586, 123.90762], [10.32638, 123.90804],
+      [10.32923, 123.90924], [10.32813, 123.91191], [10.32936, 123.91243], [10.32933, 123.91276], [10.32898, 123.9128],
+      [10.32891, 123.91309], [10.33004, 123.91352], [10.33029, 123.91295], [10.3306, 123.91389], [10.33017, 123.91593],
+      [10.33025, 123.91623], [10.33064, 123.91551], [10.33084, 123.91545],
+    ],
+  },
+];
+
 /** "HH:MM" on the Manila clock, `minutes` from now (rounded up to 5 minutes, at most 23:55). */
 function manilaClockIn(minutes: number): string {
   const manila = new Date(now + 8 * 3_600_000);
