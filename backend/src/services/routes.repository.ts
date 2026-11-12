@@ -8,7 +8,7 @@ import { dbError } from "../utils/db";
 
 export const ROUTE_META_COLUMNS =
   "origin_location_id, destination_location_id, allow_cclex, origin_lat, origin_lng, destination_lat, destination_lng, distance_m, travel_s, uses_cclex, fetched_at";
-const ROUTE_COLUMNS = `${ROUTE_META_COLUMNS}, line`;
+export const ROUTE_COLUMNS = `${ROUTE_META_COLUMNS}, line`;
 
 // Everything about a route except its line, which only the map needs.
 export type PlaceRouteMeta = Omit<PlaceRouteRow, "line">;

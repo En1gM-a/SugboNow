@@ -140,6 +140,24 @@ export interface PlaceRouteRow {
   fetched_at: string;
 }
 
+// Traffic flow (public.traffic_flow), saved by the ingestTraffic job: road lines by
+// traffic level, each [[lat, lng], ...] in the direction of travel. In drawing order.
+export const FLOW_LEVELS = ["free", "medium", "heavy"] as const;
+export type FlowLevel = (typeof FLOW_LEVELS)[number];
+export type TrafficFlowLines = Record<FlowLevel, Array<Array<[number, number]>>>;
+
+export interface TrafficFlowRow {
+  area: string;
+  lines: TrafficFlowLines;
+  fetched_at: string;
+}
+
+// A stretch of a route at one traffic level; null where TomTom has no speed for the road.
+export interface RouteTraffic {
+  level: FlowLevel | null;
+  line: Array<[number, number]>;
+}
+
 // ---------------------------------------------------------------------------
 // Weather (public.weather_snapshots) and briefs (public.daily_briefs)
 // ---------------------------------------------------------------------------

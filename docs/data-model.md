@@ -134,6 +134,19 @@ serves them, and leave times use them.
 Only pairs that a trip or a usual commute uses get routes. A route for a pair
 that stops being used stays until either place is deleted; it costs no requests.
 
+## public.traffic_flow
+
+The latest TomTom traffic flow for Metro Cebu, added by `0011_add_traffic_flow.sql`.
+One row, replaced by the `ingestTraffic` job with the service role; readable by
+signed-in users. `GET /api/traffic-flow` serves it, and `GET /api/routes` colors
+routes with it.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `area` | `text`, primary key | `metro_cebu`. |
+| `lines` | `jsonb` object | `{free, medium, heavy}`: arrays of road lines, each `[[lat, lng], …]` in the direction of travel. |
+| `fetched_at` | `timestamptz` | When TomTom's speeds were fetched. The API treats flow over 45 minutes old as none. |
+
 ## public.alerts
 
 Written only by backend jobs (service role); readable by signed-in users. An

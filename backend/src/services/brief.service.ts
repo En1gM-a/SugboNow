@@ -158,7 +158,7 @@ export function createBriefService(deps: BriefServiceDeps) {
           row.allow_cclex === allowCclex &&
           routeFitsPlaces(row, origin, destination),
       );
-      return route ? { distanceKm: route.distance_m / 1000, travelMinutes: route.travel_s / 60 } : undefined;
+      return route ? { distanceKm: route.distance_m / 1000, travelMinutes: route.travel_s / 60, line: route.line } : undefined;
     };
 
     const matched = matchAlertsToPlaces(active, locations)

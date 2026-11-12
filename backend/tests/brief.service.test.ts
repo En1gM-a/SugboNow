@@ -2,10 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { rulesBriefWriter, type BriefInput, type BriefWriter } from '../src/services/ai.service.js';
 import type { AlertsRepository } from '../src/services/alerts.repository.js';
 import type { BriefRepository, SaveBriefInput } from '../src/services/brief.repository.js';
-import type { PlaceRouteMeta } from '../src/services/routes.repository.js';
 import { createBriefService, pickWeatherArea } from '../src/services/brief.service.js';
 import type { WeatherRepository } from '../src/services/weather.repository.js';
-import type { AlertRow, DailyBriefRow, LocationRow, ScheduleRow, WeatherSnapshotRow } from '../src/types/index.js';
+import type { AlertRow, DailyBriefRow, LocationRow, PlaceRouteRow, ScheduleRow, WeatherSnapshotRow } from '../src/types/index.js';
 import { manilaClock } from '../src/utils/time.js';
 
 // Friday, October 23, 05:00 in Manila.
@@ -68,7 +67,7 @@ const weatherRow: WeatherSnapshotRow = {
   fetched_at: '2026-10-22T20:50:00Z',
 };
 
-function setup(options: { existing?: DailyBriefRow | null; userIds?: string[]; failFor?: string; routes?: PlaceRouteMeta[]; allowCclex?: boolean } = {}) {
+function setup(options: { existing?: DailyBriefRow | null; userIds?: string[]; failFor?: string; routes?: PlaceRouteRow[]; allowCclex?: boolean } = {}) {
   const saved: SaveBriefInput[] = [];
   const briefs: BriefRepository = {
     getProfile: vi.fn(async () => ({ first_name: 'Thea', display_name: 'thea', city: null, subscribed_mayor: 'cebu_city', allow_cclex: options.allowCclex ?? true })),
@@ -126,7 +125,7 @@ describe('brief service', () => {
   });
 
   it('times trips by their road route, following the profile’s CCLEX choice', async () => {
-    const route = (allowCclex: boolean, distanceM: number, overrides: Partial<PlaceRouteMeta> = {}): PlaceRouteMeta => ({
+    const route = (allowCclex: boolean, distanceM: number, overrides: Partial<PlaceRouteRow> = {}): PlaceRouteRow => ({
       origin_location_id: 'home',
       destination_location_id: 'school',
       allow_cclex: allowCclex,
@@ -137,6 +136,7 @@ describe('brief service', () => {
       distance_m: distanceM,
       travel_s: 900,
       uses_cclex: allowCclex,
+      line: [[home.lat, home.lng], [school.lat, school.lng]],
       fetched_at: '2026-10-22T20:50:00Z',
       ...overrides,
     });

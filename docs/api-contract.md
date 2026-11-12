@@ -15,7 +15,8 @@ The frontend mirrors these shapes in `frontend/src/types/api.ts`.
 | PUT, DELETE | `/api/locations/:id` | Change or delete a saved place |
 | GET, POST | `/api/schedule` | Recurring trips |
 | PUT, DELETE | `/api/schedule/:id` | Change or delete a trip |
-| GET | `/api/routes` | Road route between two saved places, with and without CCLEX |
+| GET | `/api/routes` | Road route between two saved places, with and without CCLEX, colored by traffic, with the alerts on it |
+| GET | `/api/traffic-flow` | Traffic on every road in Metro Cebu, for the All Cebu map |
 | GET | `/api/alerts` | Active and upcoming alerts |
 | GET | `/api/alerts/:id` | One alert |
 | GET | `/api/news` | Latest Cebu news |
@@ -209,14 +210,22 @@ freshness), never the browser.
     "travelMinutes": 27,
     "usesCclex": true,
     "line": [[10.3157, 123.8854], [10.3149, 123.8871], [10.2954, 123.9472]],
-    "updatedAt": "2026-11-10T02:20:00Z"
+    "updatedAt": "2026-11-10T02:20:00Z",
+    "traffic": [
+      { "level": "free", "line": [[10.3157, 123.8854], [10.3149, 123.8871]] },
+      { "level": "heavy", "line": [[10.3149, 123.8871], [10.3102, 123.8950]] },
+      { "level": null, "line": [[10.3102, 123.8950], [10.2954, 123.9472]] }
+    ],
+    "alerts": [Alert]
   },
   "withoutCclex": {
     "distanceKm": 17.9,
     "travelMinutes": 41,
     "usesCclex": false,
     "line": [[10.3157, 123.8854], [10.3233, 123.9310], [10.2954, 123.9472]],
-    "updatedAt": "2026-11-10T02:20:00Z"
+    "updatedAt": "2026-11-10T02:20:00Z",
+    "traffic": [],
+    "alerts": []
   }
 }
 ```
@@ -229,9 +238,33 @@ freshness), never the browser.
 | `usesCclex` | Whether this route crosses CCLEX. Show a CCLEX choice only when `withCclex.usesCclex` is `true`. |
 | `travelMinutes` | Typical car travel time for the route (TomTom's historic traffic), not live traffic. |
 | `line` | `[lat, lng]` points along the roads, simplified to at most 300. |
+| `traffic` | The same route in stretches by current traffic, in order from `from` to `to`; each stretch starts where the last one ended. `level` is `heavy` (red), `medium` (yellow) or `free` (green), from TomTom's speed on that road in the route's direction (see `GET /api/traffic-flow`), or `null` where TomTom has no speed for the road. Empty when there's no current traffic data: then draw `line`. |
+| `alerts` | Active and upcoming `traffic`, `closure` and `flood` alerts within 100 m of this route's line, most important first, as Alert objects without `nearPlaces`. On My commute these are the only traffic alerts to show, on the map and in the list. |
 
-- Show `withCclex` or `withoutCclex` by the profile's `allowCclex`. When the one you need is `null`, draw the straight line between the two places, labeled "approximate route".
-- Routes are fetched only for pairs a trip or the usual commute uses, within about 30 minutes of saving them, and again when a place moves or the route is a week old. Other pairs stay `null`.
+- Show `withCclex` or `withoutCclex` by the profile's `allowCclex`. When the one you need is `null`, show only the two places and a note that the road route is still being found, with no line.
+- Routes are fetched only for pairs a trip or the usual commute uses, within about 30 minutes of saving them, and again when a place moves or the route is a week old. Other pairs stay `null`. `traffic` and `alerts` are worked out on every request, so they stay current.
+
+## GET /api/traffic-flow
+
+Traffic on every road in Metro Cebu that TomTom has speeds for, for the All Cebu
+map. The traffic job saves it every 15 minutes, 05:00–22:45 (see Data freshness),
+never the browser.
+
+```json
+{
+  "updatedAt": "2026-11-12T00:15:00Z",
+  "heavy": [[[10.3102, 123.8950], [10.3098, 123.8961]]],
+  "medium": [[[10.3233, 123.9310], [10.3240, 123.9301]]],
+  "free": [[[10.2954, 123.9472], [10.2960, 123.9466]]]
+}
+```
+
+| Field | Notes |
+| --- | --- |
+| `heavy`, `medium`, `free` | Road lines, each `[[lat, lng], …]` in the direction of travel. Heavy (red) is under 40% of the road's free-flow speed, medium (yellow) under 75%, free (green) the rest. A closed road is heavy. |
+| `updatedAt` | When TomTom's speeds were fetched. `null`, with empty lists, when there's no current data: before the first fetch, or when the last one is over 45 minutes old (the job doesn't run overnight). |
+
+- A two-way road has a line for each direction, and the two overlap. Draw `free`, then `medium`, then `heavy`, so the slower direction shows on top.
 
 ## Alerts
 
@@ -434,7 +467,7 @@ recomputed on every request, so they stay current.
 | `leaveTimes[].leaveAt` | Suggested departure, `"HH:MM"` Manila, rounded down to 5 minutes. |
 | `leaveTimes[].distanceKm` | Road distance of the trip's route (`GET /api/routes`, following `allowCclex`). Until that route is fetched: the straight-line distance × 1.3. |
 | `leaveTimes[].baseMinutes` | Estimated trip time without disruptions: the longer of the route's typical car time and its distance at 20 km/h door to door (jeepneys and walking included), at least 10. |
-| `leaveTimes[].delayMinutes` | Extra time for alerts near the start or end of the trip (max 45). |
+| `leaveTimes[].delayMinutes` | Extra time for alerts on the way (max 45): traffic, closures and floods within 100 m of the trip's route, the same ones `GET /api/routes` lists, and weather near the start or end. Until the route is fetched, alerts near the start or end. Each reason's `nearPlace` is whichever of the trip's two places is nearer the alert. |
 | `alerts` | Up to 10 alerts near the user's places, most important first, each with `nearPlaces`. |
 | `weather` | The profile's `city`, else the area nearest the user's home; `null` before the first fetch. |
 
@@ -532,7 +565,7 @@ database; the API only reads it.
 
 | Data | Updated |
 | --- | --- |
-| Traffic alerts (TomTom) | Every 15 minutes, 05:00–22:45 |
+| Traffic alerts and traffic flow (TomTom) | Every 15 minutes, 05:00–22:45 |
 | Weather and weather alerts (WeatherAPI) | Hourly at :05 |
 | PAGASA Visayas forecast and Cebu thunderstorm alerts | Every 30 minutes (:10, :40) |
 | SunStar / Cebu Daily News stories | Every 30 minutes |

@@ -1,4 +1,5 @@
-// /api/routes — the road route between two of the signed-in user's places.
+// /api/routes — the road route between two of the signed-in user's places, with
+// the traffic along it and the traffic alerts on it.
 
 import { Router } from "express";
 import { z } from "zod";
@@ -12,17 +13,18 @@ const routesQuerySchema = z.object({
   to: z.uuid("Must be a valid id."),
 });
 
-export function createRoutesRouter(routes: RoutesService): Router {
+export function createRoutesRouter(routes: RoutesService, now: () => Date = () => new Date()): Router {
   const router = Router();
 
   router.get("/", async (req, res) => {
     const { from, to } = parseInput(routesQuerySchema, req.query);
     const result = await routes.between(requestUser(res), from, to);
+    const current = now();
     res.json({
       from: result.from,
       to: result.to,
-      withCclex: presentRoute(result.withCclex),
-      withoutCclex: presentRoute(result.withoutCclex),
+      withCclex: presentRoute(result.withCclex, current),
+      withoutCclex: presentRoute(result.withoutCclex, current),
     });
   });
 

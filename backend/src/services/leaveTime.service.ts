@@ -1,12 +1,13 @@
 // Leave time (rule-based, README "Core Logic"): estimated travel time from the
 // trip's road route when the routes job has fetched it (TomTom Routing), else
 // from straight-line distance, plus a buffer for each travel-affecting alert
-// near the origin or destination around the trip.
+// around the trip: traffic, closures and floods on the road route (near the
+// origin or destination until it's fetched), and weather near either end.
 
 import type { AlertSeverity, AlertType } from "../types";
-import { haversineKm, roundKm } from "../utils/geo";
+import { haversineKm, roundKm, type LatLngPair } from "../utils/geo";
 import { addMinutes, manilaDateTime } from "../utils/time";
-import { SEVERITY_RANK, isActiveBetween, placesNear, type PlacePoint } from "./matching.service";
+import { ROUTE_ALERT_TYPES, SEVERITY_RANK, isActiveBetween, isOnRoute, placesNear, type PlacePoint } from "./matching.service";
 
 // Typical door-to-door speed in Metro Cebu traffic.
 export const AVERAGE_SPEED_KMH = 20;
@@ -39,7 +40,7 @@ export interface LeaveTimeInput {
   destination: PlacePoint;
   alerts: LeaveTimeAlert[];
   // The trip's road route (GET /api/routes), following the profile's CCLEX choice, once fetched.
-  route?: { distanceKm: number; travelMinutes: number };
+  route?: { distanceKm: number; travelMinutes: number; line?: LatLngPair[] };
 }
 
 export interface LeaveTimeReason {
@@ -75,12 +76,16 @@ export function computeLeaveTime(input: LeaveTimeInput): LeaveTimeResult {
   // Alerts active in the hour before departure through arrival affect the trip.
   const windowStart = addMinutes(arriveAt, -(baseMinutes + 60));
 
+  const line = input.route?.line;
   const candidates: LeaveTimeReason[] = [];
   for (const alert of input.alerts) {
     if (!AFFECTS_TRAVEL.has(alert.type) || !isActiveBetween(alert, windowStart, arriveAt)) continue;
-    const near = [...placesNear(alert, [input.origin]), ...placesNear(alert, [input.destination])].sort(
-      (a, b) => a.distanceKm - b.distanceKm,
-    )[0];
+    let radiusKm: number | undefined;
+    if (line && ROUTE_ALERT_TYPES.includes(alert.type)) {
+      if (!isOnRoute(alert, line)) continue;
+      radiusKm = Infinity; // It's on the way, so name whichever end of the trip is nearer.
+    }
+    const near = placesNear(alert, [input.origin, input.destination], radiusKm)[0];
     if (!near) continue;
     candidates.push({
       alertId: alert.id,

@@ -4,15 +4,16 @@
 import type { CebuArea } from "../config/areas";
 import type { NearbyPlace } from "../services/matching.service";
 import type { LeaveTimeSuggestion, TodayBrief } from "../services/brief.service";
+import type { RouteOnTheWay } from "../services/routes.service";
 import type {
   AlertRow,
   LguSource,
   LocationRef,
   LocationRow,
-  PlaceRouteRow,
   ProfileRow,
   RegionalForecastRow,
   ScheduleRow,
+  TrafficFlowRow,
   WeatherSnapshotRow,
 } from "../types";
 import { roundKm } from "../utils/geo";
@@ -34,7 +35,7 @@ export function presentProfile(row: ProfileRow) {
   };
 }
 
-export function presentRoute(row: PlaceRouteRow | null) {
+export function presentRoute(row: RouteOnTheWay | null, now: Date) {
   if (!row) return null;
   return {
     distanceKm: roundKm(row.distance_m / 1000),
@@ -42,6 +43,18 @@ export function presentRoute(row: PlaceRouteRow | null) {
     usesCclex: row.uses_cclex,
     line: row.line,
     updatedAt: row.fetched_at,
+    traffic: row.traffic,
+    alerts: row.alerts.map((alert) => presentAlert(alert, now)),
+  };
+}
+
+// No current flow: empty lists, so the map shows no traffic rather than old traffic.
+export function presentTrafficFlow(row: TrafficFlowRow | null) {
+  return {
+    updatedAt: row?.fetched_at ?? null,
+    free: row?.lines.free ?? [],
+    medium: row?.lines.medium ?? [],
+    heavy: row?.lines.heavy ?? [],
   };
 }
 
