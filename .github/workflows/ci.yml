@@ -2,6 +2,7 @@ name: CI
 
 on:
   pull_request:
+    types: [opened, edited, synchronize, reopened]
     branches: [main, dev]
   push:
     branches: [main, dev]
@@ -19,6 +20,7 @@ concurrency:
 jobs:
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: frontend
@@ -43,6 +45,7 @@ jobs:
 
   backend:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: backend
@@ -55,6 +58,13 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: backend/package-lock.json
+      - name: Check PR title, branch, and body hygiene
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: ../scripts/ci/check-pr-hygiene.sh
       - run: npm ci
       - run: npm run lint
       - name: Check formatting of the files this PR changes
@@ -62,3 +72,86 @@ jobs:
         run: ../scripts/ci/changed-files.sh | xargs -0 -r npx prettier --check --ignore-unknown --
       - run: npm run build
       - run: npm test
+
+  db:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Bootstrap auth schema and mock pg_cron extension
+        run: |
+          CONTAINER_ID=$(docker ps --filter "ancestor=postgres:15-alpine" --format "{{.ID}}" | head -n 1)
+
+          # Mock pg_cron extension so 0008_delete_old_job_data.sql succeeds on postgres:15-alpine
+          docker exec -i "$CONTAINER_ID" sh -c 'mkdir -p /usr/local/share/postgresql/extension && cat > /usr/local/share/postgresql/extension/pg_cron.control' << 'EOF'
+          comment = 'pg_cron mock'
+          default_version = '1.4'
+          relocatable = false
+          schema = pg_catalog
+          EOF
+
+          docker exec -i "$CONTAINER_ID" sh -c 'cat > /usr/local/share/postgresql/extension/pg_cron--1.4.sql' << 'EOF'
+          CREATE SCHEMA IF NOT EXISTS cron;
+          CREATE TABLE IF NOT EXISTS cron.job_run_details (
+            jobid bigint,
+            runid bigint,
+            job_pid integer,
+            database text,
+            username text,
+            command text,
+            status text,
+            return_message text,
+            start_time timestamptz,
+            end_time timestamptz
+          );
+          CREATE OR REPLACE FUNCTION cron.schedule(job_name text, schedule text, command text)
+          RETURNS bigint LANGUAGE sql AS $$ SELECT 1::bigint; $$;
+          CREATE OR REPLACE FUNCTION cron.unschedule(job_name text)
+          RETURNS boolean LANGUAGE sql AS $$ SELECT true; $$;
+          EOF
+
+          # Bootstrap Supabase roles, auth schema, auth.users table, and auth.uid() function
+          docker exec -i "$CONTAINER_ID" psql -U postgres -d postgres << 'EOF'
+          CREATE ROLE anon NOLOGIN;
+          CREATE ROLE authenticated NOLOGIN;
+          CREATE ROLE service_role NOLOGIN;
+
+          CREATE SCHEMA IF NOT EXISTS auth;
+          CREATE TABLE IF NOT EXISTS auth.users (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            email text,
+            raw_user_meta_data jsonb DEFAULT '{}'::jsonb,
+            created_at timestamptz DEFAULT now(),
+            updated_at timestamptz DEFAULT now()
+          );
+          CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
+            SELECT NULL::uuid;
+          $$;
+          EOF
+      - name: Validate Supabase migrations
+        run: |
+          CONTAINER_ID=$(docker ps --filter "ancestor=postgres:15-alpine" --format "{{.ID}}" | head -n 1)
+          for file in $(ls -1 supabase/migrations/*.sql | sort); do
+            echo "Applying $file..."
+            docker exec -i "$CONTAINER_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < "$file"
+          done
+      - name: Validate Supabase seed data
+        run: |
+          CONTAINER_ID=$(docker ps --filter "ancestor=postgres:15-alpine" --format "{{.ID}}" | head -n 1)
+          echo "Applying supabase/seed.sql..."
+          docker exec -i "$CONTAINER_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/seed.sql
+          docker exec -i "$CONTAINER_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM public.alerts;"
