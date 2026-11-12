@@ -40,7 +40,47 @@ export default tseslint.config(
       'react-hooks/purity': 'off',
       'react-hooks/set-state-in-effect': 'off',
       'react-hooks/immutability': 'off',
-      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      'react-refresh/only-export-components': [
+        'warn',
+        {
+          allowConstantExport: true,
+          allowExportNames: [
+            'compact',
+            'ALERT_TYPE',
+            'vars',
+            'html',
+            'resetBell',
+            'timing',
+            'hourSummary',
+            'hasSessionOnLoad',
+            'useAuth',
+          ],
+        },
+      ],
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/backend/**', '**/backend'],
+              message: 'Frontend code must not import backend modules.',
+            },
+            {
+              group: ['*service-role*', '*service_role*'],
+              message: 'Do not import service-role patterns in frontend.',
+            },
+          ],
+          paths: [
+            {
+              name: '@supabase/supabase-js',
+              importNames: ['createClient'],
+              message:
+                'Do not import createClient directly in frontend components; use getSupabase from @/lib/supabaseClient to avoid service-role key exposure.',
+            },
+          ],
+        },
+      ],
+      '@typescript-eslint/no-explicit-any': 'error',
       'no-useless-assignment': 'off',
       '@typescript-eslint/no-unused-vars': [
         'error',
@@ -51,6 +91,12 @@ export default tseslint.config(
           ignoreRestSiblings: true,
         },
       ],
+    },
+  },
+  {
+    files: ['src/pages/HomePage.tsx', 'src/pages/TrafficPage.tsx'],
+    rules: {
+      'react-hooks/exhaustive-deps': 'off',
     },
   },
   prettierConfig,

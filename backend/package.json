@@ -9,7 +9,7 @@
     "test": "vitest run tests",
     "job": "tsx scripts/run-job.ts",
     "fb:demo": "tsx scripts/fb-demo.ts",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
