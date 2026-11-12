@@ -8,9 +8,36 @@ import { AttributionControl, CircleMarker, MapContainer, Marker, Polyline, TileL
 import { ICON_PATHS } from '@/components/icons/paths';
 import { getDisplay, useDisplay } from '@/lib/display';
 import { CEBU_CENTER, KIND_META } from '@/lib/places';
-import type { Alert, LocationKind, Weather } from '@/types/api';
+import type { Alert, LocationKind, RouteTrafficStretch, TrafficFlowResponse, TrafficLevel, Weather } from '@/types/api';
 import { cx } from '@/utils/cx';
-import { rainStep, SEVERITY_COLOR } from './mapTokens';
+import { rainStep, SEVERITY_COLOR, TRAFFIC_COLOR, TRAFFIC_LEVELS } from './mapTokens';
+
+type Lines = Array<Array<[number, number]>>;
+
+/** Groups a route's traffic stretches by level, so each level is one polyline however many stretches it has. */
+function stretchesByLevel(stretches: RouteTrafficStretch[]): Record<TrafficLevel, Lines> {
+  const out: Record<TrafficLevel, Lines> = { heavy: [], medium: [], free: [] };
+  for (const s of stretches) if (s.level && s.line.length > 1) out[s.level].push(s.line);
+  return out;
+}
+
+/** Roads by traffic level, one canvas polyline per level, slower drawn on top. Not interactive, so taps reach the dots. */
+function TrafficLines({ lines, weight, opacity }: { lines: Record<TrafficLevel, Lines>; weight: number; opacity: number }) {
+  return (
+    <>
+      {TRAFFIC_LEVELS.map((level) =>
+        lines[level].length > 0 ? (
+          <Polyline
+            key={level}
+            positions={lines[level]}
+            interactive={false}
+            pathOptions={{ color: TRAFFIC_COLOR[level], weight, opacity, lineCap: 'round', lineJoin: 'round' }}
+          />
+        ) : null,
+      )}
+    </>
+  );
+}
 
 const CEBU: [number, number] = [CEBU_CENTER.lat, CEBU_CENTER.lng];
 const OSM_CREDIT = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
@@ -93,6 +120,10 @@ interface AlertsMapProps {
   routeLine?: Array<[number, number]> | null;
   /** The road route's label, e.g. "about 28 min · 12.4 km". */
   routeLabel?: string;
+  /** The road route in stretches by current traffic (GET /api/routes `traffic`). Empty or missing: the plain route color. */
+  routeTraffic?: RouteTrafficStretch[];
+  /** Traffic on every road (GET /api/traffic-flow), for All Cebu. */
+  flow?: TrafficFlowResponse;
   selectedId?: string | null;
   onSelect?: (id: string) => void;
   /** An alert whose row is hovered or focused: its dot gets a lighter mango ring and is drawn above the others. */
@@ -143,6 +174,8 @@ export function AlertsMap({
   route,
   routeLine,
   routeLabel,
+  routeTraffic,
+  flow,
   selectedId,
   onSelect,
   previewId,
@@ -151,6 +184,8 @@ export function AlertsMap({
   bottomInset = 0,
   creditPosition = 'bottomright',
 }: AlertsMapProps) {
+  const routeLevels = useMemo(() => (routeTraffic && routeTraffic.length > 0 ? stretchesByLevel(routeTraffic) : null), [routeTraffic]);
+  const flowLevels = useMemo(() => (flow?.updatedAt ? { heavy: flow.heavy, medium: flow.medium, free: flow.free } : null), [flow]);
   const { mode } = useDisplay();
   const options = useMapOptions();
   const located = useMemo(() => alerts.filter((a) => a.lat !== null && a.lng !== null), [alerts]);
@@ -164,7 +199,8 @@ export function AlertsMap({
   // Its tolerance widens each alert dot's tap area to about 44px without drawing it bigger.
   const renderer = useMemo(() => L.canvas({ tolerance: 12 }), []);
   // The tiles flip in dark mode, so the route takes a color that reads on each, over an outline that sets it off the roads.
-  const routeColor = mode === 'dark' ? '#FFC233' : '#1E5AA8';
+  // With traffic colors on, the stretches TomTom has no speed for go neutral gray: dark mode's mango would read as "Slow".
+  const routeColor = routeLevels ? (mode === 'dark' ? '#9AA6B8' : '#6B7686') : mode === 'dark' ? '#FFC233' : '#1E5AA8';
   const routeEdge = mode === 'dark' ? '#0E1726' : '#FFFFFF';
 
   return (
@@ -175,6 +211,7 @@ export function AlertsMap({
         <AutoResize />
         <FitBounds points={points} bottomInset={bottomInset} />
         {selected && <FlyTo target={[selected.lat as number, selected.lng as number]} />}
+        {flowLevels && <TrafficLines lines={flowLevels} weight={3} opacity={0.8} />}
         {road && (
           <>
             <Polyline positions={road} interactive={false} pathOptions={{ color: routeEdge, weight: 9, opacity: 0.6, lineCap: 'round', lineJoin: 'round' }} />
@@ -185,6 +222,7 @@ export function AlertsMap({
                 </Tooltip>
               )}
             </Polyline>
+            {routeLevels && <TrafficLines lines={routeLevels} weight={5} opacity={1} />}
           </>
         )}
         {located.map((alert) => (

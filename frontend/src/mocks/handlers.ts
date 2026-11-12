@@ -13,9 +13,12 @@ import type {
   LocationInput,
   Profile,
   RoadRoute,
+  RouteTrafficStretch,
   ScheduleEntry,
   ScheduleInput,
   Severity,
+  TrafficFlowResponse,
+  TrafficLevel,
 } from '@/types/api';
 import {
   alerts,
@@ -136,9 +139,35 @@ function mockRoute(from: Location, to: Location, via: Array<[number, number]>, u
     usesCclex,
     line,
     updatedAt: new Date().toISOString(),
-    traffic: [],
+    traffic: mockTraffic(line),
     alerts: alerts.filter((a) => isOnRoute(a, line)).sort(byImportance),
   };
+}
+
+// Mock traffic: each piece of a mock line gets a level, heavy wherever a traffic alert sits within 400 m, otherwise a
+// fixed pattern so sample mode shows every color, including a stretch with no speed (null).
+const TRAFFIC_PATTERN: ReadonlyArray<TrafficLevel | null> = ['free', 'medium', 'free', 'free', null, 'medium'];
+
+function mockTraffic(line: Array<[number, number]>): RouteTrafficStretch[] {
+  const jams = alerts.filter((a) => a.type === 'traffic' && a.lat !== null && a.lng !== null);
+  return line.slice(1).map((p, i) => {
+    const piece: Array<[number, number]> = [line[i], p];
+    const jammed = jams.some((a) => kmToLine(a.lat!, a.lng!, piece) <= 0.4);
+    return { level: jammed ? 'heavy' : TRAFFIC_PATTERN[i % TRAFFIC_PATTERN.length], line: piece };
+  });
+}
+
+/** GET /api/traffic-flow: the mock roads are the sample routes between every pair of saved places, by their mock traffic. */
+function mockTrafficFlow(): TrafficFlowResponse {
+  const flow: TrafficFlowResponse = { updatedAt: new Date().toISOString(), heavy: [], medium: [], free: [] };
+  for (const from of db.locations)
+    for (const to of db.locations) {
+      if (from.id >= to.id) continue;
+      const { withCclex, withoutCclex } = mockRoutes(from, to);
+      for (const route of withCclex === withoutCclex ? [withCclex] : [withCclex, withoutCclex])
+        for (const s of route.traffic) if (s.level) flow[s.level].push(s.line);
+    }
+  return flow;
 }
 
 // The alert types a route lists (GET /api/routes `alerts`), and how close to its line counts as on it.
@@ -362,6 +391,11 @@ export const handlers = [
   http.get(`${API}/areas`, async () => {
     await latency();
     return HttpResponse.json({ areas });
+  }),
+
+  http.get(`${API}/traffic-flow`, async () => {
+    await latency();
+    return HttpResponse.json(mockTrafficFlow());
   }),
 
   http.get(`${API}/routes`, async ({ request }) => {

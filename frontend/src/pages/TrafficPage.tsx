@@ -10,7 +10,7 @@ import { Expander } from '@/components/Expander';
 import { Icon } from '@/components/icons/Icon';
 import { Page } from '@/components/layout/Page';
 import { LazyAlertsMap, type MapPlace } from '@/components/map/LazyMaps';
-import { SEVERITY_COLOR } from '@/components/map/mapTokens';
+import { SEVERITY_COLOR, TRAFFIC_COLOR, TRAFFIC_LABEL, TRAFFIC_LEVELS } from '@/components/map/mapTokens';
 import { RightNow } from '@/components/RightNow';
 import { RollNumber } from '@/components/RollNumber';
 import { CardError, timing } from '@/components/today/Card';
@@ -23,7 +23,7 @@ import { Switch } from '@/components/ui/Switch';
 import { Tag } from '@/components/ui/Tag';
 import { useMediaQuery } from '@/hooks/useBrowser';
 import { useHeldList } from '@/hooks/useFeedList';
-import { useAlerts, useBrief } from '@/hooks/useFeeds';
+import { useAlerts, useBrief, useTrafficFlow } from '@/hooks/useFeeds';
 import { useLocations, useRoutes, useSchedule } from '@/hooks/usePlaces';
 import { useProfile, useUpdateProfile } from '@/hooks/useProfile';
 import { getDisplay } from '@/lib/display';
@@ -54,15 +54,28 @@ const byImportance = (a: Alert, b: Alert) =>
 /** How much of a phone's map the peeking sheet covers: 35% of the screen, less the tab bar's strip below the map. */
 const sheetInset = () => Math.max(0, Math.round(window.innerHeight * 0.35 - 94));
 
-function Legend() {
+/** The map key: alert dots by severity and, when the map shows traffic, road lines by traffic. */
+function Legend({ traffic = false }: { traffic?: boolean }) {
   return (
-    <ul className="map-legend" aria-label="Marker colors">
+    <ul className="map-legend" aria-label="Map key">
+      {traffic && <li className="map-legend-head">Alerts</li>}
       {SEVERITIES.map((severity) => (
         <li key={severity}>
           <i style={{ background: SEVERITY_COLOR[severity] }} />
           {SEVERITY_LABEL[severity]}
         </li>
       ))}
+      {traffic && (
+        <>
+          <li className="map-legend-head">Traffic</li>
+          {[...TRAFFIC_LEVELS].reverse().map((level) => (
+            <li key={level}>
+              <i className="map-legend-line" style={{ background: TRAFFIC_COLOR[level] }} />
+              {TRAFFIC_LABEL[level]}
+            </li>
+          ))}
+        </>
+      )}
     </ul>
   );
 }
@@ -83,11 +96,11 @@ function Panel({ wide, i, id, title, aside, className, children }: { wide: boole
 }
 
 /** Lays out the map and the list. Below 720px the list moves into a sheet that peeks over the map. */
-function MapLayout({ wide, map, label, showLegend = false, children }: { wide: boolean; map: ReactNode; label: string; showLegend?: boolean; children: ReactNode }) {
+function MapLayout({ wide, map, label, showLegend = false, traffic = false, children }: { wide: boolean; map: ReactNode; label: string; showLegend?: boolean; traffic?: boolean; children: ReactNode }) {
   const mapCard = (
     <section className={cx('card glass e-card map-card', wide && 'span-8')} style={vars({ '--i': 1 })} aria-label="Map">
       <div className="map-box map-main">{map}</div>
-      {wide && showLegend && <Legend />}
+      {wide && showLegend && <Legend traffic={traffic} />}
     </section>
   );
   if (!wide) {
@@ -260,6 +273,8 @@ function CommuteView({ wide }: { wide: boolean }) {
   const updateProfile = useUpdateProfile();
   const allowCclex = profile.data?.allowCclex !== false;
   const road = roads.data ? (allowCclex ? roads.data.withCclex : roads.data.withoutCclex) : null;
+  // Only the route from the start to the end is colored by traffic; no other road on My commute.
+  const hasTraffic = Boolean(road && road.traffic.length > 0);
 
   // Traffic, closures and floods come only from the route itself (within 100 m of its line), so nothing off to the side
   // shows and nothing in the middle of a long trip is missed. Other alerts (weather, advisories, power, water) still
@@ -319,14 +334,16 @@ function CommuteView({ wide }: { wide: boolean }) {
       wide={wide}
       label="Your commute"
       showLegend
+      traffic={hasTraffic}
       map={
         <LazyAlertsMap
-          label="Map of your commute with the alerts on the way"
+          label={hasTraffic ? 'Map of your commute, its route colored by traffic, with the alerts on the way' : 'Map of your commute with the alerts on the way'}
           alerts={visible}
           places={route ?? places}
           route={route}
           routeLine={road?.line}
           routeLabel={road ? `${road.travelMinutes} min · ${road.distanceKm} km` : undefined}
+          routeTraffic={road?.traffic}
           selectedId={selected}
           onSelect={select}
           previewId={previewed}
@@ -410,7 +427,7 @@ function CommuteView({ wide }: { wide: boolean }) {
           </ul>
         )}
       </Panel>
-      {!wide && <Legend />}
+      {!wide && <Legend traffic={hasTraffic} />}
       <RightNow i={4} flat={!wide} className={wide ? undefined : 'sheet-section'} />
     </MapLayout>
   );
@@ -486,6 +503,9 @@ function AllCebuView({ wide }: { wide: boolean }) {
   const severities = (params.get('severity')?.split(',') ?? []).filter((s): s is Severity => (SEVERITIES as readonly string[]).includes(s));
   const alerts = useAlerts({ type: types.length ? types : undefined, severity: severities.length ? severities : undefined, limit: 200 });
   const { selected, toggle, select, rowRef, previewed, previewRow, previewDot } = useAlertSelection();
+  // Every road the traffic data covers, in the route's colors. Empty overnight or when the data is old.
+  const flow = useTrafficFlow();
+  const hasFlow = Boolean(flow.data?.updatedAt);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const { visible, newCount, showNew } = useHeldList(alerts.data, `${params.get('type') ?? ''}|${params.get('severity') ?? ''}`, alerts.isSuccess && !alerts.isPlaceholderData);
   const filterCount = types.length + severities.length;
@@ -512,10 +532,12 @@ function AllCebuView({ wide }: { wide: boolean }) {
       wide={wide}
       label="Alerts across Cebu"
       showLegend
+      traffic={hasFlow}
       map={
         <LazyAlertsMap
-          label="Map of alerts across Metro Cebu, colored by severity"
+          label={hasFlow ? 'Map of alerts across Metro Cebu, colored by severity, over roads colored by traffic' : 'Map of alerts across Metro Cebu, colored by severity'}
           alerts={visible}
+          flow={flow.data}
           selectedId={selected}
           onSelect={select}
           previewId={previewed}
@@ -573,7 +595,7 @@ function AllCebuView({ wide }: { wide: boolean }) {
           </ul>
         )}
       </Panel>
-      {!wide && <Legend />}
+      {!wide && <Legend traffic={hasFlow} />}
       <BusiestAreas wide={wide} i={4} alerts={visible} />
       <RightNow i={5} flat={!wide} className={wide ? undefined : 'sheet-section'} />
       {!wide && (

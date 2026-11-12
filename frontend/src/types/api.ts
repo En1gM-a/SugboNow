@@ -64,6 +64,17 @@ export interface RouteTrafficStretch {
   line: Array<[number, number]>;
 }
 
+// GET /api/traffic-flow: every Metro Cebu road TomTom has speeds for, by level, for the All Cebu map.
+
+export interface TrafficFlowResponse {
+  /** When TomTom's speeds were fetched; null, with empty lists, when there's no current data. */
+  updatedAt: string | null;
+  /** Road lines, each [[lat, lng], …] in the direction of travel. Draw free, then medium, then heavy. */
+  heavy: Array<Array<[number, number]>>;
+  medium: Array<Array<[number, number]>>;
+  free: Array<Array<[number, number]>>;
+}
+
 export interface RoutesResponse {
   from: string;
   to: string;
