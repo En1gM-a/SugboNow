@@ -4,7 +4,7 @@ This guide defines the Git workflow, branching conventions, and conflict-resolut
 
 ---
 
-## 1. Branching Strategy
+## 1. Branching Strategy & PR Hygiene
 
 ### Always branch from fresh `origin/main`
 
@@ -15,12 +15,93 @@ git fetch origin
 git switch -c <area>/<topic> origin/main
 ```
 
-Use conventional area prefixes for branch names:
+### Branch Naming Conventions (`scripts/ci/check-pr-hygiene.sh`)
+
+Branch names must use conventional area prefixes followed by a short, descriptive topic in lowercase joined by hyphens:
 
 - `frontend/<topic>` — e.g. `frontend/dashboard-layout`
 - `backend/<topic>` — e.g. `backend/weather-api`
 - `docs/<topic>` — e.g. `docs/api-contract-update`
 - `chore/<topic>` — e.g. `chore/ci-hardening`
+- `supabase/<topic>` — e.g. `supabase/migration-lgu-posts`
+- `fix/<topic>` — e.g. `fix/auth-redirect`
+- `feat/<topic>` — e.g. `feat/alert-preview`
+
+Branch names are validated in CI against `^(frontend|backend|docs|chore|supabase|fix|feat)/[a-z0-9-]+$` (automated dependency branches matching `^dependabot/` are also permitted). Branches that do not follow this naming structure will fail CI.
+
+### PR Title Format (Conventional Commits)
+
+Pull request titles must follow the Conventional Commits specification:
+
+```text
+type(scope): lowercase summary
+```
+
+or without scope:
+
+```text
+type: lowercase summary
+```
+
+- **Allowed types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
+- **Scope (optional):** lowercase identifier indicating the component or module touched (e.g. `frontend`, `backend`, `ci`, `weather-api`).
+- **Summary rules:**
+  - Written in the imperative mood (e.g. "add", not "added" or "adds").
+  - Must begin with a **lowercase letter** (e.g. `feat(frontend): add weather hourly strip`).
+  - Must **not** end with a period.
+  - Breaking changes may append `!` before the colon (e.g. `feat(api)!: require auth header`).
+- **Why this is enforced:** GitHub uses **Squash and Merge**. The PR title becomes the subject line of the squash commit on `main`. Enforcing this format guarantees a consistent, human-readable commit history and automated changelog generation.
+- **CI enforcement:** Validated by `scripts/ci/check-pr-hygiene.sh` with regex:
+  `^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._-]+\))?!?: (?![A-Z]).+`
+
+### PR Body Hygiene and Template Comments
+
+When creating a pull request from `.github/pull_request_template.md`:
+
+1. **Non-empty description:** Every PR must provide context on the problem solved, changes made, and verification steps. Empty PR bodies fail CI.
+2. **Remove template comments:** You **must delete all HTML comments** (`<!-- ... -->`) from the PR template before submitting. Leaving comment placeholders pollutes the PR conversation and squashed commit messages.
+3. **Fill out checklist items:** Ensure required sections (summary, testing evidence, checklist) are completed.
+
+### Windows PowerShell UTF-8 BOM Warning & Shell Quoting
+
+Windows PowerShell 5.1 has known quirks with text encoding and character expansion that can corrupt commit messages and PR metadata:
+
+#### 1. The UTF-8 Byte Order Mark (BOM) Issue
+
+By default, Windows PowerShell 5.1's `Out-File`, redirection operator `>`, and `Set-Content` write files with a UTF-8 Byte Order Mark (BOM: `efbbbf`) or in UTF-16 LE encoding.
+
+- Git and GitHub Actions treat the BOM as unexpected binary bytes at the start of strings.
+- CI (`scripts/ci/check-pr-hygiene.sh`) rejects any PR title or PR body starting with a BOM (`efbbbf`).
+- **Safe practices:**
+  - **Short messages:** Use `git commit -m "type(scope): lowercase summary"` directly in your terminal (safe in any shell).
+  - **Long messages or PR bodies:**
+    - Write and save the file in your code editor explicitly saved as **UTF-8 without BOM**.
+    - In Git Bash, use a quoted heredoc (`<<'EOF'`):
+      ```bash
+      cat <<'EOF' > msg.txt
+      feat(frontend): add weather forecast hourly strip
+
+      Renders hourly weather forecast cards with precipitation probabilities.
+      EOF
+      git commit -F msg.txt
+      ```
+    - In PowerShell 5.1 (if scripting file generation), use the .NET API to force UTF-8 without BOM:
+      ```powershell
+      [IO.File]::WriteAllText("$PWD/msg.txt", $text, [Text.UTF8Encoding]::new($false))
+      git commit -F msg.txt
+      ```
+  - **Never use in PowerShell 5.1:** `$text | Out-File msg.txt`, `$text > msg.txt`, or `Set-Content msg.txt $text`.
+
+#### 2. Shell Quoting Pitfalls (Backticks `` ` `` and `$`)
+
+Both Windows PowerShell and Git Bash interpolate characters inside double quotes before `git` or `gh` receives them:
+
+- **PowerShell:** Treats backtick `` ` `` as an escape character (e.g. `` `name` `` becomes a newline followed by `name`), and expands `$var` as a variable (usually replacing it with an empty string).
+- **Git Bash:** Treats backticks as command substitution and expands `$var` as environment variables.
+- **Guideline:** For commit messages, PR descriptions, or CLI arguments containing backticks (markdown code spans) or `$` symbols:
+  - Enclose the argument in single quotes (in PowerShell, use `''` to represent a literal apostrophe).
+  - Use a PowerShell single-quoted here-string (`@'...'@`) or Git Bash quoted heredoc (`<<'EOF'`).
+  - Or draft the text in a file (UTF-8 without BOM) and pass it with `-F <file>`.
 
 ### Keep local `main` untouched
 
@@ -124,14 +205,14 @@ Never attempt to manually resolve line-by-line git conflicts in `package-lock.js
 
 ## 5. Pre-Push Verification
 
-Before pushing your branch or requesting review, run formatters and linters locally. CI will enforce these checks and block unformatted or failing code.
+Before pushing your branch or requesting review, run formatters and linters locally. CI will enforce these checks with zero tolerance for warnings or formatting errors.
 
 ```bash
 # Format code with Prettier
 npm --prefix frontend run format
 npm --prefix backend run format
 
-# Run ESLint checks
+# Run ESLint checks (zero warnings allowed: --max-warnings=0)
 npm --prefix frontend run lint
 npm --prefix backend run lint
 
@@ -141,7 +222,17 @@ npm --prefix backend run build
 npm --prefix backend test
 ```
 
-> In CI, Prettier runs against all files added or modified in the PR (`scripts/ci/changed-files.sh | xargs -0 -r npx prettier --check --ignore-unknown --`), while ESLint runs across the entire application.
+### Zero-Warning ESLint Policy (`--max-warnings=0`)
+
+Both `frontend` and `backend` lint scripts enforce `eslint . --max-warnings=0`. CI will fail if any ESLint warnings or errors are detected.
+
+Key architectural rules enforced by ESLint:
+
+- **No explicit `any`:** `@typescript-eslint/no-explicit-any` is configured to `'error'` across both frontend and backend. Use proper type definitions, generics, or `unknown` with type narrowing instead of `any`.
+- **Cross-boundary imports forbidden:** `frontend/eslint.config.mjs` enforces `no-restricted-imports` preventing `frontend/src/**` from importing anything from `backend/` (`**/backend/**`). Frontend and backend are decoupled applications communicating solely over HTTP via `docs/api-contract.md`.
+- **No service-role client in frontend:** Frontend code must not import or initialize Supabase service-role clients or keys (`@supabase/supabase-js` `createClient` with service-role patterns). Client-side access must strictly use public anon keys governed by Row Level Security (RLS).
+
+> In CI, Prettier runs against all files added or modified in the PR (`scripts/ci/changed-files.sh | xargs -0 -r npx prettier --check --ignore-unknown --`), while ESLint runs across the entire application with `--max-warnings=0`.
 
 ---
 
@@ -159,27 +250,54 @@ gh api -X PATCH repos/En1gM-a/SugboNow -f allow_auto_merge=true
 
 Once enabled, developers can click "Enable auto-merge" (or run `gh pr merge --auto --squash`) as soon as their PR is ready, avoiding manual follow-up once CI finishes.
 
-### 2. Trade-offs of `strict_required_status_checks_policy`
+### 2. Branch Protection Ruleset (`protect-main.json`)
 
-The repository ruleset (`.github/rulesets/protect-main.json`) configures:
+The repository ruleset (`.github/rulesets/protect-main.json`) configures branch protection for `main`:
 
 ```json
-"strict_required_status_checks_policy": true
+{
+  "rules": [
+    { "type": "deletion" },
+    { "type": "non_fast_forward" },
+    { "type": "required_linear_history" },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 1,
+        "dismiss_stale_reviews_on_push": true,
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": true
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": false,
+        "required_status_checks": [
+          { "context": "frontend" },
+          { "context": "backend" }
+        ]
+      }
+    }
+  ]
+}
 ```
 
-#### What this means
+#### Why `strict_required_status_checks_policy: false` and `require_last_push_approval: false`
 
-A PR branch **must be strictly up to date with the tip of `main`** before GitHub permits merging.
+The repository previously evaluated strict required status checks (`strict_required_status_checks_policy: true`), which mandated that every PR branch be strictly up to date with the latest tip of `main` before merging.
 
-#### Trade-off analysis
+However, in combination with `dismiss_stale_reviews_on_push: true` and `required_linear_history: true`, strict status checks caused a severe developer bottleneck:
 
-- **Strict enabled (`true`, current setting):**
-  - **Pros:** Guarantees that the exact integration of the PR branch on top of current `main` has passed all tests and checks. Eliminates regressions caused by two PRs that pass in isolation but conflict semantically when merged.
-  - **Cons:** Serializes merging. Whenever any PR merges into `main`, all other open PRs become "out of date". Teammates must rebase their branch (`git rebase origin/main`) and wait for CI checks to re-run before merging.
-- **Strict disabled (`false`):**
-  - **Pros:** Significantly faster merge throughput. When PRs touch independent areas (e.g. one frontend PR and one backend PR), both can merge without waiting on sequential rebases and rebuilds.
-  - **Cons:** Small risk that concurrent merges introduce incompatible changes that pass branch CI but break on `main`.
+1. Whenever **any** PR squash-merged into `main`, every other currently open and approved PR immediately fell behind and became "out of date".
+2. Rebasing the branch against updated `origin/main` registered as a new push on GitHub, which triggered `dismiss_stale_reviews_on_push: true`.
+3. This wiped out existing approvals on every open PR, requiring another round of manual review approvals and another full CI run.
+4. If another teammate merged during that window, the rebase cycle repeated indefinitely.
 
-#### Recommendation
+Following the ruleset architecture battle-tested in `dreeyanzz/studyhub`:
 
-Keep `strict_required_status_checks_policy: true` alongside `allow_auto_merge=true`. GitHub Auto-merge automatically handles the queue, updating branches and merging them in sequence once checks pass. If the team size grows and serial rebase queues become a bottleneck for orthogonal changes, consider toggling strict checks to `false`.
+- **`strict_required_status_checks_policy: false`**: Allows orthogonal pull requests (e.g. an independent frontend feature and a backend bugfix) that passed CI on their own branch to merge without requiring serial rebases after every `main` advance.
+- **`require_last_push_approval: false`**: Ensures that rebase pushes or automated updates do not permanently lock out auto-merge queues when substantive code reviews have already been completed.
+- **`dismiss_stale_reviews_on_push: true`**: Retained to ensure new commits made during active review dismiss stale approvals.
+- **`required_linear_history: true`**: Enforced alongside Squash and Merge to guarantee a clean, linear git commit history on `main`.
