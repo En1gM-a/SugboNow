@@ -42,6 +42,14 @@ const TYPES: readonly AlertType[] = ['traffic', 'closure', 'flood', 'weather', '
 const TYPE_CHIP: Partial<Record<AlertType, string>> = { power: 'Power', water: 'Water' };
 const SEVERITIES: readonly Severity[] = ['high', 'medium', 'low'];
 const SEVERITY_LABEL: Record<Severity, string> = { high: 'High', medium: 'Medium', low: 'Low' };
+/** The alert types My commute takes from the road route (GET /api/routes `alerts`) instead of the trip's two places. */
+const ROUTE_TYPES: readonly AlertType[] = ['traffic', 'closure', 'flood'];
+
+// The API's order for alerts: severity, then type, then newest.
+const SEVERITY_RANK: Record<Severity, number> = { high: 0, medium: 1, low: 2 };
+const TYPE_RANK: Record<AlertType, number> = { advisory: 0, flood: 1, closure: 2, weather: 3, traffic: 4, power: 5, water: 6 };
+const byImportance = (a: Alert, b: Alert) =>
+  SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] || TYPE_RANK[a.type] - TYPE_RANK[b.type] || b.createdAt.localeCompare(a.createdAt);
 
 /** How much of a phone's map the peeking sheet covers: 35% of the screen, less the tab bar's strip below the map. */
 const sheetInset = () => Math.max(0, Math.round(window.innerHeight * 0.35 - 94));
@@ -55,7 +63,6 @@ function Legend() {
           {SEVERITY_LABEL[severity]}
         </li>
       ))}
-      <li className="map-legend-note">The dashed line is an approximate route.</li>
     </ul>
   );
 }
@@ -217,7 +224,7 @@ function RouteSummary({ routes, failed, allowCclex, onCclexChange }: { routes: R
         </p>
       ) : (
         <p className="muted small">
-          {failed ? "Couldn't load the road route." : 'Finding the road route. Until then the map shows a straight line.'}
+          {failed ? "Couldn't load the road route, so traffic on the way can't show yet." : 'Finding the road route. Traffic on the way shows once it’s found.'}
         </p>
       )}
       {hasChoice && (
@@ -248,21 +255,27 @@ function CommuteView({ wide }: { wide: boolean }) {
   const route: [MapPlace, MapPlace] | null = origin && destination ? [origin, destination] : null;
   const leave = brief.data?.leaveTimes.find((lt) => (trip ? lt.scheduleEntryId === trip.id : lt.origin.id === originId && lt.destination.id === destinationId));
   // The road route, by the profile's CCLEX choice (allowed unless it's turned off). Until the backend has fetched it,
-  // the map keeps the straight "approximate route".
+  // the map shows only the two places, with no line.
   const roads = useRoutes(originId, destinationId);
   const updateProfile = useUpdateProfile();
   const allowCclex = profile.data?.allowCclex !== false;
   const road = roads.data ? (allowCclex ? roads.data.withCclex : roads.data.withoutCclex) : null;
 
-  const onTheWay = useMemo(
-    () => (relevant.data ?? []).filter((a) => a.lat === null || !route || a.nearPlaces?.some((p) => p.id === originId || p.id === destinationId)),
-    [relevant.data, route, originId, destinationId],
-  );
+  // Traffic, closures and floods come only from the route itself (within 100 m of its line), so nothing off to the side
+  // shows and nothing in the middle of a long trip is missed. Other alerts (weather, advisories, power, water) still
+  // match the trip's two places.
+  const onTheWay = useMemo(() => {
+    const others = (relevant.data ?? []).filter(
+      (a) => !ROUTE_TYPES.includes(a.type) && (a.lat === null || !route || a.nearPlaces?.some((p) => p.id === originId || p.id === destinationId)),
+    );
+    return [...(road?.alerts ?? []), ...others].sort(byImportance);
+  }, [relevant.data, road, route, originId, destinationId]);
   const { visible, newCount, showNew } = useHeldList(onTheWay, `${originId}-${destinationId}`, relevant.isSuccess && !relevant.isPlaceholderData);
 
   const detail = (alert: Alert): ReactNode => {
     const reason = leave?.reasons.find((r) => r.alertId === alert.id);
     if (reason) return `Adds about ${reason.minutes} min`;
+    if (ROUTE_TYPES.includes(alert.type)) return alert.areaName ? `On your route · ${alert.areaName}` : 'On your route';
     const near = alert.nearPlaces?.[0];
     return near ? `${near.distanceKm} km from ${near.label}` : (alert.areaName ?? 'All of Metro Cebu');
   };
@@ -308,7 +321,7 @@ function CommuteView({ wide }: { wide: boolean }) {
       showLegend
       map={
         <LazyAlertsMap
-          label="Map of your commute with the alerts near it"
+          label="Map of your commute with the alerts on the way"
           alerts={visible}
           places={route ?? places}
           route={route}
@@ -371,7 +384,7 @@ function CommuteView({ wide }: { wide: boolean }) {
           />
         )}
       </Panel>
-      <Panel wide={wide} i={3} id="way-h" title="On your way" aside={<span className="muted small tabular-nums">{visible.length} near these places</span>}>
+      <Panel wide={wide} i={3} id="way-h" title="On your way" aside={<span className="muted small tabular-nums">{visible.length} on your way</span>}>
         <NewPill count={newCount} onClick={showNew} />
         {relevant.isPending ? (
           <RowsSkeleton />

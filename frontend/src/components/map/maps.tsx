@@ -87,9 +87,9 @@ interface AlertsMapProps {
   alerts: Alert[];
   /** The user's places, shown as pins. The map fits itself to them when there are two or more. */
   places?: MapPlace[];
-  /** The commute's origin and destination. Without `routeLine`, a dashed straight line labeled "approximate route". */
+  /** The commute's origin and destination. Without `routeLine` there's no line, only the two places' pins. */
   route?: [MapPlace, MapPlace] | null;
-  /** The commute's road route from GET /api/routes, drawn along the roads instead of the straight line. */
+  /** The commute's road route from GET /api/routes, drawn along the roads. Never a made-up line. */
   routeLine?: Array<[number, number]> | null;
   /** The road route's label, e.g. "about 28 min · 12.4 km". */
   routeLabel?: string;
@@ -175,7 +175,7 @@ export function AlertsMap({
         <AutoResize />
         <FitBounds points={points} bottomInset={bottomInset} />
         {selected && <FlyTo target={[selected.lat as number, selected.lng as number]} />}
-        {road ? (
+        {road && (
           <>
             <Polyline positions={road} interactive={false} pathOptions={{ color: routeEdge, weight: 9, opacity: 0.6, lineCap: 'round', lineJoin: 'round' }} />
             <Polyline positions={road} pathOptions={{ color: routeColor, weight: 5, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }}>
@@ -186,20 +186,6 @@ export function AlertsMap({
               )}
             </Polyline>
           </>
-        ) : (
-          route && (
-            <Polyline
-              positions={[
-                [route[0].lat, route[0].lng],
-                [route[1].lat, route[1].lng],
-              ]}
-              pathOptions={{ color: routeColor, weight: 4, dashArray: '8 10', opacity: 0.9 }}
-            >
-              <Tooltip permanent direction="center" className="route-tip">
-                approximate route
-              </Tooltip>
-            </Polyline>
-          )
         )}
         {located.map((alert) => (
           <AlertDot key={alert.id} alert={alert} selected={alert.id === selectedId} previewed={alert.id === previewId} onSelect={onSelect} onPreview={onPreview} />

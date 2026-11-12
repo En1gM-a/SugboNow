@@ -50,6 +50,18 @@ export interface RoadRoute {
   /** [lat, lng] along the roads, at most 300 points. */
   line: Array<[number, number]>;
   updatedAt: string;
+  /** The route in stretches by current traffic, from start to end. Empty when there's no current traffic data. */
+  traffic: RouteTrafficStretch[];
+  /** Active and upcoming traffic, closure and flood alerts within 100 m of `line`, most important first, without `nearPlaces`. */
+  alerts: Alert[];
+}
+
+export type TrafficLevel = 'heavy' | 'medium' | 'free';
+
+export interface RouteTrafficStretch {
+  /** Null where TomTom has no speed for the road. */
+  level: TrafficLevel | null;
+  line: Array<[number, number]>;
 }
 
 export interface RoutesResponse {

@@ -130,8 +130,38 @@ function mockRoute(from: Location, to: Location, via: Array<[number, number]>, u
   const stops = [a, ...via, b];
   const line = stops.flatMap((p, i) => (i === 0 ? [p] : [...bend(stops[i - 1], p), p]));
   const distanceKm = line.slice(1).reduce((sum, p, i) => sum + km(line[i][0], line[i][1], p[0], p[1]), 0);
-  return { distanceKm: Math.round(distanceKm * 10) / 10, travelMinutes: Math.round((distanceKm / 28) * 60), usesCclex, line, updatedAt: new Date().toISOString() };
+  return {
+    distanceKm: Math.round(distanceKm * 10) / 10,
+    travelMinutes: Math.round((distanceKm / 28) * 60),
+    usesCclex,
+    line,
+    updatedAt: new Date().toISOString(),
+    traffic: [],
+    alerts: alerts.filter((a) => isOnRoute(a, line)).sort(byImportance),
+  };
 }
+
+// The alert types a route lists (GET /api/routes `alerts`), and how close to its line counts as on it.
+const ROUTE_TYPES: readonly AlertType[] = ['traffic', 'closure', 'flood'];
+const ON_ROUTE_KM = 0.1;
+
+/** Kilometres from a point to the nearest segment of a line, on a flat projection (fine at city scale). */
+function kmToLine(lat: number, lng: number, line: Array<[number, number]>): number {
+  const x = (pLng: number) => pLng * 111.32 * Math.cos((lat * Math.PI) / 180);
+  const y = (pLat: number) => pLat * 110.57;
+  let best = Infinity;
+  for (let i = 1; i < line.length; i++) {
+    const [ax, ay, bx, by] = [x(line[i - 1][1]), y(line[i - 1][0]), x(line[i][1]), y(line[i][0])];
+    const [px, py] = [x(lng), y(lat)];
+    const len = (bx - ax) ** 2 + (by - ay) ** 2;
+    const t = len === 0 ? 0 : Math.max(0, Math.min(1, ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / len));
+    best = Math.min(best, Math.hypot(px - (ax + t * (bx - ax)), py - (ay + t * (by - ay))));
+  }
+  return best;
+}
+
+const isOnRoute = (a: Alert, line: Array<[number, number]>) =>
+  ROUTE_TYPES.includes(a.type) && a.lat !== null && a.lng !== null && kmToLine(a.lat, a.lng, line) <= ON_ROUTE_KM;
 
 function mockRoutes(from: Location, to: Location): { withCclex: RoadRoute; withoutCclex: RoadRoute } {
   const crosses = from.lng >= MACTAN_LNG !== to.lng >= MACTAN_LNG;
@@ -180,10 +210,17 @@ function leaveTimes(): LeaveTime[] {
       const d = db.locations.find((l) => l.id === s.destinationLocationId)!;
       const distanceKm = Math.round(km(o.lat, o.lng, d.lat, d.lng) * 10) / 10;
       const baseMinutes = Math.max(8, Math.round(distanceKm * 3 + 2));
+      // Like the API: traffic, closures and floods count only on the trip's route; weather and advisories near either end.
+      const routes = o.id === d.id ? null : mockRoutes(o, d);
+      const line = routes ? (db.profile.allowCclex !== false ? routes.withCclex : routes.withoutCclex).line : null;
       const reasons = alerts
         .filter((a) => a.lat !== null && a.status === 'active' && a.type !== 'power' && a.type !== 'water')
         .flatMap((a) => {
-          const near = [o, d].find((p) => km(a.lat!, a.lng!, p.lat, p.lng) <= 1.5);
+          const onRoute = line !== null && ROUTE_TYPES.includes(a.type);
+          if (onRoute && !isOnRoute(a, line)) return [];
+          const near = onRoute
+            ? [o, d].sort((p, q) => km(a.lat!, a.lng!, p.lat, p.lng) - km(a.lat!, a.lng!, q.lat, q.lng))[0]
+            : [o, d].find((p) => km(a.lat!, a.lng!, p.lat, p.lng) <= 1.5);
           return near
             ? [{ alertId: a.id, title: a.title, severity: a.severity, minutes: SEVERITY_MIN[a.severity], nearPlace: near.label }]
             : [];
