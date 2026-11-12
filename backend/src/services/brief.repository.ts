@@ -3,10 +3,10 @@
 // brief job runs without a signed-in user; every query filters by user id.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { DailyBriefRow, LocationRow, ProfileRow, ScheduleRow } from "../types";
+import type { DailyBriefRow, LocationRow, PlaceRouteRow, ProfileRow, ScheduleRow } from "../types";
 import { dbError } from "../utils/db";
 import { LOCATION_COLUMNS } from "./locations.repository";
-import { ROUTE_META_COLUMNS, type PlaceRouteMeta } from "./routes.repository";
+import { ROUTE_COLUMNS } from "./routes.repository";
 import { SCHEDULE_COLUMNS } from "./schedule.repository";
 
 const BRIEF_COLUMNS = "id, user_id, brief_date, content, alert_ids, created_at, updated_at";
@@ -24,8 +24,8 @@ export interface BriefRepository {
   getProfile(userId: string): Promise<BriefProfile | null>;
   listLocations(userId: string): Promise<LocationRow[]>;
   listSchedule(userId: string): Promise<ScheduleRow[]>;
-  // Saved road routes that start at one of the user's places (summaries only, no lines).
-  listRoutes(userId: string): Promise<PlaceRouteMeta[]>;
+  // Saved road routes that start at one of the user's places, with their lines for the alerts on the way.
+  listRoutes(userId: string): Promise<PlaceRouteRow[]>;
   // Users with at least one schedule entry on this weekday (0 = Sunday).
   listUserIdsWithScheduleOn(weekday: number): Promise<string[]>;
   getBrief(userId: string, date: string): Promise<DailyBriefRow | null>;
@@ -69,10 +69,10 @@ export function createBriefRepository(db: SupabaseClient): BriefRepository {
       // The !inner join keeps only routes whose origin is one of this user's places.
       const { data, error } = await db
         .from("place_routes")
-        .select(`${ROUTE_META_COLUMNS}, origin:locations!place_routes_origin_location_id_fkey!inner(user_id)`)
+        .select(`${ROUTE_COLUMNS}, origin:locations!place_routes_origin_location_id_fkey!inner(user_id)`)
         .eq("origin.user_id", userId);
       if (error) throw dbError(error);
-      return ((data ?? []) as Array<PlaceRouteMeta & { origin?: unknown }>).map(({ origin: _origin, ...route }) => route);
+      return ((data ?? []) as Array<PlaceRouteRow & { origin?: unknown }>).map(({ origin: _origin, ...route }) => route);
     },
 
     async listUserIdsWithScheduleOn(weekday) {

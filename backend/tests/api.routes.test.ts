@@ -7,6 +7,7 @@ import type { LocationsService } from '../src/services/locations.service.js';
 import type { ProfileService } from '../src/services/profile.service.js';
 import type { RoutesService } from '../src/services/routes.service.js';
 import type { ScheduleService } from '../src/services/schedule.service.js';
+import type { TrafficFlowService } from '../src/services/trafficFlow.service.js';
 import type { WeatherService } from '../src/services/weather.service.js';
 import type { AlertRow, LocationRow, PlaceRouteRow, ProfileRow, ScheduleRow, WeatherSnapshotRow } from '../src/types/index.js';
 import { conflict, notFound } from '../src/utils/errors.js';
@@ -98,7 +99,7 @@ describe('auth and errors', () => {
   it('serves health without a token and requires one everywhere else', async () => {
     const base = await start({});
     expect((await fetch(`${base}/api/health`)).status).toBe(200);
-    for (const path of ['/api/profile', '/api/areas', '/api/locations', '/api/schedule', '/api/alerts', '/api/news', '/api/weather', '/api/brief/today']) {
+    for (const path of ['/api/profile', '/api/areas', '/api/locations', '/api/schedule', '/api/alerts', '/api/news', '/api/weather', '/api/traffic-flow', '/api/brief/today']) {
       expect((await fetch(`${base}${path}`)).status, path).toBe(401);
     }
   });
@@ -189,7 +190,8 @@ describe('/api/routes', () => {
   };
 
   it('returns both routes in the contract shape, with null for one not fetched yet', async () => {
-    const between = vi.fn(async () => ({ from: HOME, to: SCHOOL, withCclex: route, withoutCclex: null }));
+    const traffic = [{ level: 'heavy' as const, line: route.line }];
+    const between = vi.fn(async () => ({ from: HOME, to: SCHOOL, withCclex: { ...route, traffic, alerts: [upcoming] }, withoutCclex: null }));
     const base = await start({ routes: { between } as unknown as RoutesService });
     const response = await fetch(`${base}/api/routes?from=${HOME}&to=${SCHOOL}`, { headers: authHeaders });
 
@@ -207,6 +209,8 @@ describe('/api/routes', () => {
           [10.2954, 123.9472],
         ],
         updatedAt: '2026-11-10T02:20:00Z',
+        traffic,
+        alerts: [expect.objectContaining({ id: upcoming.id, status: 'upcoming' })],
       },
       withoutCclex: null,
     });
@@ -217,6 +221,28 @@ describe('/api/routes', () => {
     const response = await fetch(`${base}/api/routes?from=${HOME}&to=nope`, { headers: authHeaders });
     expect(response.status).toBe(400);
     expect((await response.json()).error.details).toEqual([{ path: 'to', message: 'Must be a valid id.' }]);
+  });
+});
+
+describe('/api/traffic-flow', () => {
+  it('returns every road line by level, and empty lists without current flow', async () => {
+    const lines = {
+      free: [
+        [
+          [10.3, 123.88],
+          [10.3, 123.89],
+        ],
+      ],
+      medium: [],
+      heavy: [],
+    };
+    const current = vi.fn(async () => ({ area: 'metro_cebu', lines, fetched_at: '2026-10-22T21:45:00Z' }));
+    const base = await start({ trafficFlow: { current } as unknown as TrafficFlowService });
+    const read = async () => (await fetch(`${base}/api/traffic-flow`, { headers: authHeaders })).json();
+
+    expect(await read()).toEqual({ updatedAt: '2026-10-22T21:45:00Z', ...lines });
+    current.mockResolvedValueOnce(null as never);
+    expect(await read()).toEqual({ updatedAt: null, free: [], medium: [], heavy: [] });
   });
 });
 

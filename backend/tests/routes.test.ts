@@ -5,7 +5,7 @@ import { computeLeaveTime } from '../src/services/leaveTime.service.js';
 import type { LocationsRepository } from '../src/services/locations.repository.js';
 import type { PlaceRouteMeta, RoutePair, RoutesJobRepository, RoutesRepository } from '../src/services/routes.repository.js';
 import { createRoutesService } from '../src/services/routes.service.js';
-import type { LocationRow, PlaceRouteRow } from '../src/types/index.js';
+import type { AlertRow, AlertType, LocationRow, PlaceRouteRow, TrafficFlowLines } from '../src/types/index.js';
 import { simplifyLine, type LatLngPair } from '../src/utils/geo.js';
 import { notFound } from '../src/utils/errors.js';
 import { TEST_USER } from './helpers/testApp.js';
@@ -203,11 +203,32 @@ describe('routes service', () => {
     ...overrides,
   });
 
-  function service(owned: LocationRow[], rows: PlaceRouteRow[]) {
+  function service(owned: LocationRow[], rows: PlaceRouteRow[], options: { alerts?: AlertRow[]; flow?: TrafficFlowLines } = {}) {
     const locations = { findOwned: vi.fn(async () => owned) } as unknown as LocationsRepository;
     const routes: RoutesRepository = { between: vi.fn(async () => rows) };
-    return { svc: createRoutesService({ routes, locations }), routes };
+    const alerts = { listActive: vi.fn(async () => options.alerts ?? []) };
+    const flow = {
+      current: vi.fn(async () => (options.flow ? { area: 'metro_cebu', lines: options.flow, fetched_at: now.toISOString() } : null)),
+    };
+    return { svc: createRoutesService({ routes, locations, alerts, flow, now: () => now }), routes, alerts };
   }
+
+  const alert = (id: string, lat: number, lng: number, type: AlertType = 'traffic'): AlertRow => ({
+    id,
+    source: 'tomtom',
+    type,
+    severity: 'high',
+    title: id,
+    summary: null,
+    lat,
+    lng,
+    area_name: null,
+    starts_at: null,
+    ends_at: null,
+    source_url: null,
+    image_url: null,
+    created_at: '2026-11-10T02:00:00Z',
+  });
 
   it('returns both routes for two of the user’s places', async () => {
     const { svc, routes } = service([place(home, 'Home'), place(office, 'Office')], [row(true), row(false)]);
@@ -220,6 +241,38 @@ describe('routes service', () => {
   it('hides a route saved before a place moved', async () => {
     const { svc } = service([place({ ...home, lat: 10.32 }, 'Home'), place(office, 'Office')], [row(true), row(false)]);
     expect(await svc.between(TEST_USER, home.id, office.id)).toEqual({ from: home.id, to: office.id, withCclex: null, withoutCclex: null });
+  });
+
+  it('colors each route by the traffic along it and lists only the traffic alerts on it', async () => {
+    // Heavy traffic eastbound on the first kilometre of the Home to Office line.
+    const flow: TrafficFlowLines = {
+      heavy: [
+        [
+          [home.lat, home.lng],
+          [10.31242, 123.89462],
+        ],
+      ],
+      medium: [],
+      free: [],
+    };
+    const { svc, alerts } = service([place(home, 'Home'), place(office, 'Office')], [row(true), row(false)], {
+      flow,
+      alerts: [
+        alert('on the route', 10.30657, 123.91321),
+        alert('300 m off the route', 10.3184, 123.8854),
+        alert('power cut on the route', 10.30657, 123.91321, 'power'),
+      ],
+    });
+    const result = await svc.between(TEST_USER, home.id, office.id);
+    expect(alerts.listActive).toHaveBeenCalledWith(expect.objectContaining({ types: ['traffic', 'closure', 'flood'] }));
+    expect(result.withCclex?.alerts.map((a) => a.id)).toEqual(['on the route']);
+    expect(result.withCclex?.traffic.map((stretch) => stretch.level)).toEqual(['heavy', null]);
+    expect(result.withoutCclex?.traffic).toEqual(result.withCclex?.traffic);
+  });
+
+  it('sends no traffic colors when there is no current flow', async () => {
+    const { svc } = service([place(home, 'Home'), place(office, 'Office')], [row(true), row(false)]);
+    expect((await svc.between(TEST_USER, home.id, office.id)).withCclex?.traffic).toEqual([]);
   });
 
   it('is a 404 for a place that isn’t the user’s', async () => {
@@ -242,6 +295,40 @@ describe('leave time with a road route', () => {
     const result = computeLeaveTime({ ...trip, route: { distanceKm: 5, travelMinutes: 33.2 } });
     expect(result.distanceKm).toBe(5);
     expect(result.baseMinutes).toBe(34);
+  });
+
+  it('adds time for traffic on the route, not for traffic near a place but off the route', () => {
+    const alert = (title: string, lat: number, lng: number, type: AlertType = 'traffic') => ({
+      id: title,
+      type,
+      severity: 'high' as const,
+      title,
+      lat,
+      lng,
+      starts_at: null,
+      ends_at: null,
+    });
+    const line: LatLngPair[] = [
+      [home.lat, home.lng],
+      [office.lat, office.lng],
+    ];
+    const result = computeLeaveTime({
+      ...trip,
+      alerts: [
+        // On the route, 3.2 km from Home: further than the 3 km "near a place" radius.
+        alert('on the route', 10.30657, 123.91321),
+        // 300 m from Home, but off the route.
+        alert('off the route', 10.3184, 123.8854),
+        // Weather still counts near either end.
+        alert('rain', 10.3184, 123.8854, 'weather'),
+      ],
+      route: { distanceKm: 7, travelMinutes: 20, line },
+    });
+    expect(result.reasons.map((reason) => [reason.title, reason.nearPlace])).toEqual([
+      ['on the route', 'Home'],
+      ['rain', 'Home'],
+    ]);
+    expect(result.delayMinutes).toBe(40);
   });
 
   it('keeps the straight-line estimate until the route is fetched', () => {

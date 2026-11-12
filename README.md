@@ -335,7 +335,7 @@ All times are Manila time (`Asia/Manila`).
 
 | Job | Schedule | Quota check |
 | --- | --- | --- |
-| `ingestTraffic` | Every 15 min, 05:00–22:45 | 72 runs/day, well under 2,500 |
+| `ingestTraffic` | Every 15 min, 05:00–22:45 | 72 runs/day. Each fetches the incidents and 49 traffic-flow tiles: about 110,000 of TomTom's 200,000 free tiles/month |
 | `ingestWeather` | Hourly at :05 | 9 areas, about 6,500 calls/month, under 100,000 |
 | `ingestNews` | Every 3 hours at :20 | 3 queries, so 24 calls/day, under 100 |
 | `ingestSunstar` | Every 30 min | Be polite, cache aggressively |
@@ -364,6 +364,8 @@ Full request and response shapes live in [`docs/api-contract.md`](docs/api-contr
 | GET | `/api/alerts` | Active and upcoming alerts (filter by type, severity, area, distance, or near your places) |
 | GET | `/api/news` | Latest Cebu news |
 | GET | `/api/weather` | Current weather and 24-hour forecast per area |
+| GET | `/api/routes` | Road route between two saved places, colored by traffic, with the alerts on it |
+| GET | `/api/traffic-flow` | Traffic on every road in Metro Cebu (TomTom flow), for the All Cebu map |
 | GET | `/api/brief/today` | Today's personalized brief with leave times |
 | POST / GET | `/api/lgu-posts/refresh`, `/api/lgu-posts/latest` | The followed mayor's latest Facebook posts |
 
@@ -392,8 +394,8 @@ Full request and response shapes live in [`docs/api-contract.md`](docs/api-contr
 
 ## Core Logic (Backend)
 
-1. **Matching** (`matching.service.ts`): an alert is relevant to a user if it is active during the schedule window and within a set radius of one of their saved locations (Haversine distance in `utils/geo.ts`). Route-corridor matching is a later upgrade.
-2. **Leave time** (`leaveTime.service.ts`): rule-based. The base trip time comes from the trip's road route (`ingestRoutes`, TomTom Routing, following the profile's CCLEX choice): the longer of TomTom's typical car time and the road distance at 20 km/h door to door. Before the route is fetched it uses the straight-line distance × 1.3. Then it adds a buffer per severity level of matched alerts. Live travel times are a later upgrade.
+1. **Matching** (`matching.service.ts`): an alert is relevant to a user if it is active during the schedule window and within a set radius of one of their saved locations (Haversine distance in `utils/geo.ts`). On a trip with a road route, traffic, closures and floods count only when they're within 100 m of the route.
+2. **Leave time** (`leaveTime.service.ts`): rule-based. The base trip time comes from the trip's road route (`ingestRoutes`, TomTom Routing, following the profile's CCLEX choice): the longer of TomTom's typical car time and the road distance at 20 km/h door to door. Before the route is fetched it uses the straight-line distance × 1.3. Then it adds a buffer per severity level of the alerts on the way: traffic, closures and floods on the route, and weather near either end. Live travel times are a later upgrade.
 3. **Brief** (`brief.service.ts` + `ai.service.ts`): send only the matched alerts and the schedule to the LLM, ask for a short structured summary, and store the result in `daily_briefs`.
 
 ---

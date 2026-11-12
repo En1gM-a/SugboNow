@@ -1,10 +1,15 @@
 // Road routes between two of the signed-in user's places (GET /api/routes).
 
-import type { PlaceRouteRow, RequestUser } from "../types";
+import type { AlertRow, PlaceRouteRow, RequestUser, RouteTraffic } from "../types";
 import { notFound } from "../utils/errors";
 import type { LatLng } from "../utils/geo";
+import { addHours } from "../utils/time";
+import type { AlertsRepository } from "./alerts.repository";
+import { UPCOMING_HOURS } from "./alerts.service";
 import type { LocationsRepository } from "./locations.repository";
+import { ROUTE_ALERT_TYPES, compareAlerts, isOnRoute } from "./matching.service";
 import type { PlaceRouteMeta, RoutesRepository } from "./routes.repository";
+import { colorRoute, type TrafficFlowService } from "./trafficFlow.service";
 
 // About 10 cm: a place that moved further than this needs a new route.
 const SAME_POINT = 1e-6;
@@ -17,14 +22,28 @@ export function routeFitsPlaces(route: PlaceRouteMeta, origin: LatLng, destinati
   return samePoint(route.origin_lat, route.origin_lng, origin) && samePoint(route.destination_lat, route.destination_lng, destination);
 }
 
+// A route with the current traffic along it and the traffic alerts on it.
+export interface RouteOnTheWay extends PlaceRouteRow {
+  traffic: RouteTraffic[];
+  alerts: AlertRow[];
+}
+
 export interface RoutesBetween {
   from: string;
   to: string;
-  withCclex: PlaceRouteRow | null;
-  withoutCclex: PlaceRouteRow | null;
+  withCclex: RouteOnTheWay | null;
+  withoutCclex: RouteOnTheWay | null;
 }
 
-export function createRoutesService({ routes, locations }: { routes: RoutesRepository; locations: LocationsRepository }) {
+export interface RoutesServiceDeps {
+  routes: RoutesRepository;
+  locations: LocationsRepository;
+  alerts: Pick<AlertsRepository, "listActive">;
+  flow: TrafficFlowService;
+  now?: () => Date;
+}
+
+export function createRoutesService({ routes, locations, alerts, flow, now = () => new Date() }: RoutesServiceDeps) {
   return {
     async between(user: RequestUser, fromId: string, toId: string): Promise<RoutesBetween> {
       const owned = await locations.findOwned(user, [fromId, toId]);
@@ -35,7 +54,23 @@ export function createRoutesService({ routes, locations }: { routes: RoutesRepos
       // A route saved before a place moved is out of date until the job fetches it again.
       const pick = (allowCclex: boolean) =>
         rows.find((row) => row.allow_cclex === allowCclex && routeFitsPlaces(row, from, to)) ?? null;
-      return { from: fromId, to: toId, withCclex: pick(true), withoutCclex: pick(false) };
+      const withCclex = pick(true);
+      const withoutCclex = pick(false);
+      if (!withCclex && !withoutCclex) return { from: fromId, to: toId, withCclex: null, withoutCclex: null };
+
+      // The same window as GET /api/alerts: active now or starting soon.
+      const current = now();
+      const [active, traffic] = await Promise.all([
+        alerts.listActive({ now: current, startsBefore: addHours(current, UPCOMING_HOURS), types: ROUTE_ALERT_TYPES, limit: 200 }),
+        flow.current(),
+      ]);
+      const onTheWay = (row: PlaceRouteRow | null): RouteOnTheWay | null =>
+        row && {
+          ...row,
+          traffic: traffic ? colorRoute(row.line, traffic.lines) : [],
+          alerts: active.filter((alert) => isOnRoute(alert, row.line)).sort(compareAlerts),
+        };
+      return { from: fromId, to: toId, withCclex: onTheWay(withCclex), withoutCclex: onTheWay(withoutCclex) };
     },
   };
 }

@@ -17,6 +17,12 @@ function toRadians(degrees: number): number {
   return (degrees * Math.PI) / 180;
 }
 
+// [lat, lng] → flat x/y metres around a latitude; accurate enough over a city.
+export function flatProjection(lat: number): (point: LatLngPair) => [number, number] {
+  const metresPerDegreeLng = METRES_PER_DEGREE * Math.cos(toRadians(lat));
+  return ([pointLat, lng]) => [lng * metresPerDegreeLng, pointLat * METRES_PER_DEGREE];
+}
+
 // Great-circle ("as the crow flies") distance in kilometres.
 export function haversineKm(a: LatLng, b: LatLng): number {
   const dLat = toRadians(b.lat - a.lat);
@@ -41,7 +47,7 @@ export function nearestArea(point: LatLng): { area: CebuArea; distanceKm: number
 }
 
 // Distance in metres from point p to the segment a–b, all in flat x/y metres.
-function segmentDistanceM(p: [number, number], a: [number, number], b: [number, number]): number {
+export function segmentDistanceM(p: [number, number], a: [number, number], b: [number, number]): number {
   const dx = b[0] - a[0];
   const dy = b[1] - a[1];
   const lengthSq = dx * dx + dy * dy;
@@ -49,7 +55,18 @@ function segmentDistanceM(p: [number, number], a: [number, number], b: [number, 
   return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
 }
 
-const round5 = (value: number) => Math.round(value * 1e5) / 1e5;
+// Shortest distance in metres from a point to a line; Infinity for an empty line.
+export function distanceToLineM(point: LatLng, line: LatLngPair[]): number {
+  const flat = flatProjection(point.lat);
+  const p = flat([point.lat, point.lng]);
+  const points = line.map(flat);
+  if (points.length === 1) return Math.hypot(p[0] - points[0][0], p[1] - points[0][1]);
+  let best = Infinity;
+  for (let i = 1; i < points.length; i++) best = Math.min(best, segmentDistanceM(p, points[i - 1], points[i]));
+  return best;
+}
+
+export const round5 = (value: number) => Math.round(value * 1e5) / 1e5;
 
 // A route line with fewer points (Douglas–Peucker): drops points within
 // `toleranceM` of the line through their neighbours, then thins evenly to at
