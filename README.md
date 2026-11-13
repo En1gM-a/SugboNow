@@ -125,7 +125,7 @@ sugbo-now/
     │   ├── routes/              # health, alerts, brief, locations, schedule
     │   ├── services/            # alerts, matching, leaveTime, brief, ai
     │   ├── integrations/        # tomtom, weatherapi, gnews, sunstar, cebuDailyNews, facebook (one file per source)
-    │   ├── jobs/                # scheduler + one job per source + generateBriefs
+    │   ├── jobs/                # scheduler + one job per source
     │   ├── schemas/             # Zod schemas for request bodies
     │   ├── types/index.ts
     │   └── utils/               # geo (distance math), logger
@@ -342,11 +342,10 @@ All times are Manila time (`Asia/Manila`).
 | `ingestCebuDailyNews` | Every 30 min (offset 15 min) | Be polite, cache aggressively |
 | `ingestPagasa` | Every 30 min (:10, :40) | Public page, no key |
 | `ingestRoutes` | Every 30 min (:20, :50) | TomTom Routing, same key and quota as traffic; only new or moved places, else weekly |
-| `generateBriefs` | Daily, 05:30, only with `CRON_ENABLED=true` | One brief per user with a schedule that day. Otherwise each brief is written the first time its user opens it that day |
 
 Every job writes normalized rows into `alerts` with a unique `fingerprint` so re-runs never create duplicates; the weather job also replaces each area's row in `weather_snapshots`. `npm run job -- <name>` (inside `backend/`) runs one immediately.
 
-**Where they run:** GitHub Actions runs the jobs that fetch outside APIs and feeds (all but `generateBriefs`) on these schedules (`.github/workflows/jobs.yml`), so no server has to stay on. GitHub's cron is in UTC, so the workflow's times are shifted 8 hours. Runs can start a few minutes late, and GitHub pauses scheduled workflows after 60 days without activity in the repo. Each job is also in the Actions tab under **Scheduled jobs → Run workflow**, to run one by hand. A repo admin adds these repository secrets (Settings → Secrets and variables → Actions): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `WEATHER_API_KEY`, `TOMTOM_API_KEY`, `GNEWS_API_KEY`. A job whose key is missing is skipped. The server's own scheduler (`CRON_ENABLED=true`) still works on a long-running host; use one or the other, not both.
+**Where they run:** GitHub Actions runs the jobs that fetch outside APIs and feeds on these schedules (`.github/workflows/jobs.yml`), so no server has to stay on. GitHub's cron is in UTC, so the workflow's times are shifted 8 hours. Runs can start a few minutes late, and GitHub pauses scheduled workflows after 60 days without activity in the repo. Each job is also in the Actions tab under **Scheduled jobs → Run workflow**, to run one by hand. A repo admin adds these repository secrets (Settings → Secrets and variables → Actions): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `WEATHER_API_KEY`, `TOMTOM_API_KEY`, `GNEWS_API_KEY`. A job whose key is missing is skipped. The server's own scheduler (`CRON_ENABLED=true`) still works on a long-running host; use one or the other, not both.
 
 ---
 
@@ -396,7 +395,7 @@ Full request and response shapes live in [`docs/api-contract.md`](docs/api-contr
 
 1. **Matching** (`matching.service.ts`): an alert is relevant to a user if it is active during the schedule window and within a set radius of one of their saved locations (Haversine distance in `utils/geo.ts`). On a trip with a road route, traffic, closures and floods count only when they're within 100 m of the route.
 2. **Leave time** (`leaveTime.service.ts`): rule-based. The base trip time comes from the trip's road route (`ingestRoutes`, TomTom Routing, following the profile's CCLEX choice): the longer of TomTom's typical car time and the road distance at 20 km/h door to door. Before the route is fetched it uses the straight-line distance × 1.3. Then it adds a buffer per severity level of the alerts on the way: traffic, closures and floods on the route, and weather near either end. Live travel times are a later upgrade.
-3. **Brief** (`brief.service.ts` + `ai.service.ts`): send only the matched alerts and the schedule to the LLM, ask for a short structured summary, and store the result in `daily_briefs`.
+3. **Brief** (`brief.service.ts` + `ai.service.ts`): send only the matched alerts and the schedule to the LLM, ask for a short structured summary, and store the result in `daily_briefs`. It's written the first time the user opens the app that day, and again on the first open within 2 hours of each trip's leave time; no scheduled job writes it.
 
 ---
 

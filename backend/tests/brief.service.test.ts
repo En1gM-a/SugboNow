@@ -67,17 +67,13 @@ const weatherRow: WeatherSnapshotRow = {
   fetched_at: '2026-10-22T20:50:00Z',
 };
 
-function setup(options: { existing?: DailyBriefRow | null; userIds?: string[]; failFor?: string; routes?: PlaceRouteRow[]; allowCclex?: boolean } = {}) {
+function setup(options: { existing?: DailyBriefRow | null; routes?: PlaceRouteRow[]; allowCclex?: boolean; at?: Date } = {}) {
   const saved: SaveBriefInput[] = [];
   const briefs: BriefRepository = {
     getProfile: vi.fn(async () => ({ first_name: 'Thea', display_name: 'thea', city: null, subscribed_mayor: 'cebu_city', allow_cclex: options.allowCclex ?? true })),
-    listLocations: vi.fn(async (userId: string) => {
-      if (userId === options.failFor) throw new Error('db down');
-      return [home, school];
-    }),
+    listLocations: vi.fn(async () => [home, school]),
     listSchedule: vi.fn(async () => [entry('weekday', [1, 2, 3, 4, 5]), entry('weekend', [0, 6])]),
     listRoutes: vi.fn(async () => options.routes ?? []),
-    listUserIdsWithScheduleOn: vi.fn(async () => options.userIds ?? []),
     getBrief: vi.fn(async () => options.existing ?? null),
     saveBrief: vi.fn(async (input: SaveBriefInput) => {
       saved.push(input);
@@ -93,17 +89,15 @@ function setup(options: { existing?: DailyBriefRow | null; userIds?: string[]; f
   } as unknown as AlertsRepository;
   const weather = { get: vi.fn(async () => weatherRow) } as unknown as WeatherRepository;
   const writer: BriefWriter = { name: 'test', write: vi.fn(async (input: BriefInput) => rulesBriefWriter.write(input)) };
-  const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
   const service = createBriefService({
     briefs,
     alerts,
     weather,
     latestLguPost: async () => ({ officialName: 'Mayor Nestor Archival', caption: 'WALAY KLASE | OCT 23\nAll levels.', postedAt: '2026-10-22T12:00:00Z' }),
     writer,
-    logger,
-    now: () => now,
+    now: () => options.at ?? now,
   });
-  return { service, briefs, weather, writer, logger, saved };
+  return { service, briefs, weather, writer, saved };
 }
 
 describe('brief service', () => {
@@ -164,8 +158,11 @@ describe('brief service', () => {
     expect(content).toContain('From Mayor Nestor Archival: WALAY KLASE | OCT 23');
   });
 
+  // The trip leaves at 6:50 AM, so from 4:50 AM a brief written earlier is out of date.
+  const savedAt = (updatedAt: string): DailyBriefRow => ({ id: 'b1', user_id: 'user-1', brief_date: '2026-10-23', content: 'Saved', alert_ids: [], created_at: '', updated_at: updatedAt });
+
   it('reuses the brief already saved today', async () => {
-    const existing: DailyBriefRow = { id: 'b1', user_id: 'user-1', brief_date: '2026-10-23', content: 'Saved', alert_ids: [], created_at: '', updated_at: '' };
+    const existing = savedAt('2026-10-22T20:55:00Z'); // 4:55 AM, inside the 2 hours before leaving
     const { service, briefs, writer } = setup({ existing });
     const today = await service.getToday('user-1');
     expect(today.brief).toBe(existing);
@@ -174,12 +171,30 @@ describe('brief service', () => {
     expect(today.leaveTimes).toHaveLength(1);
   });
 
-  it('generates briefs for everyone with a trip today and counts failures', async () => {
-    const { service, briefs, logger } = setup({ userIds: ['u1', 'u2', 'broken'], failFor: 'broken' });
-    expect(await service.generateAll(now)).toEqual({ generated: 2, failed: 1 });
-    expect(briefs.listUserIdsWithScheduleOn).toHaveBeenCalledWith(5);
-    expect(logger.warn).toHaveBeenCalledTimes(1);
+  it('writes the brief again within 2 hours of a trip’s leave time', async () => {
+    const { service, saved } = setup({ existing: savedAt('2026-10-22T18:00:00Z') }); // written at 2:00 AM
+    const today = await service.getToday('user-1');
+    expect(saved).toHaveLength(1);
+    expect(today.brief.content).toContain('leave by 6:50 AM');
   });
+
+  it('keeps an early brief until a trip is 2 hours away, and after the trip is over', async () => {
+    const early = setup({ existing: savedAt('2026-10-22T18:00:00Z'), at: new Date('2026-10-22T20:00:00Z') }); // 4:00 AM
+    await early.service.getToday('user-1');
+    expect(early.saved).toHaveLength(0);
+    const after = setup({ existing: savedAt('2026-10-22T18:00:00Z'), at: new Date('2026-10-23T00:00:00Z') }); // 8:00 AM
+    await after.service.getToday('user-1');
+    expect(after.saved).toHaveLength(0);
+  });
+
+  it('leaves trips that are over out of the text', async () => {
+    const { service, saved } = setup({ at: new Date('2026-10-23T12:00:00Z') }); // 8:00 PM
+    await service.getToday('user-1');
+    expect(saved[0].content).toContain('Good evening, Thea!');
+    expect(saved[0].content).toContain('No more trips on your schedule today.');
+    expect(saved[0].content).not.toContain('leave by');
+  });
+
 });
 
 describe('pickWeatherArea', () => {

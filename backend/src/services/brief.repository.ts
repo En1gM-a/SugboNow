@@ -26,8 +26,6 @@ export interface BriefRepository {
   listSchedule(userId: string): Promise<ScheduleRow[]>;
   // Saved road routes that start at one of the user's places, with their lines for the alerts on the way.
   listRoutes(userId: string): Promise<PlaceRouteRow[]>;
-  // Users with at least one schedule entry on this weekday (0 = Sunday).
-  listUserIdsWithScheduleOn(weekday: number): Promise<string[]>;
   getBrief(userId: string, date: string): Promise<DailyBriefRow | null>;
   // Creates or replaces the user's brief for that date.
   saveBrief(input: SaveBriefInput): Promise<DailyBriefRow>;
@@ -73,15 +71,6 @@ export function createBriefRepository(db: SupabaseClient): BriefRepository {
         .eq("origin.user_id", userId);
       if (error) throw dbError(error);
       return ((data ?? []) as Array<PlaceRouteRow & { origin?: unknown }>).map(({ origin: _origin, ...route }) => route);
-    },
-
-    async listUserIdsWithScheduleOn(weekday) {
-      const { data, error } = await db
-        .from("schedule_entries")
-        .select("user_id")
-        .contains("days_of_week", [weekday]);
-      if (error) throw dbError(error);
-      return [...new Set((data ?? []).map((row) => (row as { user_id: string }).user_id))];
     },
 
     async getBrief(userId, date) {
