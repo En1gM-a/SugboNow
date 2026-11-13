@@ -1,0 +1,25 @@
+# Store text files with LF in the repository, whatever each person's
+# core.autocrlf setting is. Mixed line endings make whole files show up as
+# changed and cause merge conflicts that aren't real.
+* text=auto eol=lf
+
+# Windows-only scripts keep CRLF.
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary files: never touch line endings, never try to merge.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.avif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.pdf binary
+*.mp4 binary
+*.webm binary
