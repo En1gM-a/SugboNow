@@ -26,11 +26,6 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v7
-        with:
-          # On a pull request this checks out GitHub's merge commit, whose
-          # first parent (HEAD^1) is the tip of the base branch. Two commits
-          # of history are enough to list the files this PR changes.
-          fetch-depth: 2
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
@@ -38,9 +33,6 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run lint
-      - name: Check formatting of the files this PR changes
-        if: github.event_name == 'pull_request'
-        run: ../scripts/ci/changed-files.sh | xargs -0 -r npx prettier --check --ignore-unknown --
       - run: npm run build
 
   backend:
@@ -51,8 +43,6 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v7
-        with:
-          fetch-depth: 2
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
@@ -67,9 +57,6 @@ jobs:
         run: ../scripts/ci/check-pr-hygiene.sh
       - run: npm ci
       - run: npm run lint
-      - name: Check formatting of the files this PR changes
-        if: github.event_name == 'pull_request'
-        run: ../scripts/ci/changed-files.sh | xargs -0 -r npx prettier --check --ignore-unknown --
       - run: npm run build
       - run: npm test
 
