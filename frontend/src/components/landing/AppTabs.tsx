@@ -249,7 +249,7 @@ const Screens = memo(function Screens({ phone, sky }: { phone: number; sky: stri
             <span className="lp-m-h lp-tnum">Leave by 6:43 AM</span>
             <span className="lp-m-chip lp-mango">+12 min</span>
           </div>
-          <div className="lp-m-s">Approximate route · Home → School</div>
+          <div className="lp-m-s">Fastest route · Home → School</div>
           <div className="lp-m-alert">
             <Sym href="#i-traffic" />
             <span>

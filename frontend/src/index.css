@@ -2979,6 +2979,20 @@
     border-radius: 50%;
     box-sizing: content-box;
   }
+  /* A road's traffic: a short stroke, like the lines on the map, not a dot like the alerts. */
+  .map-legend i.map-legend-line {
+    width: 16px;
+    height: 4px;
+    border: 0;
+    border-radius: 2px;
+  }
+  .map-legend-head {
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .map-legend-head:not(:first-child) {
+    margin-left: 6px;
+  }
   .sheet-section {
     display: grid;
     gap: 6px;
@@ -3045,6 +3059,22 @@
   }
   .leave-panel .card-title {
     white-space: nowrap;
+  }
+  /* The road route under the leave time, with the CCLEX switch when the route crosses it. */
+  .route-summary {
+    display: grid;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+  }
+  .route-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 8px;
+  }
+  .route-summary .switch-row:first-of-type {
+    margin-top: 10px;
   }
   .list-pill {
     position: static;

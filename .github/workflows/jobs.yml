@@ -12,6 +12,7 @@ on:
     - cron: "0,30 * * * *" # ingestSunstar
     - cron: "15,45 * * * *" # ingestCebuDailyNews
     - cron: "10,40 * * * *" # ingestPagasa
+    - cron: "20,50 * * * *" # ingestRoutes: every 30 min at :20 and :50
   workflow_dispatch:
     inputs:
       job:
@@ -25,6 +26,7 @@ on:
             ingestSunstar,
             ingestCebuDailyNews,
             ingestPagasa,
+            ingestRoutes,
           ]
 
 permissions:
@@ -70,6 +72,7 @@ jobs:
             "0,30 * * * *") job=ingestSunstar ;;
             "15,45 * * * *") job=ingestCebuDailyNews ;;
             "10,40 * * * *") job=ingestPagasa ;;
+            "20,50 * * * *") job=ingestRoutes ;;
             "") job="$CHOSEN" ;;
             *) echo "::error::No job for schedule '$SCHEDULE'"; exit 1 ;;
           esac

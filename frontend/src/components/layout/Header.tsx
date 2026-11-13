@@ -59,7 +59,7 @@ function LiveStamp() {
 function WeatherChip({ city }: { city: string | null | undefined }) {
   const weather = useWeather(city);
   if (!weather.data) return city ? <Skeleton className="wx-chip-skel" /> : null;
-  const kind = weatherKind(weather.data.current.iconUrl);
+  const kind = weatherKind(weather.data.current.iconUrl, weather.data.current.chanceOfRain);
   const temp = Math.round(weather.data.current.tempC);
   const word = oneWord(kind);
   return (

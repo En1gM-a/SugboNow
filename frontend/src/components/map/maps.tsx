@@ -8,9 +8,36 @@ import { AttributionControl, CircleMarker, MapContainer, Marker, Polyline, TileL
 import { ICON_PATHS } from '@/components/icons/paths';
 import { getDisplay, useDisplay } from '@/lib/display';
 import { CEBU_CENTER, KIND_META } from '@/lib/places';
-import type { Alert, LocationKind, Weather } from '@/types/api';
+import type { Alert, LocationKind, RouteTrafficStretch, TrafficFlowResponse, TrafficLevel, Weather } from '@/types/api';
 import { cx } from '@/utils/cx';
-import { rainStep, SEVERITY_COLOR } from './mapTokens';
+import { rainStep, SEVERITY_COLOR, TRAFFIC_COLOR, TRAFFIC_LEVELS } from './mapTokens';
+
+type Lines = Array<Array<[number, number]>>;
+
+/** Groups a route's traffic stretches by level, so each level is one polyline however many stretches it has. */
+function stretchesByLevel(stretches: RouteTrafficStretch[]): Record<TrafficLevel, Lines> {
+  const out: Record<TrafficLevel, Lines> = { heavy: [], medium: [], free: [] };
+  for (const s of stretches) if (s.level && s.line.length > 1) out[s.level].push(s.line);
+  return out;
+}
+
+/** Roads by traffic level, one canvas polyline per level, slower drawn on top. Not interactive, so taps reach the dots. */
+function TrafficLines({ lines, weight, opacity }: { lines: Record<TrafficLevel, Lines>; weight: number; opacity: number }) {
+  return (
+    <>
+      {TRAFFIC_LEVELS.map((level) =>
+        lines[level].length > 0 ? (
+          <Polyline
+            key={level}
+            positions={lines[level]}
+            interactive={false}
+            pathOptions={{ color: TRAFFIC_COLOR[level], weight, opacity, lineCap: 'round', lineJoin: 'round' }}
+          />
+        ) : null,
+      )}
+    </>
+  );
+}
 
 const CEBU: [number, number] = [CEBU_CENTER.lat, CEBU_CENTER.lng];
 const OSM_CREDIT = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
@@ -87,8 +114,16 @@ interface AlertsMapProps {
   alerts: Alert[];
   /** The user's places, shown as pins. The map fits itself to them when there are two or more. */
   places?: MapPlace[];
-  /** The commute's origin and destination: a dashed straight line labeled "approximate route". */
+  /** The commute's origin and destination. Without `routeLine` there's no line, only the two places' pins. */
   route?: [MapPlace, MapPlace] | null;
+  /** The commute's road route from GET /api/routes, drawn along the roads. Never a made-up line. */
+  routeLine?: Array<[number, number]> | null;
+  /** The road route's label, e.g. "about 28 min · 12.4 km". */
+  routeLabel?: string;
+  /** The road route in stretches by current traffic (GET /api/routes `traffic`). Empty or missing: the plain route color. */
+  routeTraffic?: RouteTrafficStretch[];
+  /** Traffic on every road (GET /api/traffic-flow), for All Cebu. */
+  flow?: TrafficFlowResponse;
   selectedId?: string | null;
   onSelect?: (id: string) => void;
   /** An alert whose row is hovered or focused: its dot gets a lighter mango ring and is drawn above the others. */
@@ -133,16 +168,40 @@ function AlertDot({ alert, selected, previewed, onSelect, onPreview }: { alert: 
 }
 
 /** Alerts as circle markers colored by severity, drawn on one canvas, with the user's places as pins. */
-export function AlertsMap({ alerts, places = [], route, selectedId, onSelect, previewId, onPreview, label, bottomInset = 0, creditPosition = 'bottomright' }: AlertsMapProps) {
+export function AlertsMap({
+  alerts,
+  places = [],
+  route,
+  routeLine,
+  routeLabel,
+  routeTraffic,
+  flow,
+  selectedId,
+  onSelect,
+  previewId,
+  onPreview,
+  label,
+  bottomInset = 0,
+  creditPosition = 'bottomright',
+}: AlertsMapProps) {
+  const routeLevels = useMemo(() => (routeTraffic && routeTraffic.length > 0 ? stretchesByLevel(routeTraffic) : null), [routeTraffic]);
+  const flowLevels = useMemo(() => (flow?.updatedAt ? { heavy: flow.heavy, medium: flow.medium, free: flow.free } : null), [flow]);
   const { mode } = useDisplay();
   const options = useMapOptions();
   const located = useMemo(() => alerts.filter((a) => a.lat !== null && a.lng !== null), [alerts]);
   const selected = located.find((a) => a.id === selectedId);
-  const points = useMemo<Array<[number, number]>>(() => (places.length >= 2 ? places.map((p) => [p.lat, p.lng]) : []), [places]);
+  const road = route && routeLine && routeLine.length > 1 ? routeLine : null;
+  // A road route can bend well outside the box around its two ends (across to Mactan, say), so the map fits it too.
+  const points = useMemo<Array<[number, number]>>(
+    () => (places.length >= 2 ? [...places.map((p): [number, number] => [p.lat, p.lng]), ...(road ?? [])] : []),
+    [places, road],
+  );
   // Its tolerance widens each alert dot's tap area to about 44px without drawing it bigger.
   const renderer = useMemo(() => L.canvas({ tolerance: 12 }), []);
-  // The tiles flip in dark mode, so the route takes a color that reads on each.
-  const routeColor = mode === 'dark' ? '#FFC233' : '#1E5AA8';
+  // The tiles flip in dark mode, so the route takes a color that reads on each, over an outline that sets it off the roads.
+  // With traffic colors on, the stretches TomTom has no speed for go neutral gray: dark mode's mango would read as "Slow".
+  const routeColor = routeLevels ? (mode === 'dark' ? '#9AA6B8' : '#6B7686') : mode === 'dark' ? '#FFC233' : '#1E5AA8';
+  const routeEdge = mode === 'dark' ? '#0E1726' : '#FFFFFF';
 
   return (
     <div className="map-fill" role="region" aria-label={label}>
@@ -152,18 +211,19 @@ export function AlertsMap({ alerts, places = [], route, selectedId, onSelect, pr
         <AutoResize />
         <FitBounds points={points} bottomInset={bottomInset} />
         {selected && <FlyTo target={[selected.lat as number, selected.lng as number]} />}
-        {route && (
-          <Polyline
-            positions={[
-              [route[0].lat, route[0].lng],
-              [route[1].lat, route[1].lng],
-            ]}
-            pathOptions={{ color: routeColor, weight: 4, dashArray: '8 10', opacity: 0.9 }}
-          >
-            <Tooltip permanent direction="center" className="route-tip">
-              approximate route
-            </Tooltip>
-          </Polyline>
+        {flowLevels && <TrafficLines lines={flowLevels} weight={3} opacity={0.8} />}
+        {road && (
+          <>
+            <Polyline positions={road} interactive={false} pathOptions={{ color: routeEdge, weight: 9, opacity: 0.6, lineCap: 'round', lineJoin: 'round' }} />
+            <Polyline positions={road} pathOptions={{ color: routeColor, weight: 5, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }}>
+              {routeLabel && (
+                <Tooltip permanent direction="center" className="route-tip">
+                  {routeLabel}
+                </Tooltip>
+              )}
+            </Polyline>
+            {routeLevels && <TrafficLines lines={routeLevels} weight={5} opacity={1} />}
+          </>
         )}
         {located.map((alert) => (
           <AlertDot key={alert.id} alert={alert} selected={alert.id === selectedId} previewed={alert.id === previewId} onSelect={onSelect} onPreview={onPreview} />

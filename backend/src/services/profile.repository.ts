@@ -5,7 +5,7 @@ import type { ProfileRow, RequestUser, UserClientFactory } from "../types";
 import { dbError } from "../utils/db";
 
 const PROFILE_COLUMNS =
-  "id, display_name, first_name, city, address_text, subscribed_mayor, commute_origin_location_id, commute_destination_location_id, created_at, updated_at";
+  "id, display_name, first_name, city, address_text, subscribed_mayor, commute_origin_location_id, commute_destination_location_id, allow_cclex, created_at, updated_at";
 
 // Column values to change; keys are profiles column names.
 export type ProfileUpdate = Partial<
@@ -18,6 +18,7 @@ export type ProfileUpdate = Partial<
     | "subscribed_mayor"
     | "commute_origin_location_id"
     | "commute_destination_location_id"
+    | "allow_cclex"
   >
 >;
 
