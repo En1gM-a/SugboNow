@@ -35,7 +35,7 @@ export interface BriefInput {
   date: Date;
   firstName: string | null;
   weather: BriefWeather | null;
-  // Today's trips, earliest departure first.
+  // Today's trips that are still ahead, earliest departure first.
   commutes: BriefCommute[];
   // Most important first.
   alerts: BriefAlert[];
@@ -65,7 +65,7 @@ function weatherSection(weather: BriefWeather | null): string | null {
 function commuteSection(input: BriefInput): string {
   if (input.commutes.length === 0) {
     return input.hasPlaces
-      ? "No trips on your schedule today."
+      ? "No more trips on your schedule today."
       : "Add your home, school or work and your weekly schedule to get leave-time suggestions.";
   }
   const lines = input.commutes.map((commute) => {

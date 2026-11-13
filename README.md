@@ -342,7 +342,7 @@ All times are Manila time (`Asia/Manila`).
 | `ingestCebuDailyNews` | Every 30 min (offset 15 min) | Be polite, cache aggressively |
 | `ingestPagasa` | Every 30 min (:10, :40) | Public page, no key |
 | `ingestRoutes` | Every 30 min (:20, :50) | TomTom Routing, same key and quota as traffic; only new or moved places, else weekly |
-| `generateBriefs` | Daily, 05:30, only with `CRON_ENABLED=true` | One brief per user with a schedule that day. Otherwise each brief is written the first time its user opens it that day |
+| `generateBriefs` | Daily, 05:30, only with `CRON_ENABLED=true` | One brief per user with a schedule that day. Otherwise each brief is written the first time its user opens it that day. Either way it's written again on the first open within 2 hours of each trip's leave time |
 
 Every job writes normalized rows into `alerts` with a unique `fingerprint` so re-runs never create duplicates; the weather job also replaces each area's row in `weather_snapshots`. `npm run job -- <name>` (inside `backend/`) runs one immediately.
 

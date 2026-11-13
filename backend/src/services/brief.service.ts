@@ -2,8 +2,9 @@
 // leave times, and alerts near the user's places, written up by the brief
 // writer and saved to daily_briefs.
 //
-// The brief text is a once-a-day snapshot (05:30 job, or the first time the
-// user opens it that day). Alerts and leave times in GET /api/brief/today are
+// The brief text is a snapshot: written by the 05:30 job or the first time the
+// user opens it that day, and written again on the first open within 2 hours of
+// each trip's leave time. Alerts and leave times in GET /api/brief/today are
 // recomputed on every request so they stay current. Building a brief only
 // reads the database, so opening it never calls an outside service.
 
@@ -25,7 +26,10 @@ import { weatherAt } from "./weather.service";
 const BRIEF_ALERT_LIMIT = 10;
 const BRIEF_TEXT_ALERT_LIMIT = 5;
 const LGU_POST_MAX_AGE_HOURS = 36;
-const RAIN_CHANCE_THRESHOLD = 60;
+// The same cutoff as the weather alerts (integrations/weatherapi.ts) and the Weather page's advice.
+const RAIN_CHANCE_THRESHOLD = 70;
+// The brief is written again once a trip's leave time is this close.
+const REWRITE_BEFORE_LEAVE_HOURS = 2;
 const DEFAULT_WEATHER_AREA = "cebu_city";
 
 export interface LatestLguPost {
@@ -114,14 +118,17 @@ function writerInput(context: BriefContext, now: Date): BriefInput {
           rain: rainWindow(context.weather, now),
         }
       : null,
-    commutes: context.leaveTimes.map((trip) => ({
-      title: trip.title,
-      destination: trip.destination.label,
-      leaveAt: trip.leaveAt,
-      arriveAt: trip.arriveAt,
-      delayMinutes: trip.delayMinutes,
-      topReason: trip.reasons[0] ? `${trip.reasons[0].title} near your ${trip.reasons[0].nearPlace}` : null,
-    })),
+    // Only the trips still ahead: a brief written in the evening doesn't list the morning's.
+    commutes: context.leaveTimes
+      .filter((trip) => trip.arriveAt > now)
+      .map((trip) => ({
+        title: trip.title,
+        destination: trip.destination.label,
+        leaveAt: trip.leaveAt,
+        arriveAt: trip.arriveAt,
+        delayMinutes: trip.delayMinutes,
+        topReason: trip.reasons[0] ? `${trip.reasons[0].title} near your ${trip.reasons[0].nearPlace}` : null,
+      })),
     alerts: context.matched.slice(0, BRIEF_TEXT_ALERT_LIMIT).map(({ alert, places }) => ({
       type: alert.type,
       severity: alert.severity,
@@ -132,6 +139,15 @@ function writerInput(context: BriefContext, now: Date): BriefInput {
     lguPost: recentPost,
     hasPlaces: context.locations.length > 0,
   };
+}
+
+// True when a trip still ahead is within 2 hours of its leave time and the saved text is from before then.
+function needsRewrite(brief: DailyBriefRow, trips: LeaveTimeSuggestion[], at: Date): boolean {
+  const writtenAt = Date.parse(brief.updated_at);
+  return trips.some((trip) => {
+    const from = addHours(trip.leaveAt, -REWRITE_BEFORE_LEAVE_HOURS);
+    return at >= from && at < trip.arriveAt && writtenAt < from.getTime();
+  });
 }
 
 export function createBriefService(deps: BriefServiceDeps) {
@@ -212,12 +228,13 @@ export function createBriefService(deps: BriefServiceDeps) {
   }
 
   return {
-    // Today's brief for the user, creating it on first open if the morning
-    // job hasn't yet.
+    // Today's brief for the user, written on first open if the morning job
+    // hasn't yet, and again when a trip is close (needsRewrite).
     async getToday(userId: string): Promise<TodayBrief> {
       const at = now();
       const context = await buildContext(userId, at);
-      const brief = (await briefs.getBrief(userId, context.date)) ?? (await save(userId, context, at));
+      const saved = await briefs.getBrief(userId, context.date);
+      const brief = saved && !needsRewrite(saved, context.leaveTimes, at) ? saved : await save(userId, context, at);
       return { date: context.date, brief, alerts: context.matched, leaveTimes: context.leaveTimes, weather: context.weather };
     },
 
