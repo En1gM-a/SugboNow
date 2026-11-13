@@ -426,9 +426,8 @@ Cebu's thunderstorm advisories and watches from the same page come as `weather` 
 ## GET /api/brief/today
 
 Today's Cebu Daily Brief. The brief text is written the first time the user opens
-it that day (or at 05:30 where the brief job runs), and written again on the first
-open within 2 hours of each trip's leave time, so it's current before the user
-sets out. It lists only the trips still ahead. `leaveTimes`, `alerts` and `weather`
+it that day, and written again on the first open within 2 hours of each trip's
+leave time, so it's current before the user sets out. No scheduled job writes it. It lists only the trips still ahead. `leaveTimes`, `alerts` and `weather`
 are recomputed on every request, so they stay current.
 
 ```json
@@ -572,6 +571,6 @@ database; the API only reads it.
 | PAGASA Visayas forecast and Cebu thunderstorm alerts | Every 30 minutes (:10, :40) |
 | SunStar / Cebu Daily News stories | Every 30 minutes |
 | GNews stories | Every 3 hours |
-| Daily briefs | 05:30 (and on first open) |
+| Daily briefs | On the user's first open that day, and again within 2 hours of each trip's leave time |
 | Road routes (TomTom Routing) | Every 30 minutes (:20, :50), only for new or moved places; otherwise weekly |
 | Mayor's Facebook posts | On sign-in, at most every 10 minutes per page |

@@ -208,9 +208,9 @@ by signed-in users. The same page's Cebu thunderstorm advisories go to `alerts`.
 
 ## public.daily_briefs
 
-One brief per user per Manila date (`unique (user_id, brief_date)`), written by
-the 05:30 job for users with a trip that day, or on the user's first
-`GET /api/brief/today` that day. `content` is the brief text; `alert_ids` are
+One brief per user per Manila date (`unique (user_id, brief_date)`), written on
+the user's first `GET /api/brief/today` that day and written again within
+2 hours of each trip's leave time. `content` is the brief text; `alert_ids` are
 the alerts near the user's places when it was written. Leave times are not
 stored: the API recomputes them from current alerts on every request. Only
 today's brief is kept: the same cleanup deletes briefs from earlier dates.

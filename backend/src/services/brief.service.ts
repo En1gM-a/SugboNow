@@ -2,16 +2,16 @@
 // leave times, and alerts near the user's places, written up by the brief
 // writer and saved to daily_briefs.
 //
-// The brief text is a snapshot: written by the 05:30 job or the first time the
-// user opens it that day, and written again on the first open within 2 hours of
-// each trip's leave time. Alerts and leave times in GET /api/brief/today are
+// The brief text is a snapshot: written the first time the user opens it that
+// day, and written again on the first open within 2 hours of each trip's leave
+// time. No job writes it: nobody sees a brief before they open the app.
+// shortcut: written on open only, add a scheduled job when briefs are pushed to users. Alerts and leave times in GET /api/brief/today are
 // recomputed on every request so they stay current. Building a brief only
 // reads the database, so opening it never calls an outside service.
 
 import { getArea } from "../config/areas";
 import type { DailyBriefRow, LocationRef, LocationRow, WeatherSnapshotRow } from "../types";
 import { nearestArea } from "../utils/geo";
-import type { Logger } from "../utils/logger";
 import { addHours, manilaDate, manilaWeekday } from "../utils/time";
 import type { AlertsRepository } from "./alerts.repository";
 import { DEFAULT_ALERT_TYPES, type AlertWithPlaces } from "./alerts.service";
@@ -60,7 +60,6 @@ export interface BriefServiceDeps {
   weather: WeatherRepository;
   latestLguPost: (slug: string) => Promise<LatestLguPost | null>;
   writer: BriefWriter;
-  logger: Logger;
   now?: () => Date;
 }
 
@@ -151,7 +150,7 @@ function needsRewrite(brief: DailyBriefRow, trips: LeaveTimeSuggestion[], at: Da
 }
 
 export function createBriefService(deps: BriefServiceDeps) {
-  const { briefs, alerts, weather, latestLguPost, writer, logger } = deps;
+  const { briefs, alerts, weather, latestLguPost, writer } = deps;
   const now = deps.now ?? (() => new Date());
 
   async function buildContext(userId: string, at: Date): Promise<BriefContext> {
@@ -228,8 +227,8 @@ export function createBriefService(deps: BriefServiceDeps) {
   }
 
   return {
-    // Today's brief for the user, written on first open if the morning job
-    // hasn't yet, and again when a trip is close (needsRewrite).
+    // Today's brief for the user, written on first open, and again when a
+    // trip is close (needsRewrite).
     async getToday(userId: string): Promise<TodayBrief> {
       const at = now();
       const context = await buildContext(userId, at);
@@ -238,22 +237,6 @@ export function createBriefService(deps: BriefServiceDeps) {
       return { date: context.date, brief, alerts: context.matched, leaveTimes: context.leaveTimes, weather: context.weather };
     },
 
-    // Morning job: a fresh brief for every user with a trip today.
-    async generateAll(at = now()): Promise<{ generated: number; failed: number }> {
-      const userIds = await briefs.listUserIdsWithScheduleOn(manilaWeekday(at));
-      let generated = 0;
-      let failed = 0;
-      for (const userId of userIds) {
-        try {
-          await save(userId, await buildContext(userId, at), at);
-          generated++;
-        } catch (error) {
-          failed++;
-          logger.warn("Could not generate brief", { userId, error: error instanceof Error ? error.message : String(error) });
-        }
-      }
-      return { generated, failed };
-    },
   };
 }
 

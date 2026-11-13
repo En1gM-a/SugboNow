@@ -1,4 +1,4 @@
-// Runs the ingestion and brief jobs on their schedules (Asia/Manila). Only
+// Runs the ingestion jobs on their schedules (Asia/Manila). Only
 // started when CRON_ENABLED=true, so local development doesn't use API quota.
 
 import { schedule, type ScheduledTask } from "node-cron";

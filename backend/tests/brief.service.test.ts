@@ -67,17 +67,13 @@ const weatherRow: WeatherSnapshotRow = {
   fetched_at: '2026-10-22T20:50:00Z',
 };
 
-function setup(options: { existing?: DailyBriefRow | null; userIds?: string[]; failFor?: string; routes?: PlaceRouteRow[]; allowCclex?: boolean; at?: Date } = {}) {
+function setup(options: { existing?: DailyBriefRow | null; routes?: PlaceRouteRow[]; allowCclex?: boolean; at?: Date } = {}) {
   const saved: SaveBriefInput[] = [];
   const briefs: BriefRepository = {
     getProfile: vi.fn(async () => ({ first_name: 'Thea', display_name: 'thea', city: null, subscribed_mayor: 'cebu_city', allow_cclex: options.allowCclex ?? true })),
-    listLocations: vi.fn(async (userId: string) => {
-      if (userId === options.failFor) throw new Error('db down');
-      return [home, school];
-    }),
+    listLocations: vi.fn(async () => [home, school]),
     listSchedule: vi.fn(async () => [entry('weekday', [1, 2, 3, 4, 5]), entry('weekend', [0, 6])]),
     listRoutes: vi.fn(async () => options.routes ?? []),
-    listUserIdsWithScheduleOn: vi.fn(async () => options.userIds ?? []),
     getBrief: vi.fn(async () => options.existing ?? null),
     saveBrief: vi.fn(async (input: SaveBriefInput) => {
       saved.push(input);
@@ -93,17 +89,15 @@ function setup(options: { existing?: DailyBriefRow | null; userIds?: string[]; f
   } as unknown as AlertsRepository;
   const weather = { get: vi.fn(async () => weatherRow) } as unknown as WeatherRepository;
   const writer: BriefWriter = { name: 'test', write: vi.fn(async (input: BriefInput) => rulesBriefWriter.write(input)) };
-  const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
   const service = createBriefService({
     briefs,
     alerts,
     weather,
     latestLguPost: async () => ({ officialName: 'Mayor Nestor Archival', caption: 'WALAY KLASE | OCT 23\nAll levels.', postedAt: '2026-10-22T12:00:00Z' }),
     writer,
-    logger,
     now: () => options.at ?? now,
   });
-  return { service, briefs, weather, writer, logger, saved };
+  return { service, briefs, weather, writer, saved };
 }
 
 describe('brief service', () => {
@@ -201,12 +195,6 @@ describe('brief service', () => {
     expect(saved[0].content).not.toContain('leave by');
   });
 
-  it('generates briefs for everyone with a trip today and counts failures', async () => {
-    const { service, briefs, logger } = setup({ userIds: ['u1', 'u2', 'broken'], failFor: 'broken' });
-    expect(await service.generateAll(now)).toEqual({ generated: 2, failed: 1 });
-    expect(briefs.listUserIdsWithScheduleOn).toHaveBeenCalledWith(5);
-    expect(logger.warn).toHaveBeenCalledTimes(1);
-  });
 });
 
 describe('pickWeatherArea', () => {
