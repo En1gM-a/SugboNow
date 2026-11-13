@@ -1,5 +1,8 @@
 import Module from "node:module";
 
+// Alias "typescript" to @typescript/typescript6 while typescript-eslint v8
+// does not support TypeScript 7 yet. Remove this shim (and the
+// @typescript/typescript6 devDependency) once typescript-eslint adds TS 7 support.
 const origResolve = Module._resolveFilename;
 Module._resolveFilename = function (request, parent, isMain, options) {
   return origResolve.call(

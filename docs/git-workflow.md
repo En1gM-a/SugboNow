@@ -26,8 +26,10 @@ Branch names must use conventional area prefixes followed by a short, descriptiv
 - `supabase/<topic>` — e.g. `supabase/migration-lgu-posts`
 - `fix/<topic>` — e.g. `fix/auth-redirect`
 - `feat/<topic>` — e.g. `feat/alert-preview`
+- `feature/<topic>` — e.g. `feature/road-routes`
+- `sample/<topic>` — e.g. `sample/landing-journey-bg`
 
-Branch names are validated in CI against `^(frontend|backend|docs|chore|supabase|fix|feat)/[a-z0-9-]+$` (automated dependency branches matching `^dependabot/` are also permitted). Branches that do not follow this naming structure will fail CI.
+Branch names are validated in CI against `^(frontend|backend|docs|chore|supabase|fix|feat|feature|sample)/[a-z0-9-]+$` (automated dependency branches matching `^dependabot/` are also permitted). Branches that do not follow this naming structure will fail CI.
 
 ### PR Title Format (Conventional Commits)
 
@@ -59,7 +61,7 @@ type: lowercase summary
 When creating a pull request from `.github/pull_request_template.md`:
 
 1. **Non-empty description:** Every PR must provide context on the problem solved, changes made, and verification steps. Empty PR bodies fail CI.
-2. **Remove template comments:** You **must delete all HTML comments** (`<!-- ... -->`) from the PR template before submitting. Leaving comment placeholders pollutes the PR conversation and squashed commit messages.
+2. **Remove template comments:** You **must delete all HTML comments** (`<!-- ... -->`) from the PR template before submitting. Leaving comment placeholders pollutes the PR conversation and squashed commit messages. _(Automated `dependabot/` PRs are exempt from PR body checks.)_
 3. **Fill out checklist items:** Ensure required sections (summary, testing evidence, checklist) are completed.
 
 ### Windows PowerShell UTF-8 BOM Warning & Shell Quoting
@@ -117,23 +119,24 @@ git pull --ff-only origin main
 
 ---
 
-## 2. Rebase Instead of Merge
+## 2. Updating Branches from `main`
 
-The repository enforces **Squash and Merge** on GitHub and **Required Linear History** (`required_linear_history: true`).
+The repository uses **Squash and Merge** on GitHub and enforces **Required Linear History** (`required_linear_history: true`). Because every PR squashes into a single commit on merge, updating your PR branch by merging `origin/main` still keeps `main`'s commit history strictly linear without rewriting branch history or force-pushing.
 
-- **Do NOT run `git merge main`** into your feature branch. Merge commits clutter git history and make rebasing more painful.
-- **Always update your branch with rebase:**
+- **Update your branch by merging `origin/main`:**
 
 ```bash
 git fetch origin
-git rebase origin/main
+git merge origin/main
 ```
 
-If you have already pushed your branch to GitHub before rebasing, update the remote branch using `--force-with-lease`:
+Or click **Update branch** directly in the GitHub pull request UI, then push normally when ready:
 
 ```bash
-git push --force-with-lease origin <area>/<topic>
+git push origin <area>/<topic>
 ```
+
+_(Avoid running `git rebase` or `git push --force` unless explicitly coordinated and approved per [`CLAUDE.md`](../CLAUDE.md).)_
 
 ### Clean up merged branches
 
@@ -177,11 +180,11 @@ If you use nvm:
 nvm use
 ```
 
-### Resolving `package-lock.json` conflicts during rebase
+### Resolving `package-lock.json` conflicts when merging `main`
 
 Never attempt to manually resolve line-by-line git conflicts in `package-lock.json`. Instead, accept the version from `origin/main` and regenerate the lockfile cleanly:
 
-1. When git pauses rebase due to a lockfile conflict:
+1. When `git merge origin/main` pauses due to a lockfile conflict:
    ```bash
    git checkout --theirs frontend/package-lock.json
    # or for backend:
@@ -194,11 +197,11 @@ Never attempt to manually resolve line-by-line git conflicts in `package-lock.js
    # For backend:
    cd backend && npm install && cd ..
    ```
-3. Stage the resolved lockfile and continue rebase:
+3. Stage the resolved lockfile and complete the merge commit:
    ```bash
    git add frontend/package-lock.json
    # or: git add backend/package-lock.json
-   git rebase --continue
+   git commit --no-edit
    ```
 
 ---
@@ -266,14 +269,14 @@ The repository ruleset (`.github/rulesets/protect-main.json`) configures branch 
         "required_approving_review_count": 1,
         "dismiss_stale_reviews_on_push": true,
         "require_code_owner_review": false,
-        "require_last_push_approval": false,
+        "require_last_push_approval": true,
         "required_review_thread_resolution": true
       }
     },
     {
       "type": "required_status_checks",
       "parameters": {
-        "strict_required_status_checks_policy": false,
+        "strict_required_status_checks_policy": true,
         "required_status_checks": [
           { "context": "frontend" },
           { "context": "backend" }
@@ -284,20 +287,4 @@ The repository ruleset (`.github/rulesets/protect-main.json`) configures branch 
 }
 ```
 
-#### Why `strict_required_status_checks_policy: false` and `require_last_push_approval: false`
-
-The repository previously evaluated strict required status checks (`strict_required_status_checks_policy: true`), which mandated that every PR branch be strictly up to date with the latest tip of `main` before merging.
-
-However, in combination with `dismiss_stale_reviews_on_push: true` and `required_linear_history: true`, strict status checks caused a severe developer bottleneck:
-
-1. Whenever **any** PR squash-merged into `main`, every other currently open and approved PR immediately fell behind and became "out of date".
-2. Rebasing the branch against updated `origin/main` registered as a new push on GitHub, which triggered `dismiss_stale_reviews_on_push: true`.
-3. This wiped out existing approvals on every open PR, requiring another round of manual review approvals and another full CI run.
-4. If another teammate merged during that window, the rebase cycle repeated indefinitely.
-
-Following the ruleset architecture battle-tested in `dreeyanzz/studyhub`:
-
-- **`strict_required_status_checks_policy: false`**: Allows orthogonal pull requests (e.g. an independent frontend feature and a backend bugfix) that passed CI on their own branch to merge without requiring serial rebases after every `main` advance.
-- **`require_last_push_approval: false`**: Ensures that rebase pushes or automated updates do not permanently lock out auto-merge queues when substantive code reviews have already been completed.
-- **`dismiss_stale_reviews_on_push: true`**: Retained to ensure new commits made during active review dismiss stale approvals.
-- **`required_linear_history: true`**: Enforced alongside Squash and Merge to guarantee a clean, linear git commit history on `main`.
+These rules protect `main` and `dev` by requiring at least one non-author approval on the latest push, passing `frontend` and `backend` CI checks on an up-to-date branch (`strict_required_status_checks_policy: true`), linear commit history via Squash and Merge, and resolved review threads. Repository administrators apply or update this ruleset with [`scripts/apply-github-security.ps1`](../scripts/apply-github-security.ps1).

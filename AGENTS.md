@@ -52,9 +52,9 @@ npx --prefix frontend prettier --check <changed-files>
 
 ### PR & Windows Hygiene (`scripts/ci/check-pr-hygiene.sh`)
 
-- **Branch prefixes:** `frontend/`, `backend/`, `docs/`, `chore/`, `supabase/`, `fix/`, or `feat/` (`<area>/<topic>`).
+- **Branch prefixes:** `frontend/`, `backend/`, `docs/`, `chore/`, `supabase/`, `fix/`, `feat/`, `feature/`, or `sample/` (`<area>/<topic>`).
 - **PR title:** Conventional Commits with a lowercase summary (`type(scope): lowercase summary`).
-- **PR body:** Non-empty, based on `.github/pull_request_template.md`, with all `<!-- ... -->` HTML comments removed.
+- **PR body:** Non-empty, based on `.github/pull_request_template.md`, with all `<!-- ... -->` HTML comments removed (Dependabot PRs are exempt from body checks).
 - **Windows PowerShell 5.1 warning:** Never use `Out-File`, `>`, or `Set-Content` for commit messages or PR bodies (they inject UTF-8 BOM or UTF-16). Use `git commit -m`, Git Bash heredoc `<<'EOF'`, or `[IO.File]::WriteAllText(..., [Text.UTF8Encoding]::new($false))`, and quote backticks and `$` carefully.
 
 ## Gated Actions (Require Explicit User `"yes"`)
@@ -71,5 +71,5 @@ Follow the full approval policy in [`CLAUDE.md`](CLAUDE.md). Never run any of th
 - [`CLAUDE.md`](CLAUDE.md) — full architecture, conventions, team ownership, and permission rules.
 - [`README.md`](README.md) — project overview, local setup, data sources, schedules, and roadmap.
 - [`docs/api-contract.md`](docs/api-contract.md) — frontend/backend REST API contract.
-- [`docs/git-workflow.md`](docs/git-workflow.md) — branching, rebasing, PowerShell BOM tips, pre-push verification, and ruleset rationale.
+- [`docs/git-workflow.md`](docs/git-workflow.md) — branching, merging `main`, PowerShell BOM tips, pre-push verification, and repository settings.
 - [`docs/handoffs/frontend.md`](docs/handoffs/frontend.md) — frontend UI/UX spec, design system, and required skills (`ui-ux-pro-max`, `impeccable`, `motion`).

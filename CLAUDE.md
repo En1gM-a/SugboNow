@@ -84,22 +84,21 @@ Never commit `.env` files, API keys, Supabase service-role keys, tokens, or `nod
 - `docs/api-contract.md` — frontend/backend API contract.
 - `docs/data-model.md` — data-model documentation.
 - `docs/data-sources.md` — source-specific notes and quotas.
-- `docs/git-workflow.md` — git branching, rebasing against `origin/main`, lockfile conflict resolution, and conflict prevention.
+- `docs/git-workflow.md` — git branching, updating branches from `origin/main`, lockfile conflict resolution, and conflict prevention.
 - `docs/handoffs/` — work handed from one teammate to another. `frontend.md` is the frontend spec (page content and layout, design system, performance, motion and scrolling rules) with a prompt for AI agents.
 - `supabase/migrations/0001_init_schema.sql` — executable initial database schema.
 
 ## Collaboration and GitHub workflow
 
 - Full guidance on Git conventions is in [`docs/git-workflow.md`](docs/git-workflow.md).
-- Always branch from a fresh `origin/main`: `git fetch origin && git switch -c <area>/<topic> origin/main`. Valid branch prefixes are `frontend/`, `backend/`, `docs/`, `chore/`, `supabase/`, `fix/`, and `feat/` (e.g. `frontend/dashboard-layout`, `backend/alerts-route`, `chore/ci-hardening`).
+- Always branch from a fresh `origin/main`: `git fetch origin && git switch -c <area>/<topic> origin/main`. Valid branch prefixes are `frontend/`, `backend/`, `docs/`, `chore/`, `supabase/`, `fix/`, `feat/`, `feature/`, and `sample/` (e.g. `frontend/dashboard-layout`, `backend/alerts-route`, `chore/ci-hardening`).
 - PR titles must follow Conventional Commits with a lowercase summary: `type(scope): lowercase summary` (e.g. `feat(frontend): add weather hourly strip`, `chore(ci): enforce hygiene checks`).
-- PR bodies must use `.github/pull_request_template.md`, must not be empty, and must have all `<!-- ... -->` template HTML comments deleted before opening.
+- PR bodies must use `.github/pull_request_template.md`, must not be empty, and must have all `<!-- ... -->` template HTML comments deleted before opening (Dependabot PRs are exempt from body checks).
 - On Windows, avoid UTF-8 BOM (`efbbbf`) from PowerShell 5.1 (`Out-File`, `>`, `Set-Content`); use `git commit -m`, Git Bash heredoc `<<'EOF'`, or UTF-8 without BOM files. Use single quotes or files when messages contain backticks or `$`.
 - Do not push directly to `main` or `dev`.
-- Update feature branches with `git fetch origin && git rebase origin/main` rather than `git merge main`, and delete local branches after merge (`git fetch --prune`).
+- Update feature branches with `git fetch origin && git merge origin/main` (or GitHub's **Update branch** button), and delete local branches after merge (`git fetch --prune`).
 - Always run linters and formatters before pushing: `npm --prefix frontend run lint`, `npm --prefix backend run lint`, and `npm --prefix <app> run format`. ESLint runs with `--max-warnings=0` and forbids explicit `any` and cross-boundary imports (e.g. frontend importing from backend).
 - Open a pull request, wait for the `frontend` and `backend` CI checks (which validate PR hygiene, run zero-warning ESLint, Prettier check on changed files, builds, and backend tests), and obtain a teammate approval before squash-merging.
-- The repository ruleset (`protect-main.json`) sets `strict_required_status_checks_policy: false` and `require_last_push_approval: false` alongside `required_linear_history: true` and `dismiss_stale_reviews_on_push: true` to prevent cascading rebase approvals from stalling PR merges.
 - Preserve unrelated working-tree changes. Check `git status` before starting work.
 
 Repository automation lives in `.github/`:

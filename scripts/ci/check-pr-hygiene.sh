@@ -9,8 +9,8 @@
 #
 # Checks:
 #   1. Rejects UTF-8 BOM (efbbbf) at the start of PR_TITLE or PR_BODY.
-#   2. Rejects empty PR_BODY.
-#   3. Rejects leftover HTML comments (<!--) in PR_BODY.
+#   2. Rejects empty PR_BODY (skipped for dependabot/ branches).
+#   3. Rejects leftover HTML comments (<!--) in PR_BODY (skipped for dependabot/ branches).
 #   4. Validates HEAD_REF matches conventional prefixes or dependabot/.
 #   5. Validates PR_TITLE matches Conventional Commits format.
 
@@ -39,35 +39,37 @@ if [[ "$PR_BODY" == "$BOM"* ]]; then
   has_error=1
 fi
 
-# -----------------------------------------------------------------------------
-# 2. PR Body Non-Empty Check
-# -----------------------------------------------------------------------------
-trimmed_body=$(printf '%s' "$PR_BODY" | tr -d '[:space:]')
-if [ -z "$trimmed_body" ]; then
-  echo "::error::PR body cannot be empty. Please provide a description of the changes."
-  has_error=1
-fi
+DEPENDABOT_REGEX='^dependabot/'
 
 # -----------------------------------------------------------------------------
-# 3. PR Body HTML Comments Check
+# 2 & 3. PR Body Checks (skipped for automated Dependabot PRs)
 # -----------------------------------------------------------------------------
-if [[ "$PR_BODY" == *"<!--"* ]]; then
-  echo "::error::PR body contains leftover HTML comments ('<!--'). Please remove PR template comments/placeholders before submitting."
-  has_error=1
+if [[ ! "$HEAD_REF" =~ $DEPENDABOT_REGEX ]]; then
+  # 2. PR Body Non-Empty Check
+  trimmed_body=$(printf '%s' "$PR_BODY" | tr -d '[:space:]')
+  if [ -z "$trimmed_body" ]; then
+    echo "::error::PR body cannot be empty. Please provide a description of the changes."
+    has_error=1
+  fi
+
+  # 3. PR Body HTML Comments Check
+  if [[ "$PR_BODY" == *"<!--"* ]]; then
+    echo "::error::PR body contains leftover HTML comments ('<!--'). Please remove PR template comments/placeholders before submitting."
+    has_error=1
+  fi
 fi
 
 # -----------------------------------------------------------------------------
 # 4. HEAD_REF (Branch Name) Check
 # -----------------------------------------------------------------------------
-BRANCH_REGEX='^(frontend|backend|docs|chore|supabase|fix|feat)/[a-z0-9-]+$'
-DEPENDABOT_REGEX='^dependabot/'
+BRANCH_REGEX='^(frontend|backend|docs|chore|supabase|fix|feat|feature|sample)/[a-z0-9-]+$'
 
 if [ -z "$HEAD_REF" ]; then
   echo "::error::HEAD_REF environment variable is empty or unset."
   has_error=1
 elif ! [[ "$HEAD_REF" =~ $BRANCH_REGEX ]] && ! [[ "$HEAD_REF" =~ $DEPENDABOT_REGEX ]]; then
   echo "::error::Branch name '$HEAD_REF' is invalid."
-  echo "::error::Branches must match: ^(frontend|backend|docs|chore|supabase|fix|feat)/[a-z0-9-]+$ or start with dependabot/"
+  echo "::error::Branches must match: $BRANCH_REGEX or start with dependabot/"
   has_error=1
 fi
 
