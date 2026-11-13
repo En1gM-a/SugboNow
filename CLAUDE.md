@@ -79,6 +79,7 @@ Never commit `.env` files, API keys, Supabase service-role keys, tokens, or `nod
 
 ## Source-of-truth files
 
+- `AGENTS.md` — concise repository and Antigravity swarm guide (discovered natively across the repo and swarm worktrees).
 - `README.md` — architecture, intended structure, setup, data sources, schedules, roadmap.
 - `docs/api-contract.md` — frontend/backend API contract.
 - `docs/data-model.md` — data-model documentation.
@@ -183,6 +184,14 @@ For **each** PR, include:
 - **Recommendation:** merge, needs changes, or needs a teammate's review, and why.
 
 After the per-PR detail, end with a short overall summary: what can merge now, what is blocked, and what is needed from the user. When you take action on PRs, report each one's outcome (merged, approved, rebased, skipped, and why).
+
+## Antigravity and Swarm Setup
+
+- **Native rule file:** [`AGENTS.md`](AGENTS.md) at the repository root provides concise agent and swarm rules discovered natively by Antigravity across the repo and worktrees.
+- **Model configuration:** Both the Antigravity swarm orchestrator (`coordinator`) and all subagents/workers use **`Gemini 4 Hydrogen (XHigh)`** (`gemini-4-hydrogen-xhigh`). Leave `model` unset on `swarm{action:"add"}` to inherit the coordinator's model (or pass `gemini-4-hydrogen-xhigh` explicitly).
+- **Concurrency limit:** Keep at most **5** concurrent subagents so the swarm remains lean and token-efficient.
+- **Workspaces & disjoint ownership:** Author workers modifying files run in `workspace: "share"` with strictly disjoint file ownership; read-only investigators and `verifier` run in `workspace: "inherit"`.
+- **Verifier gate:** Every author worker's commit must pass independent verification by `verifier` (disjoint ownership, builds/tests, zero-warning ESLint, Prettier formatting, and LF line endings) and be landed before killing worker workspaces.
 
 ## Claude Code skills
 

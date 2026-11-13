@@ -152,7 +152,7 @@ git branch -d <area>/<topic>
 2. **Independent workspaces**: `frontend/` and `backend/` have separate dependencies, manifests, and build pipelines. When working on frontend features, do not modify files in `backend/` (and vice-versa).
 3. **Coordinate on shared files**:
    - Repository-level configs (`.github/`, `.nvmrc`, `.gitattributes`)
-   - Cross-cutting documentation (`CLAUDE.md`, `README.md`)
+   - Cross-cutting documentation (`AGENTS.md`, `CLAUDE.md`, `README.md`)
    - Schema and contract files (`docs/api-contract.md`, `supabase/migrations/`)
 
    If your task requires changing shared files, communicate with teammates beforehand to avoid simultaneous conflicting PRs.
