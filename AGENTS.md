@@ -40,7 +40,6 @@ npm --prefix backend run lint       # eslint . --max-warnings=0
 npm --prefix frontend run build
 npm --prefix backend run build
 npm --prefix backend test
-npx --prefix frontend prettier --check <changed-files>
 ```
 
 ### Code & Boundary Rules
@@ -48,7 +47,8 @@ npx --prefix frontend prettier --check <changed-files>
 - **Zero-warning ESLint:** Both apps enforce `eslint . --max-warnings=0`.
 - **No explicit `any`:** `@typescript-eslint/no-explicit-any` is `'error'` across both `frontend/` and `backend/`.
 - **Cross-boundary imports forbidden:** `frontend/eslint.config.mjs` enforces `no-restricted-imports` blocking `**/backend/**` and direct `@supabase/supabase-js` `createClient` service-role patterns.
-- **Formatting & line endings:** All text files must use LF line endings (`.gitattributes` enforces `* text=auto eol=lf`) with no UTF-8 BOM (`efbbbf`).
+- **Prettier formatting (not enforced in CI yet):** Prettier configs (`.prettierrc.json`, `.prettierignore`) and `npm --prefix <app> run format` / `format:check` scripts are configured in `frontend/` and `backend/`, **not enforced in CI yet**. Do **not** run `npm --prefix <app> run format` repo-wide on unrelated PRs before the dedicated formatting PR.
+- **Line endings & encoding:** All text files must use LF line endings (`.gitattributes` enforces `* text=auto eol=lf`, keeping CRLF only on `*.ps1`/`*.cmd`/`*.bat`) with no UTF-8 BOM (`efbbbf`).
 
 ### PR & Windows Hygiene (`scripts/ci/check-pr-hygiene.sh`)
 

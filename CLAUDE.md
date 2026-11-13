@@ -54,6 +54,8 @@ npm run build
 npm --prefix backend test
 npm --prefix frontend run lint
 npm --prefix backend run lint
+# Prettier is configured (format / format:check), NOT enforced in CI yet;
+# do not run repo-wide on unrelated PRs before the dedicated formatting PR:
 npm --prefix frontend run format    # or npm --prefix <app> run format
 npm --prefix backend run format
 ```
@@ -97,13 +99,13 @@ Never commit `.env` files, API keys, Supabase service-role keys, tokens, or `nod
 - On Windows, avoid UTF-8 BOM (`efbbbf`) from PowerShell 5.1 (`Out-File`, `>`, `Set-Content`); use `git commit -m`, Git Bash heredoc `<<'EOF'`, or UTF-8 without BOM files. Use single quotes or files when messages contain backticks or `$`.
 - Do not push directly to `main` or `dev`.
 - Update feature branches with `git fetch origin && git merge origin/main` (or GitHub's **Update branch** button), and delete local branches after merge (`git fetch --prune`).
-- Always run linters and formatters before pushing: `npm --prefix frontend run lint`, `npm --prefix backend run lint`, and `npm --prefix <app> run format`. ESLint runs with `--max-warnings=0` and forbids explicit `any` and cross-boundary imports (e.g. frontend importing from backend).
-- Open a pull request, wait for the `frontend` and `backend` CI checks (which validate PR hygiene, run zero-warning ESLint, Prettier check on changed files, builds, and backend tests), and obtain a teammate approval before squash-merging.
+- Always run linters before pushing: `npm --prefix frontend run lint` and `npm --prefix backend run lint`. ESLint runs with `--max-warnings=0` and forbids explicit `any` and cross-boundary imports (e.g. frontend importing from backend). Prettier configs and `npm --prefix <app> run format` / `format:check` scripts are configured, **not enforced in CI yet** — do **not** run `format` repo-wide on unrelated PRs before the dedicated formatting PR.
+- Open a pull request, wait for the `frontend` and `backend` CI checks (which validate PR hygiene, run zero-warning ESLint, builds, and backend tests), and obtain a teammate approval before squash-merging.
 - Preserve unrelated working-tree changes. Check `git status` before starting work.
 
 Repository automation lives in `.github/`:
 
-- `workflows/ci.yml` builds both apps, validates PR title, branch, and body hygiene (`scripts/ci/check-pr-hygiene.sh`), runs zero-warning ESLint (`--max-warnings=0`), runs Prettier check on changed files, and runs backend tests with a 10-minute timeout.
+- `workflows/ci.yml` builds both apps, validates PR title, branch, and body hygiene (`scripts/ci/check-pr-hygiene.sh`), runs zero-warning ESLint (`--max-warnings=0`), and runs backend tests with a 10-minute timeout (Prettier CI enforcement is deferred to a future dedicated formatting PR).
 - `workflows/jobs.yml` runs the backend's data jobs (outside APIs and feeds) on GitHub's timer, using the repository's Actions secrets and unified `.nvmrc` Node version.
 - `dependabot.yml` proposes dependency updates.
 - `CODEOWNERS` requests reviews by area.
@@ -190,7 +192,7 @@ After the per-PR detail, end with a short overall summary: what can merge now, w
 - **Model configuration:** Both the Antigravity swarm orchestrator (`coordinator`) and all subagents/workers use **`Gemini 4 Hydrogen (XHigh)`** (`gemini-4-hydrogen-xhigh`). Leave `model` unset on `swarm{action:"add"}` to inherit the coordinator's model (or pass `gemini-4-hydrogen-xhigh` explicitly).
 - **Concurrency limit:** Keep at most **5** concurrent subagents so the swarm remains lean and token-efficient.
 - **Workspaces & disjoint ownership:** Author workers modifying files run in `workspace: "share"` with strictly disjoint file ownership; read-only investigators and `verifier` run in `workspace: "inherit"`.
-- **Verifier gate:** Every author worker's commit must pass independent verification by `verifier` (disjoint ownership, builds/tests, zero-warning ESLint, Prettier formatting, and LF line endings) and be landed before killing worker workspaces.
+- **Verifier gate:** Every author worker's commit must pass independent verification by `verifier` (disjoint ownership, builds/tests, zero-warning ESLint, LF line endings, and no UTF-8 BOM) and be landed before killing worker workspaces.
 
 ## Claude Code skills
 

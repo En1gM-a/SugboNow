@@ -208,13 +208,9 @@ Never attempt to manually resolve line-by-line git conflicts in `package-lock.js
 
 ## 5. Pre-Push Verification
 
-Before pushing your branch or requesting review, run formatters and linters locally. CI will enforce these checks with zero tolerance for warnings or formatting errors.
+Before pushing your branch or requesting review, run linters, builds, and tests locally. CI enforces zero-warning ESLint (`--max-warnings=0`), builds, backend tests, and PR metadata hygiene.
 
 ```bash
-# Format code with Prettier
-npm --prefix frontend run format
-npm --prefix backend run format
-
 # Run ESLint checks (zero warnings allowed: --max-warnings=0)
 npm --prefix frontend run lint
 npm --prefix backend run lint
@@ -235,7 +231,7 @@ Key architectural rules enforced by ESLint:
 - **Cross-boundary imports forbidden:** `frontend/eslint.config.mjs` enforces `no-restricted-imports` preventing `frontend/src/**` from importing anything from `backend/` (`**/backend/**`). Frontend and backend are decoupled applications communicating solely over HTTP via `docs/api-contract.md`.
 - **No service-role client in frontend:** Frontend code must not import or initialize Supabase service-role clients or keys (`@supabase/supabase-js` `createClient` with service-role patterns). Client-side access must strictly use public anon keys governed by Row Level Security (RLS).
 
-> In CI, Prettier runs against all files added or modified in the PR (`scripts/ci/changed-files.sh | xargs -0 -r npx prettier --check --ignore-unknown --`), while ESLint runs across the entire application with `--max-warnings=0`.
+> Prettier configs (`.prettierrc.json`, `.prettierignore`) and `npm --prefix <app> run format` / `format:check` scripts are configured in both apps, **but formatting is not enforced in CI yet**. Do **not** run `npm --prefix <app> run format` repo-wide on unrelated feature PRs before the dedicated formatting PR (since existing source files predate the config). ESLint (`--max-warnings=0`) and LF/no-BOM hygiene remain enforced in CI.
 
 ---
 
