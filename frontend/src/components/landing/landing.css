@@ -1493,3 +1493,133 @@ html:has(.lp)::view-transition-new(root) { animation: none; mix-blend-mode: norm
 .lp-klase-btn { position: relative; }
 .lp-klase-btn::after,
 .lp-map-credit::after { content: ""; position: absolute; inset: -14px -4px; }
+
+/* ---------- Sample, not for merging: the journey behind the page (Journey.tsx) ----------
+   One real photo per section, fixed behind the page where the sky was. Sticky like the nav, not fixed, so the
+   page's own container can't become what it's fixed to. */
+.lp { timeline-scope: --j-mornings, --j-app, --j-checks, --j-how, --j-place, --j-faq, --j-start; }
+.lp #mornings { view-timeline: --j-mornings block; }
+.lp #app { view-timeline: --j-app block; }
+.lp #checks { view-timeline: --j-checks block; }
+.lp #how { view-timeline: --j-how block; }
+.lp #place { view-timeline: --j-place block; }
+.lp #faq { view-timeline: --j-faq block; }
+.lp #start { view-timeline: --j-start block; }
+.lp-journey {
+  position: sticky;
+  top: 0;
+  z-index: -1;
+  flex: none;
+  height: 100vh;
+  height: 100lvh;
+  margin-bottom: -100vh;
+  margin-bottom: -100lvh;
+  overflow: hidden;
+  overflow: clip;
+  background: #070c1a;
+  pointer-events: none;
+  transition: opacity 420ms ease;
+}
+.lp-journey[data-away] { opacity: 0; }
+.lp-j-shot,
+.lp-j-hold,
+.lp-j-grade { position: absolute; inset: 0; }
+/* Without scroll timelines, or with motion off: the section you're reading picks the photo. */
+.lp-j-shot { overflow: hidden; opacity: 0; transition: opacity 700ms ease; }
+.lp-j-shot[data-on] { opacity: 1; }
+/* Three photos down the stack, nothing of this one can show. */
+.lp-j-shot[data-under] { visibility: hidden; }
+.lp-j-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  filter: grayscale(0.7) sepia(0.4) hue-rotate(176deg) saturate(1.3) contrast(1.08) brightness(1.18);
+  transition: opacity 600ms ease;
+}
+.lp-j-img[data-in] { opacity: 1; }
+/* One grade for photos from six cameras: nearly one cool color (the filter above), the page's night blue over
+   it, and darker toward the edges. It only ever darkens, so the page's own shades still hold the text's contrast. */
+.lp-j-grade {
+  background:
+    radial-gradient(120% 100% at 50% 42%, rgba(5, 10, 24, 0) 45%, rgba(5, 10, 24, 0.26) 100%),
+    linear-gradient(180deg, rgba(10, 24, 58, 0.14), rgba(10, 24, 58, 0.06) 45%, rgba(10, 24, 58, 0.14));
+}
+/* Where the page has room for two columns, its headings sit on the left: the photo stays darker there. */
+@container (min-width: 900px) {
+  .lp-j-grade {
+    background:
+      linear-gradient(90deg, rgba(5, 10, 24, 0.34), rgba(5, 10, 24, 0) 60%),
+      radial-gradient(120% 100% at 50% 42%, rgba(5, 10, 24, 0) 45%, rgba(5, 10, 24, 0.26) 100%),
+      linear-gradient(180deg, rgba(10, 24, 58, 0.14), rgba(10, 24, 58, 0.06) 45%, rgba(10, 24, 58, 0.14));
+  }
+}
+.lp[data-still] .lp-journey,
+.lp[data-still] .lp-j-shot,
+.lp[data-still] .lp-j-img { transition: none; }
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) and (timeline-scope: --j) {
+    .lp:not([data-still]) .lp-j-shot { opacity: 1; transition: none; }
+    /* The frame rises with its section's top edge while the photo inside it holds still. */
+    .lp:not([data-still]) .lp-j-shot:not(:first-child) {
+      -webkit-mask-image: linear-gradient(180deg, transparent, #000 12vh);
+      mask-image: linear-gradient(180deg, transparent, #000 12vh);
+      animation: lp-j-rise linear both;
+      animation-timeline: var(--j-tl);
+      animation-range: cover 0% cover 100vh;
+    }
+    .lp:not([data-still]) .lp-j-shot:not(:first-child) .lp-j-hold {
+      animation: lp-j-hold linear both;
+      animation-timeline: var(--j-tl);
+      animation-range: cover 0% cover 100vh;
+    }
+    .lp:not([data-still]) .lp-j-shot:not(:first-child) .lp-j-img {
+      animation: lp-j-push linear both;
+      animation-timeline: var(--j-tl);
+      animation-range: cover 0% cover 100%;
+    }
+    .lp:not([data-still]) .lp-j-shot:first-child .lp-j-img {
+      animation: lp-j-push-first linear both;
+      animation-timeline: scroll(root block);
+      animation-range: 0 100vh;
+    }
+  }
+}
+@keyframes lp-j-rise { from { transform: translate3d(0, 100%, 0); } }
+@keyframes lp-j-hold { from { transform: translate3d(0, -100%, 0); } }
+/* Each photo pushes in and drifts up a little while its section passes: the scale always covers the drift. */
+@keyframes lp-j-push { from { transform: scale(1.08) translate3d(0, 3%, 0); } to { transform: scale(1.16) translate3d(0, -3%, 0); } }
+@keyframes lp-j-push-first { from { transform: scale(1.04); } to { transform: scale(1.12) translate3d(0, -2.5%, 0); } }
+
+/* The photo's caption and credit: a lower third that names each photo as it arrives, then leaves, so it never
+   sits on the page for long. Held to the bottom the way the nav is held to the top. */
+.lp-j-note-wrap { position: sticky; bottom: 0; z-index: 30; flex: none; height: 0; pointer-events: none; transition: opacity 300ms ease; }
+.lp-j-note-wrap[data-away] { opacity: 0; }
+.lp-j-note {
+  position: absolute;
+  left: 16px;
+  bottom: 14px;
+  display: grid;
+  max-width: calc(100% - 32px);
+  padding: 7px 12px 8px;
+  border: 1px solid var(--night-line);
+  border-radius: 12px;
+  background: rgba(7, 12, 26, 0.88);
+  color: #c8d5e6;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.35;
+  opacity: 0;
+  animation: lp-j-note 4.8s var(--ease-out) both;
+}
+.lp-j-note-title { color: #fff; font-weight: 800; }
+/* With motion off it still comes and goes, in two cuts. */
+.lp[data-still] .lp-j-note { animation: lp-j-note-still 4.8s step-end both !important; }
+.lp[data-still] .lp-j-note-wrap { transition: none; }
+@keyframes lp-j-note {
+  0% { opacity: 0; transform: translate3d(0, 8px, 0); }
+  7%, 88% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: none; }
+}
+@keyframes lp-j-note-still { from { opacity: 1; } to { opacity: 0; } }
