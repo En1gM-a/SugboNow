@@ -19,6 +19,10 @@ import { createLocationsRepository } from "./services/locations.repository";
 import { createLocationsService } from "./services/locations.service";
 import { createProfileRepository } from "./services/profile.repository";
 import { createProfileService } from "./services/profile.service";
+import { createRoutesJobRepository, createRoutesRepository } from "./services/routes.repository";
+import { createRoutesService } from "./services/routes.service";
+import { createTrafficFlowRepository } from "./services/trafficFlow.repository";
+import { createTrafficFlowService } from "./services/trafficFlow.service";
 import { createScheduleRepository } from "./services/schedule.repository";
 import { createScheduleService } from "./services/schedule.service";
 import { createWeatherRepository } from "./services/weather.repository";
@@ -39,6 +43,8 @@ export function createContainer(): Container {
   const lguSourcesRepo = createLguSourcesRepository(supabaseAdmin);
   const lguPostsRepo = createLguPostsRepository(supabaseAdmin);
   const locationsRepo = createLocationsRepository(createUserClient);
+  const trafficFlowRepo = createTrafficFlowRepository(supabaseAdmin);
+  const trafficFlow = createTrafficFlowService(trafficFlowRepo);
 
   const briefs = createBriefService({
     briefs: createBriefRepository(supabaseAdmin),
@@ -64,6 +70,13 @@ export function createContainer(): Container {
     }),
     locations: createLocationsService(locationsRepo),
     schedule: createScheduleService(createScheduleRepository(createUserClient), locationsRepo),
+    routes: createRoutesService({
+      routes: createRoutesRepository(createUserClient),
+      locations: locationsRepo,
+      alerts: alertsRepo,
+      flow: trafficFlow,
+    }),
+    trafficFlow,
     alerts: createAlertsService({ alerts: alertsRepo, locations: locationsRepo }),
     weather: createWeatherService(weatherRepo),
     briefs,
@@ -81,6 +94,8 @@ export function createContainer(): Container {
   const jobs = buildJobs({
     alerts: alertsRepo,
     weather: weatherRepo,
+    routes: createRoutesJobRepository(supabaseAdmin),
+    trafficFlow: trafficFlowRepo,
     briefs,
     keys: { tomtom: env.TOMTOM_API_KEY, gnews: env.GNEWS_API_KEY, weatherApi: env.WEATHER_API_KEY },
     feeds: { sunstar: env.SUNSTAR_RSS_URL, cebuDailyNews: env.CDN_RSS_URL },

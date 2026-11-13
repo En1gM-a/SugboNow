@@ -19,7 +19,7 @@ function useSkyWeather(): SkyWeather {
   const city = status === 'signedIn' ? profile.data?.city : null;
   const weather = useWeather(city);
   if (status !== 'signedIn') return 'rain';
-  if (weather.data) return skyWeather(weatherKind(weather.data.current.iconUrl));
+  if (weather.data) return skyWeather(weatherKind(weather.data.current.iconUrl, weather.data.current.chanceOfRain));
   if (weather.isError || profile.isError || (profile.isSuccess && !profile.data.city)) return 'clear';
   return 'rain';
 }

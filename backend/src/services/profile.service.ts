@@ -47,6 +47,7 @@ export function createProfileService({ profiles, locations, lguSources }: Profil
     if (patch.commuteDestinationLocationId !== undefined) {
       changes.commute_destination_location_id = patch.commuteDestinationLocationId;
     }
+    if (patch.allowCclex !== undefined) changes.allow_cclex = patch.allowCclex;
     return changes;
   }
 

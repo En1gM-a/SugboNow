@@ -9,6 +9,8 @@ provider's dashboard before relying on them.
 | Source | What | Key | Job and schedule (Asia/Manila) | Quota use |
 | --- | --- | --- | --- | --- |
 | [TomTom Traffic](https://developer.tomtom.com) Incident Details v5 | Traffic incidents in Metro Cebu | `TOMTOM_API_KEY` | `ingestTraffic`, every 15 min 05:00–22:45 | 72 of 2,500 requests/day |
+| [TomTom Traffic Flow](https://developer.tomtom.com) Vector Flow Tiles v4 | Speed on every road in Metro Cebu, against its free-flow speed | `TOMTOM_API_KEY` | `ingestTraffic`, with the incidents | 49 tiles a run: about 110,000 of 200,000 tiles/month |
+| [TomTom Routing](https://developer.tomtom.com) Calculate Route v1 | Road routes between saved places, with and without CCLEX | `TOMTOM_API_KEY` | `ingestRoutes`, every 30 min (:20, :50) | Shares the 2,500/day above. 1–2 per new or moved pair of places, then 1–2 per pair a week; at most 40 a run |
 | [WeatherAPI.com](https://www.weatherapi.com) forecast | Conditions, 24-hour forecast, official warnings per area | `WEATHER_API_KEY` | `ingestWeather`, hourly at :05 | 9 areas × 24 × 30 ≈ 6,500 of 100,000 calls/month |
 | [GNews](https://gnews.io) search | Cebu articles about suspensions, floods, closures, utilities, storms | `GNEWS_API_KEY` | `ingestNews`, every 3 hours at :20 | 3 queries × 8 = 24 of 100 requests/day |
 | SunStar RSS | Cebu stories | none | `ingestSunstar`, every 30 min | — |
@@ -26,6 +28,32 @@ provider's dashboard before relying on them.
   - lane closure and road works → `closure`, by delay
   - congestion → `traffic` by delay: minor `low`, moderate `medium`, major `high`
 - When TomTom gives no end time, the alert lasts an hour, extended while TomTom still reports it.
+
+### Traffic flow (`ingestTraffic`)
+
+- After the incidents, each run fetches the 49 zoom-13 vector flow tiles over the same box
+  (`/traffic/map/4/tile/flow/relative/…pbf`, `margin=0` so neighbouring tiles don't repeat a road)
+  and saves every road line with a level: heavy under 40% of the road's free-flow speed or
+  closed, medium under 75%, free otherwise. Roads TomTom has no speed for are left out.
+- A run within 10 minutes of the last saved flow keeps it, so duplicate runs (GitHub's timer and
+  Supabase's) don't spend tiles twice. If the flow fails, the alerts are still saved and the run fails.
+- **Quota:** TomTom's pricing page (checked 2026-11-12) lists free allowances per month, with no card:
+  200,000 flow tiles, 2,500 incident requests and 20,000 routing requests. The incidents row
+  above says per day; check the TomTom dashboard, because 72 a day is about 2,200 a month.
+
+### Routing (`ingestRoutes`)
+
+- For every origin → destination pair a trip or a usual commute uses, it asks for the fastest car route
+  (`travelMode=car`, `routeType=fastest`, `traffic=false`, `computeTravelTimeFor=all`,
+  `sectionType=tollRoad`), and saves it to `public.place_routes`.
+- The travel time is TomTom's historic-traffic time for the route, not live traffic.
+- CCLEX is Metro Cebu's only toll road, so a `TOLL_ROAD` section marks a route that crosses it.
+  Only then does it ask again with `avoid=tollRoads` for the route over a bridge; otherwise it saves
+  the same route for both choices, with no second request.
+  **Check with the real key:** that TomTom marks CCLEX as a toll road. If it doesn't, routes still work,
+  but the CCLEX switch never appears.
+- Lines are simplified to at most 300 points before saving.
+- A route is fetched again when a place moves or after 7 days. At most 40 requests a run; the rest wait.
 
 ## WeatherAPI.com
 

@@ -1,9 +1,14 @@
 // Matching: which alerts matter to a user. v1 rule (README "Core Logic"): an
 // alert is relevant when it is active in the time window and within a radius
-// of one of the user's saved places. Route-corridor matching comes later.
+// of one of the user's saved places. On a trip with a road route, traffic,
+// closures and floods count only when they're on the route (isOnRoute).
 
 import type { AlertSeverity, AlertType } from "../types";
-import { haversineKm, roundKm } from "../utils/geo";
+import { distanceToLineM, haversineKm, roundKm, type LatLngPair } from "../utils/geo";
+
+// Traffic-type alerts are on a route when they're this close to its line.
+export const ROUTE_ALERT_M = 100;
+export const ROUTE_ALERT_TYPES: readonly AlertType[] = ["traffic", "closure", "flood"];
 
 // How far an alert can be from a saved place and still count as near it.
 // Weather and area-level news cover a wider area than a traffic incident.
@@ -60,6 +65,12 @@ export function placesNear(alert: MatchableAlert, places: PlacePoint[], radiusKm
     .map((place) => ({ id: place.id, label: place.label, distanceKm: roundKm(haversineKm({ lat, lng }, place)) }))
     .filter((place) => place.distanceKm <= radiusKm)
     .sort((a, b) => a.distanceKm - b.distanceKm);
+}
+
+// A traffic, closure or flood alert within ROUTE_ALERT_M of the route's line.
+export function isOnRoute(alert: MatchableAlert, line: LatLngPair[]): boolean {
+  const { lat, lng } = alert;
+  return ROUTE_ALERT_TYPES.includes(alert.type) && lat !== null && lng !== null && distanceToLineM({ lat, lng }, line) <= ROUTE_ALERT_M;
 }
 
 // Alerts near at least one place, each with the places it is near.

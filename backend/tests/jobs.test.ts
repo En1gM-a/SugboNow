@@ -9,7 +9,7 @@ import { createIngestTrafficJob } from '../src/jobs/ingestTraffic.js';
 import { createIngestWeatherJob } from '../src/jobs/ingestWeather.js';
 import { runJob } from '../src/jobs/scheduler.js';
 import type { WeatherApiForecast } from '../src/integrations/weatherapi.js';
-import type { NewAlert, NewsArticle } from '../src/types/index.js';
+import type { NewAlert, NewsArticle, TrafficFlowLines } from '../src/types/index.js';
 
 const now = new Date('2026-10-22T04:00:00Z');
 const logger = () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() });
@@ -23,10 +23,12 @@ function article(title: string, publishedAt = '2026-10-22T03:00:00Z'): NewsArtic
 }
 
 describe('job list', () => {
-  it('has seven jobs with valid Manila cron schedules', () => {
+  it('has eight jobs with valid Manila cron schedules', () => {
     const jobs = buildJobs({
       alerts: alertsRepo(),
       weather: { save: vi.fn(), saveRegionalForecast: vi.fn() },
+      routes: { listPairs: vi.fn(), listSaved: vi.fn(), save: vi.fn() },
+      trafficFlow: { get: vi.fn(), save: vi.fn() },
       briefs: { generateAll: vi.fn() },
       keys: {},
       feeds: { sunstar: 'https://feed.example/s', cebuDailyNews: 'https://feed.example/c' },
@@ -39,6 +41,7 @@ describe('job list', () => {
       'ingestSunstar',
       'ingestCebuDailyNews',
       'ingestPagasa',
+      'ingestRoutes',
       'generateBriefs',
     ]);
     for (const job of jobs) expect(validate(job.schedule), job.name).toBe(true);
@@ -70,6 +73,58 @@ describe('keyed jobs', () => {
     });
     expect(await job.run(now)).toEqual({ status: 'ok', detail: '1 incidents, 1 alerts', saved: 1 });
     expect(alerts.upsert).toHaveBeenCalledWith([expect.objectContaining({ fingerprint: 'tomtom:T1', type: 'closure' })], { updateExisting: true });
+  });
+});
+
+describe('traffic flow in the traffic job', () => {
+  const lines: TrafficFlowLines = {
+    free: [
+      [
+        [10.3, 123.88],
+        [10.3, 123.89],
+      ],
+    ],
+    medium: [],
+    heavy: [
+      [
+        [10.31, 123.9],
+        [10.31, 123.91],
+      ],
+    ],
+  };
+  const noIncidents = async () => [];
+
+  it('saves the flow after the alerts', async () => {
+    const flow = { get: vi.fn(async () => null), save: vi.fn(async () => undefined) };
+    const job = createIngestTrafficJob({ apiKey: 'key', alerts: alertsRepo(), flow, fetchIncidents: noIncidents, fetchFlow: async () => lines });
+    expect(await job.run(now)).toEqual({ status: 'ok', detail: '0 incidents, 0 alerts; traffic flow on 2 road lines', saved: 0 });
+    expect(flow.save).toHaveBeenCalledWith(lines, now);
+  });
+
+  it('keeps flow saved minutes ago, so a second run spends no tiles', async () => {
+    const fetchFlow = vi.fn(async () => lines);
+    const savedAt = new Date(now.getTime() - 5 * 60_000).toISOString();
+    const flow = { get: vi.fn(async () => ({ area: 'metro_cebu', lines, fetched_at: savedAt })), save: vi.fn() };
+    const job = createIngestTrafficJob({ apiKey: 'key', alerts: alertsRepo(), flow, fetchIncidents: noIncidents, fetchFlow });
+    expect((await job.run(now)).detail).toBe('0 incidents, 0 alerts; traffic flow is still fresh');
+    expect(fetchFlow).not.toHaveBeenCalled();
+  });
+
+  it('still saves the alerts when the flow fails, and fails the run so it shows', async () => {
+    const alerts = alertsRepo();
+    const job = createIngestTrafficJob({
+      apiKey: 'key',
+      alerts,
+      flow: { get: vi.fn(async () => null), save: vi.fn() },
+      fetchIncidents: async () => [
+        { type: 'Feature', geometry: { type: 'Point', coordinates: [123.89, 10.31] }, properties: { id: 'T1', iconCategory: 8, magnitudeOfDelay: 4 } },
+      ],
+      fetchFlow: async () => {
+        throw new Error('TomTom responded with HTTP 403');
+      },
+    });
+    expect(await job.run(now)).toEqual({ status: 'failed', detail: '1 incidents, 1 alerts; traffic flow failed: TomTom responded with HTTP 403', saved: 1 });
+    expect(alerts.upsert).toHaveBeenCalledTimes(1);
   });
 });
 
