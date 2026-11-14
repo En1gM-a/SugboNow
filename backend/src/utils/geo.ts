@@ -66,6 +66,35 @@ export function distanceToLineM(point: LatLng, line: LatLngPair[]): number {
   return best;
 }
 
+export interface Bounds {
+  minLat: number;
+  maxLat: number;
+  minLng: number;
+  maxLng: number;
+}
+
+// The box around every point of the lines, widened by `marginM` on each side.
+// Anything within `marginM` of a line is inside it.
+export function boundsAround(lines: LatLngPair[][], marginM: number): Bounds {
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  let minLng = Infinity;
+  let maxLng = -Infinity;
+  for (const line of lines) {
+    for (const [lat, lng] of line) {
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+      if (lng < minLng) minLng = lng;
+      if (lng > maxLng) maxLng = lng;
+    }
+  }
+  const marginLat = marginM / METRES_PER_DEGREE;
+  // A degree of longitude is shortest at the edge furthest from the equator, so
+  // measuring the margin there never makes it too narrow.
+  const marginLng = marginM / (METRES_PER_DEGREE * Math.cos(toRadians(Math.max(Math.abs(minLat), Math.abs(maxLat)))));
+  return { minLat: minLat - marginLat, maxLat: maxLat + marginLat, minLng: minLng - marginLng, maxLng: maxLng + marginLng };
+}
+
 export const round5 = (value: number) => Math.round(value * 1e5) / 1e5;
 
 // A route line with fewer points (Douglas–Peucker): drops points within

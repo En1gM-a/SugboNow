@@ -33,15 +33,19 @@ export function createAlertsService({ alerts, locations, now = () => new Date() 
   return {
     async list(user: RequestUser, query: AlertsQuery): Promise<AlertWithPlaces[]> {
       const current = now();
-      const rows = await alerts.listActive({
-        now: current,
-        startsBefore: addHours(current, UPCOMING_HOURS),
-        types: query.type ?? DEFAULT_ALERT_TYPES,
-        severities: query.severity,
-        area: query.area,
-        // Filtering and severity sorting happen below, so fetch a wide page.
-        limit: 200,
-      });
+      // The user's places are read alongside the alerts, not after them.
+      const [rows, places] = await Promise.all([
+        alerts.listActive({
+          now: current,
+          startsBefore: addHours(current, UPCOMING_HOURS),
+          types: query.type ?? DEFAULT_ALERT_TYPES,
+          severities: query.severity,
+          area: query.area,
+          // Filtering and severity sorting happen below, so fetch a wide page.
+          limit: 200,
+        }),
+        query.relevant ? locations.list(user) : null,
+      ]);
 
       let candidates = rows;
       const near = query.near;
@@ -55,8 +59,7 @@ export function createAlertsService({ alerts, locations, now = () => new Date() 
       }
 
       let items: AlertWithPlaces[] = candidates.map((alert) => ({ alert, places: [] }));
-      if (query.relevant) {
-        const places = await locations.list(user);
+      if (places) {
         items = matchAlertsToPlaces(candidates, places).map(({ alert, places: nearby }) => ({ alert, places: nearby }));
       }
 

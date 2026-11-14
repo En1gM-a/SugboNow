@@ -8,7 +8,9 @@
 // never keep the raw objects.
 
 import { createHash } from "node:crypto";
-import { chromium, type Browser } from "playwright";
+// Types only. Playwright itself is loaded on the first check (scrapeLatestPagePosts),
+// so an API that never checks Facebook doesn't pay for it at start-up.
+import type { Browser } from "playwright";
 import type { FbMediaItem, FbPostType, ScrapedFbPost } from "../types";
 
 type Json = Record<string, unknown>;
@@ -327,6 +329,7 @@ export async function scrapeLatestPagePosts(pageUrl: string, options: ScrapeOpti
   const timeoutMs = options.timeoutMs ?? 60_000;
   const maxScrolls = options.maxScrolls ?? 4;
 
+  const { chromium } = await import("playwright");
   const browser = await chromium.launch({ headless: true });
   let timer: NodeJS.Timeout | undefined;
   try {

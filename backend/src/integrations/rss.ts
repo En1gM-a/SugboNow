@@ -1,7 +1,7 @@
 // Minimal RSS 2.0 reader for news feeds (SunStar, Cebu Daily News).
 
 import { load } from "cheerio";
-import { htmlToText } from "../utils/text";
+import { htmlToText } from "../utils/html";
 
 export interface RssItem {
   title: string;

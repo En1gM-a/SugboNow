@@ -82,6 +82,24 @@ describe('alerts service', () => {
     expect(items[0].places).toEqual([{ id: 'home', label: 'Home', distanceKm: 0.1 }]);
   });
 
+  it('reads the user’s places while the alerts are still being read', async () => {
+    let deliver: (rows: AlertRow[]) => void = () => undefined;
+    const alerts = { listActive: vi.fn(() => new Promise<AlertRow[]>((resolve) => (deliver = resolve))) } as unknown as AlertsRepository;
+    const locations = { list: vi.fn(async () => []) } as unknown as LocationsRepository;
+    const service = createAlertsService({ alerts, locations, now: () => now });
+
+    const listing = service.list(TEST_USER, query({ relevant: 'true' }));
+    expect(locations.list).toHaveBeenCalledWith(TEST_USER);
+    deliver([alert('near')]);
+    expect(await listing).toEqual([]);
+
+    // Without relevant=true the places aren't needed, so they aren't read.
+    const plain = setup([]);
+    const places = { list: vi.fn(async () => []) } as unknown as LocationsRepository;
+    await createAlertsService({ alerts: plain.alerts, locations: places, now: () => now }).list(TEST_USER, query());
+    expect(places.list).not.toHaveBeenCalled();
+  });
+
   it('lists news from the news sources for the last 24 hours', async () => {
     const { alerts, service } = setup([]);
     await service.news({ limit: 20, area: 'Mandaue' });

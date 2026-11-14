@@ -12,7 +12,7 @@ const FLOW_MIN_AGE_MS = 10 * 60_000;
 export interface IngestTrafficDeps {
   apiKey?: string;
   alerts: Pick<AlertsRepository, "upsert">;
-  flow?: Pick<TrafficFlowRepository, "get" | "save">;
+  flow?: Pick<TrafficFlowRepository, "fetchedAt" | "save">;
   fetchIncidents?: (apiKey: string) => Promise<TomtomIncident[]>;
   fetchFlow?: (apiKey: string) => Promise<TrafficFlowLines>;
 }
@@ -38,8 +38,9 @@ export function createIngestTrafficJob(deps: IngestTrafficDeps): Job {
 
       // The alerts are saved either way; a flow failure still fails the run, so it shows.
       try {
-        const last = await deps.flow.get();
-        if (last && now.getTime() - Date.parse(last.fetched_at) < FLOW_MIN_AGE_MS) {
+        // Only when it was fetched: reading the saved lines too would be about 400 KB a run.
+        const lastFetchedAt = await deps.flow.fetchedAt();
+        if (lastFetchedAt && now.getTime() - Date.parse(lastFetchedAt) < FLOW_MIN_AGE_MS) {
           return { status: "ok", detail: `${detail}; traffic flow is still fresh`, saved };
         }
         const lines = await fetchFlow(deps.apiKey);
