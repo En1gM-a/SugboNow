@@ -12,6 +12,8 @@ export const profilePatchSchema = z
     subscribedMayor: z.string().trim().min(1).max(40).nullable(),
     commuteOriginLocationId: z.uuid().nullable(),
     commuteDestinationLocationId: z.uuid().nullable(),
+    // Routes and leave times may use CCLEX, the toll expressway. Never null.
+    allowCclex: z.boolean(),
   })
   .partial()
   .strict()

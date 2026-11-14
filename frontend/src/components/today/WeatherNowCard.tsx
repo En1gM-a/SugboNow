@@ -44,7 +44,7 @@ export function WeatherNowCard({ i, city, fallback }: { i: number; city: string 
     );
   }
 
-  const kind = weatherKind(weather.current.iconUrl);
+  const kind = weatherKind(weather.current.iconUrl, weather.current.chanceOfRain);
   const hours = weather.hourly.slice(0, 6);
 
   return (

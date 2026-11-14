@@ -17,6 +17,11 @@ export function useSchedule() {
   return useQuery({ ...queries.schedule(), select: (d) => d.entries });
 }
 
+/** The road routes between two saved places, with and without CCLEX (GET /api/routes). Off until both are known. */
+export function useRoutes(from: string | null | undefined, to: string | null | undefined) {
+  return useQuery({ ...queries.routes(from ?? '', to ?? ''), enabled: Boolean(from && to && from !== to) });
+}
+
 /** Validation errors show next to their fields, so only other failures get a toast. */
 const unlessValidation = (err: unknown, message: string) => {
   if (!(err instanceof ApiError && err.code === 'invalid_request')) toast.error(message);

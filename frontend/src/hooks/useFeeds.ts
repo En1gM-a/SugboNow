@@ -8,6 +8,11 @@ export function useBrief() {
   return useQuery(queries.brief());
 }
 
+/** Traffic on every Metro Cebu road, for the All Cebu map. */
+export function useTrafficFlow() {
+  return useQuery(queries.trafficFlow());
+}
+
 export function useAlerts(q: AlertsQuery = {}) {
   return useQuery({ ...queries.alerts(q), placeholderData: keepPreviousData, select: (d) => d.alerts });
 }

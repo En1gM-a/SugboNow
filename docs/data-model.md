@@ -27,6 +27,12 @@ them from the auth metadata and saves a bad value as empty, so it never blocks a
 sign-up. Read them from `profiles`, never from `user_metadata`, which doesn't
 change when the user edits their Profile. See `docs/handoffs/signup.md`.
 
+`0009_add_place_routes.sql` adds one more:
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `allow_cclex` | `boolean`, not null, default `true` | Whether routes and leave times may use CCLEX, the toll expressway between Cordova and Cebu City. One setting for every trip; the Traffic page's "Use CCLEX" switch changes it. |
+
 ## public.lgu_sources
 
 Created by `supabase/migrations/0003_add_lgu_posts.sql`, extended by
@@ -107,6 +113,39 @@ brownout, …) are also saved as alerts with `source = 'facebook'`; see
 `profiles.city` holds an area slug (`cebu_city`, `mandaue_city`, `lapu_lapu_city`,
 `talisay_city`, `consolacion`, `liloan`, `minglanilla`, `naga_city`, `cordova`),
 defined in `backend/src/config/areas.ts` and listed by `GET /api/areas`.
+
+## public.place_routes
+
+Road routes between saved places, added by `0009_add_place_routes.sql`. The
+`ingestRoutes` job (TomTom Routing) writes them with the service role; users can
+only read the routes that start at one of their own places. `GET /api/routes`
+serves them, and leave times use them.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `origin_location_id`, `destination_location_id` | `uuid`, FK → `locations(id)` on delete cascade | The pair. Deleting either place deletes its routes. |
+| `allow_cclex` | `boolean` | `true`: the fastest route, which may use CCLEX. `false`: the fastest that avoids toll roads. Part of the primary key with the pair. |
+| `origin_lat`, `origin_lng`, `destination_lat`, `destination_lng` | `double precision` | The places' coordinates when fetched. If a place moves, the API hides the route and the job fetches a new one. |
+| `distance_m`, `travel_s` | `integer` | Road distance, and typical car time with historic traffic. |
+| `uses_cclex` | `boolean` | Whether the route crosses CCLEX (a TomTom toll section). |
+| `line` | `jsonb` | `[[lat, lng], …]` along the roads, at most 300 points. |
+| `fetched_at` | `timestamptz` | Refetched after 7 days. |
+
+Only pairs that a trip or a usual commute uses get routes. A route for a pair
+that stops being used stays until either place is deleted; it costs no requests.
+
+## public.traffic_flow
+
+The latest TomTom traffic flow for Metro Cebu, added by `0011_add_traffic_flow.sql`.
+One row, replaced by the `ingestTraffic` job with the service role; readable by
+signed-in users. `GET /api/traffic-flow` serves it, and `GET /api/routes` colors
+routes with it.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `area` | `text`, primary key | `metro_cebu`. |
+| `lines` | `jsonb` object | `{free, medium, heavy}`: arrays of road lines, each `[[lat, lng], …]` in the direction of travel. |
+| `fetched_at` | `timestamptz` | When TomTom's speeds were fetched. The API treats flow over 45 minutes old as none. |
 
 ## public.alerts
 

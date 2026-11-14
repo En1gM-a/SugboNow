@@ -19,7 +19,16 @@ export interface FetchOptions {
   timeoutMs?: number;
 }
 
-export async function fetchText(source: string, url: string, options: FetchOptions = {}): Promise<string> {
+export function fetchText(source: string, url: string, options: FetchOptions = {}): Promise<string> {
+  return request(source, url, options, (response) => response.text());
+}
+
+// A binary body, such as a vector map tile.
+export function fetchBytes(source: string, url: string, options: FetchOptions = {}): Promise<Uint8Array> {
+  return request(source, url, options, async (response) => new Uint8Array(await response.arrayBuffer()));
+}
+
+async function request<T>(source: string, url: string, options: FetchOptions, read: (response: Response) => Promise<T>): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? 20_000);
   try {
@@ -27,7 +36,7 @@ export async function fetchText(source: string, url: string, options: FetchOptio
       headers: { "User-Agent": BOT_USER_AGENT, ...options.headers },
       signal: controller.signal,
     });
-    const body = await response.text();
+    const body = await read(response);
     if (!response.ok) {
       const hint = response.status === 403 ? " (blocked, possibly by bot protection)" : "";
       throw new IntegrationError(source, `${source} responded with HTTP ${response.status}${hint}`, response.status);

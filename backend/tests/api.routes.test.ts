@@ -5,9 +5,11 @@ import type { BriefService } from '../src/services/brief.service.js';
 import type { LguSourcesRepository } from '../src/services/lguSources.repository.js';
 import type { LocationsService } from '../src/services/locations.service.js';
 import type { ProfileService } from '../src/services/profile.service.js';
+import type { RoutesService } from '../src/services/routes.service.js';
 import type { ScheduleService } from '../src/services/schedule.service.js';
+import type { TrafficFlowService } from '../src/services/trafficFlow.service.js';
 import type { WeatherService } from '../src/services/weather.service.js';
-import type { AlertRow, LocationRow, ProfileRow, ScheduleRow, WeatherSnapshotRow } from '../src/types/index.js';
+import type { AlertRow, LocationRow, PlaceRouteRow, ProfileRow, ScheduleRow, WeatherSnapshotRow } from '../src/types/index.js';
 import { conflict, notFound } from '../src/utils/errors.js';
 import { TEST_USER, authHeaders, jsonHeaders, startTestApp, type TestServer } from './helpers/testApp.js';
 
@@ -24,6 +26,7 @@ const profile: ProfileRow = {
   subscribed_mayor: 'cebu_city',
   commute_origin_location_id: HOME,
   commute_destination_location_id: null,
+  allow_cclex: true,
   created_at: '2026-10-01T00:00:00Z',
   updated_at: '2026-10-02T00:00:00Z',
 };
@@ -96,7 +99,7 @@ describe('auth and errors', () => {
   it('serves health without a token and requires one everywhere else', async () => {
     const base = await start({});
     expect((await fetch(`${base}/api/health`)).status).toBe(200);
-    for (const path of ['/api/profile', '/api/areas', '/api/locations', '/api/schedule', '/api/alerts', '/api/news', '/api/weather', '/api/brief/today']) {
+    for (const path of ['/api/profile', '/api/areas', '/api/locations', '/api/schedule', '/api/alerts', '/api/news', '/api/weather', '/api/traffic-flow', '/api/brief/today']) {
       expect((await fetch(`${base}${path}`)).status, path).toBe(401);
     }
   });
@@ -134,9 +137,22 @@ describe('/api/profile', () => {
       subscribedMayor: 'cebu_city',
       commuteOriginLocationId: HOME,
       commuteDestinationLocationId: null,
+      allowCclex: true,
       createdAt: '2026-10-01T00:00:00Z',
       updatedAt: '2026-10-02T00:00:00Z',
     });
+  });
+
+  it('accepts allowCclex as true or false, never null', async () => {
+    const update = vi.fn(async () => ({ ...profile, allow_cclex: false }));
+    const base = await start({ profile: { update } as unknown as ProfileService });
+
+    const nulled = await fetch(`${base}/api/profile`, { method: 'PATCH', headers: jsonHeaders, body: JSON.stringify({ allowCclex: null }) });
+    expect(nulled.status).toBe(400);
+    const off = await fetch(`${base}/api/profile`, { method: 'PATCH', headers: jsonHeaders, body: JSON.stringify({ allowCclex: false }) });
+    expect(off.status).toBe(200);
+    expect(update).toHaveBeenCalledWith(TEST_USER, { allowCclex: false });
+    expect((await off.json()).allowCclex).toBe(false);
   });
 
   it('validates PATCH bodies and passes the change to the service', async () => {
@@ -151,6 +167,82 @@ describe('/api/profile', () => {
     const ok = await fetch(`${base}/api/profile`, { method: 'PATCH', headers: jsonHeaders, body: JSON.stringify({ subscribedMayor: 'mandaue_city', firstName: '  Thea ' }) });
     expect(ok.status).toBe(200);
     expect(update).toHaveBeenCalledWith(TEST_USER, { subscribedMayor: 'mandaue_city', firstName: 'Thea' });
+  });
+});
+
+describe('/api/routes', () => {
+  const route: PlaceRouteRow = {
+    origin_location_id: HOME,
+    destination_location_id: SCHOOL,
+    allow_cclex: true,
+    origin_lat: 10.3157,
+    origin_lng: 123.8854,
+    destination_lat: 10.2954,
+    destination_lng: 123.9472,
+    distance_m: 14_230,
+    travel_s: 1_620,
+    uses_cclex: true,
+    line: [
+      [10.3157, 123.8854],
+      [10.2954, 123.9472],
+    ],
+    fetched_at: '2026-11-10T02:20:00Z',
+  };
+
+  it('returns both routes in the contract shape, with null for one not fetched yet', async () => {
+    const traffic = [{ level: 'heavy' as const, line: route.line }];
+    const between = vi.fn(async () => ({ from: HOME, to: SCHOOL, withCclex: { ...route, traffic, alerts: [upcoming] }, withoutCclex: null }));
+    const base = await start({ routes: { between } as unknown as RoutesService });
+    const response = await fetch(`${base}/api/routes?from=${HOME}&to=${SCHOOL}`, { headers: authHeaders });
+
+    expect(response.status).toBe(200);
+    expect(between).toHaveBeenCalledWith(TEST_USER, HOME, SCHOOL);
+    expect(await response.json()).toEqual({
+      from: HOME,
+      to: SCHOOL,
+      withCclex: {
+        distanceKm: 14.2,
+        travelMinutes: 27,
+        usesCclex: true,
+        line: [
+          [10.3157, 123.8854],
+          [10.2954, 123.9472],
+        ],
+        updatedAt: '2026-11-10T02:20:00Z',
+        traffic,
+        alerts: [expect.objectContaining({ id: upcoming.id, status: 'upcoming' })],
+      },
+      withoutCclex: null,
+    });
+  });
+
+  it('needs two valid place ids', async () => {
+    const base = await start({ routes: { between: vi.fn() } as unknown as RoutesService });
+    const response = await fetch(`${base}/api/routes?from=${HOME}&to=nope`, { headers: authHeaders });
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.details).toEqual([{ path: 'to', message: 'Must be a valid id.' }]);
+  });
+});
+
+describe('/api/traffic-flow', () => {
+  it('returns every road line by level, and empty lists without current flow', async () => {
+    const lines = {
+      free: [
+        [
+          [10.3, 123.88],
+          [10.3, 123.89],
+        ],
+      ],
+      medium: [],
+      heavy: [],
+    };
+    const current = vi.fn(async () => ({ area: 'metro_cebu', lines, fetched_at: '2026-10-22T21:45:00Z' }));
+    const base = await start({ trafficFlow: { current } as unknown as TrafficFlowService });
+    const read = async () => (await fetch(`${base}/api/traffic-flow`, { headers: authHeaders })).json();
+
+    expect(await read()).toEqual({ updatedAt: '2026-10-22T21:45:00Z', ...lines });
+    current.mockResolvedValueOnce(null as never);
+    expect(await read()).toEqual({ updatedAt: null, free: [], medium: [], heavy: [] });
   });
 });
 

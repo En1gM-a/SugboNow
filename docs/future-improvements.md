@@ -87,6 +87,8 @@ The code references were checked on 2026-11-06 against `main`, after #49 landed.
 
 ## 7. The fastest route on land, with traffic only along it
 
+**Partly done (branch `feature/road-routes`):** the fastest land route and the CCLEX switch. The `ingestRoutes` job fetches each trip's and usual commute's route from TomTom Routing (with and without CCLEX), My commute draws it along the roads, a "Use CCLEX" switch appears under the leave time when the route crosses CCLEX (one profile setting, `allowCclex`, default on), and leave times use the route's road distance. **Still to do:** traffic only along the route (the "What 'traffic on the route' means" choice below), and live travel times. The notes below are kept for that.
+
 **Asked for:** the Traffic map's "approximate route" is a straight line, so a trip from Mactan to Cebu City crosses the sea. Instead:
 - **The fastest land route:** show only the fastest route a person could actually drive from the trip's start to its end, over whichever crossing is fastest: the Mactan–Mandaue Bridge, the Marcelo Fernan Bridge or CCLEX.
 - **Traffic on that route only:** show the traffic on that route, not on every road.

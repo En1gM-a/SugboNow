@@ -27,6 +27,7 @@ const profileRow: ProfileRow = {
   subscribed_mayor: null,
   commute_origin_location_id: null,
   commute_destination_location_id: null,
+  allow_cclex: true,
   created_at: '2026-10-01T00:00:00Z',
   updated_at: '2026-10-01T00:00:00Z',
 };

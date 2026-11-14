@@ -84,6 +84,8 @@ export interface ProfileRow {
   subscribed_mayor: string | null;
   commute_origin_location_id: string | null;
   commute_destination_location_id: string | null;
+  // Routes and leave times may use CCLEX, the toll expressway (one setting for every trip).
+  allow_cclex: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -119,6 +121,41 @@ export interface ScheduleRow {
   destination: LocationRef | null;
   created_at: string;
   updated_at: string;
+}
+
+// A road route between two saved places (public.place_routes), saved by the
+// ingestRoutes job. allow_cclex false is the route that avoids toll roads.
+export interface PlaceRouteRow {
+  origin_location_id: string;
+  destination_location_id: string;
+  allow_cclex: boolean;
+  origin_lat: number;
+  origin_lng: number;
+  destination_lat: number;
+  destination_lng: number;
+  distance_m: number;
+  travel_s: number;
+  uses_cclex: boolean;
+  line: Array<[number, number]>;
+  fetched_at: string;
+}
+
+// Traffic flow (public.traffic_flow), saved by the ingestTraffic job: road lines by
+// traffic level, each [[lat, lng], ...] in the direction of travel. In drawing order.
+export const FLOW_LEVELS = ["free", "medium", "heavy"] as const;
+export type FlowLevel = (typeof FLOW_LEVELS)[number];
+export type TrafficFlowLines = Record<FlowLevel, Array<Array<[number, number]>>>;
+
+export interface TrafficFlowRow {
+  area: string;
+  lines: TrafficFlowLines;
+  fetched_at: string;
+}
+
+// A stretch of a route at one traffic level; null where TomTom has no speed for the road.
+export interface RouteTraffic {
+  level: FlowLevel | null;
+  line: Array<[number, number]>;
 }
 
 // ---------------------------------------------------------------------------

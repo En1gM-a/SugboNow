@@ -73,7 +73,7 @@ export function RightNow({ i = 1, layout = 'stack', flat = false, className }: R
           <GlanceRow to={hasTrips ? '/' : '/profile?section=trips'} kind="clock" title={hasTrips ? 'No more trips today' : 'No trips yet'} note={hasTrips ? 'Next leave time tomorrow' : 'Add a weekly trip'} />
         )}
         {current ? (
-          <GlanceRow to="/weather" kind={weatherKind(current.current.iconUrl)} title={`${Math.round(current.current.tempC)}° ${current.current.condition}`} note={`${current.current.chanceOfRain}% chance of rain`} />
+          <GlanceRow to="/weather" kind={weatherKind(current.current.iconUrl, current.current.chanceOfRain)} title={`${Math.round(current.current.tempC)}° ${current.current.condition}`} note={`${current.current.chanceOfRain}% chance of rain`} />
         ) : weather.isPending && brief.isPending ? (
           <SkeletonRow />
         ) : null}

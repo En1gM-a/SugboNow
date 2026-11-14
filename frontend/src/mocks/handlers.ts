@@ -12,9 +12,13 @@ import type {
   Location,
   LocationInput,
   Profile,
+  RoadRoute,
+  RouteTrafficStretch,
   ScheduleEntry,
   ScheduleInput,
   Severity,
+  TrafficFlowResponse,
+  TrafficLevel,
 } from '@/types/api';
 import {
   alerts,
@@ -26,6 +30,8 @@ import {
   news,
   pagasa,
   postsFor,
+  recordedRoutes,
+  type RecordedRoute,
   USER_ID,
   weather,
 } from './data/fixtures';
@@ -106,6 +112,86 @@ function km(aLat: number, aLng: number, bLat: number, bLng: number): number {
   return 2 * r * Math.asin(Math.sqrt(h));
 }
 
+// Mock road routes (GET /api/routes): real TomTom lines recorded between the sample places (recordedRoutes), never
+// invented ones. A recorded line counts only while its places are still where it was recorded (within 300 m of its
+// ends), just as the real API hides a route saved before a place moved.
+const MOVED_KM = 0.3;
+
+function recordedLine(from: Location, to: Location): RecordedRoute | null {
+  const forward = recordedRoutes.find((r) => r.from === from.id && r.to === to.id);
+  const back = forward ? null : recordedRoutes.find((r) => r.from === to.id && r.to === from.id);
+  const rec = forward ?? (back && { ...back, from: back.to, to: back.from, line: [...back.line].reverse() });
+  if (!rec) return null;
+  const [first, last] = [rec.line[0], rec.line[rec.line.length - 1]];
+  const inPlace = km(first[0], first[1], from.lat, from.lng) <= MOVED_KM && km(last[0], last[1], to.lat, to.lng) <= MOVED_KM;
+  return inPlace ? rec : null;
+}
+
+function mockRoute(rec: RecordedRoute): RoadRoute {
+  const { line } = rec;
+  return {
+    distanceKm: rec.distanceKm,
+    travelMinutes: rec.travelMinutes,
+    usesCclex: rec.usesCclex,
+    line,
+    updatedAt: new Date().toISOString(),
+    traffic: mockTraffic(line),
+    alerts: alerts.filter((a) => isOnRoute(a, line)).sort(byImportance),
+  };
+}
+
+// Mock traffic: the line in stretches of 4 pieces, heavy wherever a traffic alert sits within 400 m, otherwise a fixed
+// pattern so sample mode shows every color, including a stretch with no speed (null).
+const TRAFFIC_PATTERN: ReadonlyArray<TrafficLevel | null> = [null, 'free', 'medium', 'free', 'free', 'medium', null];
+const STRETCH = 4;
+
+function mockTraffic(line: Array<[number, number]>): RouteTrafficStretch[] {
+  const jams = alerts.filter((a) => a.type === 'traffic' && a.lat !== null && a.lng !== null);
+  const out: RouteTrafficStretch[] = [];
+  for (let i = 0, n = 0; i < line.length - 1; i += STRETCH, n++) {
+    const piece = line.slice(i, Math.min(i + STRETCH, line.length - 1) + 1);
+    const jammed = jams.some((a) => kmToLine(a.lat!, a.lng!, piece) <= 0.4);
+    out.push({ level: jammed ? 'heavy' : TRAFFIC_PATTERN[n % TRAFFIC_PATTERN.length], line: piece });
+  }
+  return out;
+}
+
+/** GET /api/traffic-flow: the mock roads are the recorded sample routes, by their mock traffic. */
+function mockTrafficFlow(): TrafficFlowResponse {
+  const flow: TrafficFlowResponse = { updatedAt: new Date().toISOString(), heavy: [], medium: [], free: [] };
+  for (const rec of recordedRoutes) for (const s of mockTraffic(rec.line)) if (s.level) flow[s.level].push(s.line);
+  return flow;
+}
+
+// The alert types a route lists (GET /api/routes `alerts`), and how close to its line counts as on it.
+const ROUTE_TYPES: readonly AlertType[] = ['traffic', 'closure', 'flood'];
+const ON_ROUTE_KM = 0.1;
+
+/** Kilometres from a point to the nearest segment of a line, on a flat projection (fine at city scale). */
+function kmToLine(lat: number, lng: number, line: Array<[number, number]>): number {
+  const x = (pLng: number) => pLng * 111.32 * Math.cos((lat * Math.PI) / 180);
+  const y = (pLat: number) => pLat * 110.57;
+  let best = Infinity;
+  for (let i = 1; i < line.length; i++) {
+    const [ax, ay, bx, by] = [x(line[i - 1][1]), y(line[i - 1][0]), x(line[i][1]), y(line[i][0])];
+    const [px, py] = [x(lng), y(lat)];
+    const len = (bx - ax) ** 2 + (by - ay) ** 2;
+    const t = len === 0 ? 0 : Math.max(0, Math.min(1, ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / len));
+    best = Math.min(best, Math.hypot(px - (ax + t * (bx - ax)), py - (ay + t * (by - ay))));
+  }
+  return best;
+}
+
+const isOnRoute = (a: Alert, line: Array<[number, number]>) =>
+  ROUTE_TYPES.includes(a.type) && a.lat !== null && a.lng !== null && kmToLine(a.lat, a.lng, line) <= ON_ROUTE_KM;
+
+/** Both routes for a pair. None of the recorded routes uses CCLEX, so both are the same, as the API sends them. */
+function mockRoutes(from: Location, to: Location): { withCclex: RoadRoute | null; withoutCclex: RoadRoute | null } {
+  const rec = from.id === to.id ? null : recordedLine(from, to);
+  const route = rec ? mockRoute(rec) : null;
+  return { withCclex: route, withoutCclex: route };
+}
+
 // The API's order: severity, then type, then newest.
 const SEVERITY_RANK: Record<Severity, number> = { high: 0, medium: 1, low: 2 };
 const TYPE_RANK: Record<AlertType, number> = { advisory: 0, flood: 1, closure: 2, weather: 3, traffic: 4, power: 5, water: 6 };
@@ -142,10 +228,17 @@ function leaveTimes(): LeaveTime[] {
       const d = db.locations.find((l) => l.id === s.destinationLocationId)!;
       const distanceKm = Math.round(km(o.lat, o.lng, d.lat, d.lng) * 10) / 10;
       const baseMinutes = Math.max(8, Math.round(distanceKm * 3 + 2));
+      // Like the API: traffic, closures and floods count only on the trip's route; weather and advisories near either end.
+      const routes = mockRoutes(o, d);
+      const line = (db.profile.allowCclex !== false ? routes.withCclex : routes.withoutCclex)?.line ?? null;
       const reasons = alerts
         .filter((a) => a.lat !== null && a.status === 'active' && a.type !== 'power' && a.type !== 'water')
         .flatMap((a) => {
-          const near = [o, d].find((p) => km(a.lat!, a.lng!, p.lat, p.lng) <= 1.5);
+          const onRoute = line !== null && ROUTE_TYPES.includes(a.type);
+          if (onRoute && !isOnRoute(a, line)) return [];
+          const near = onRoute
+            ? [o, d].sort((p, q) => km(a.lat!, a.lng!, p.lat, p.lng) - km(a.lat!, a.lng!, q.lat, q.lng))[0]
+            : [o, d].find((p) => km(a.lat!, a.lng!, p.lat, p.lng) <= 1.5);
           return near
             ? [{ alertId: a.id, title: a.title, severity: a.severity, minutes: SEVERITY_MIN[a.severity], nearPlace: near.label }]
             : [];
@@ -271,6 +364,7 @@ export const handlers = [
     await latency();
     const body = (await request.json()) as Partial<Profile>;
     const d: ApiErrorDetail[] = [];
+    if ('allowCclex' in body && typeof body.allowCclex !== 'boolean') d.push({ path: 'allowCclex', message: 'Expected true or false.' });
     if (body.city && !areas.some((a) => a.slug === body.city)) d.push({ path: 'city', message: 'Pick a Metro Cebu area.' });
     if (body.subscribedMayor && !lguSources.some((s) => s.slug === body.subscribedMayor))
       d.push({ path: 'subscribedMayor', message: 'Pick one of the listed LGUs.' });
@@ -286,6 +380,20 @@ export const handlers = [
   http.get(`${API}/areas`, async () => {
     await latency();
     return HttpResponse.json({ areas });
+  }),
+
+  http.get(`${API}/traffic-flow`, async () => {
+    await latency();
+    return HttpResponse.json(mockTrafficFlow());
+  }),
+
+  http.get(`${API}/routes`, async ({ request }) => {
+    await latency();
+    const q = new URL(request.url).searchParams;
+    const from = db.locations.find((l) => l.id === q.get('from'));
+    const to = db.locations.find((l) => l.id === q.get('to'));
+    if (!from || !to) return notFound();
+    return HttpResponse.json({ from: from.id, to: to.id, ...mockRoutes(from, to) });
   }),
 
   http.get(`${API}/lgu-sources`, async () => {

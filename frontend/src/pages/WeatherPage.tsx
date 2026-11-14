@@ -83,7 +83,7 @@ function AreaPicker({ areas, value, mine, wide, onChange }: { areas: Weather[]; 
                 }}
               >
                 <span className="wxi-sm">
-                  <LiveIcon kind={weatherKind(w.current.iconUrl)} still />
+                  <LiveIcon kind={weatherKind(w.current.iconUrl, w.current.chanceOfRain)} still />
                 </span>
                 <span className="min-w-0">
                   {w.area.name}
@@ -114,7 +114,7 @@ function NowCard({ weather, areas, mine, wide, onPick, now }: { weather: Weather
       </div>
       <div className="wx-now">
         <span className="wxi wxi-lg">
-          <LiveIcon kind={weatherKind(c.iconUrl)} />
+          <LiveIcon kind={weatherKind(c.iconUrl, c.chanceOfRain)} />
         </span>
         <div>
           <p className="temp temp-lg tabular-nums">
@@ -186,7 +186,7 @@ function HourStrip({ hours, selected, onSelect }: { hours: WeatherHour[]; select
           <li key={h.time} className="e-row" style={vars({ '--j': Math.min(k, 8) })}>
             <button type="button" className="hour" aria-pressed={k === selected} tabIndex={k === selected ? 0 : -1} onClick={() => onSelect(k)}>
               <span className="muted">{hourLabel(h, k)}</span>
-              <LiveIcon kind={weatherKind(h.iconUrl)} still label={h.condition} />
+              <LiveIcon kind={weatherKind(h.iconUrl, h.chanceOfRain)} still label={h.condition} />
               <b className="tabular-nums">{Math.round(h.tempC)}°</b>
               <span className="tabular-nums hour-rain">{h.chanceOfRain}%</span>
             </button>

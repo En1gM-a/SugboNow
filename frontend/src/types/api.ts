@@ -20,6 +20,8 @@ export interface Profile {
   subscribedMayor: string | null;
   commuteOriginLocationId: string | null;
   commuteDestinationLocationId: string | null;
+  /** Routes and leave times may use CCLEX, the toll expressway between Cordova and Cebu City. One setting for every trip. */
+  allowCclex: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -34,8 +36,53 @@ export type ProfilePatch = Partial<
     | 'subscribedMayor'
     | 'commuteOriginLocationId'
     | 'commuteDestinationLocationId'
+    | 'allowCclex'
   >
 >;
+
+// GET /api/routes: the road route between two saved places, fetched by the backend's routes job.
+
+export interface RoadRoute {
+  distanceKm: number;
+  /** Typical car travel time (historic traffic), not live. */
+  travelMinutes: number;
+  usesCclex: boolean;
+  /** [lat, lng] along the roads, at most 300 points. */
+  line: Array<[number, number]>;
+  updatedAt: string;
+  /** The route in stretches by current traffic, from start to end. Empty when there's no current traffic data. */
+  traffic: RouteTrafficStretch[];
+  /** Active and upcoming traffic, closure and flood alerts within 100 m of `line`, most important first, without `nearPlaces`. */
+  alerts: Alert[];
+}
+
+export type TrafficLevel = 'heavy' | 'medium' | 'free';
+
+export interface RouteTrafficStretch {
+  /** Null where TomTom has no speed for the road. */
+  level: TrafficLevel | null;
+  line: Array<[number, number]>;
+}
+
+// GET /api/traffic-flow: every Metro Cebu road TomTom has speeds for, by level, for the All Cebu map.
+
+export interface TrafficFlowResponse {
+  /** When TomTom's speeds were fetched; null, with empty lists, when there's no current data. */
+  updatedAt: string | null;
+  /** Road lines, each [[lat, lng], …] in the direction of travel. Draw free, then medium, then heavy. */
+  heavy: Array<Array<[number, number]>>;
+  medium: Array<Array<[number, number]>>;
+  free: Array<Array<[number, number]>>;
+}
+
+export interface RoutesResponse {
+  from: string;
+  to: string;
+  /** The fastest route, which may use CCLEX. Null until the routes job has fetched it. */
+  withCclex: RoadRoute | null;
+  /** The fastest route avoiding toll roads; the same as withCclex when that one doesn't use CCLEX. */
+  withoutCclex: RoadRoute | null;
+}
 
 // Reference lists
 
