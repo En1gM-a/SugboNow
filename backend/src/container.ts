@@ -1,12 +1,16 @@
-// Builds the real services, repositories and jobs from the environment.
-// Used by server.ts and scripts/run-job.ts; tests build their own fakes.
+// Builds the real services and repositories from the environment, and what the
+// jobs need. Used by index.ts, server.ts and scripts/run-job.ts; tests build
+// their own fakes.
+//
+// The jobs themselves are built by whoever runs them (buildJobs in ./jobs), so
+// that the API on Vercel, which runs none, doesn't load their code at start-up.
 
 import type { AppServices } from "./app";
 import { env } from "./config/env";
 import { createUserClient, supabaseAdmin } from "./config/supabase";
 import { scrapeLatestPagePosts } from "./integrations/facebook";
-import { buildJobs, type Job } from "./jobs";
-import type { VerifyToken } from "./middleware/auth";
+import type { JobDependencies } from "./jobs";
+import { cacheVerifiedTokens, type VerifyToken } from "./middleware/auth";
 import { createAlertsRepository } from "./services/alerts.repository";
 import { createAlertsService } from "./services/alerts.service";
 import { createBriefWriter } from "./services/ai.service";
@@ -31,7 +35,8 @@ import { logger } from "./utils/logger";
 
 export interface Container {
   services: AppServices;
-  jobs: Job[];
+  // Pass to buildJobs (./jobs) to get the scheduled jobs.
+  jobDependencies: JobDependencies;
   verifyToken: VerifyToken;
 }
 
@@ -91,7 +96,7 @@ export function createContainer(): Container {
     }),
   };
 
-  const jobs = buildJobs({
+  const jobDependencies: JobDependencies = {
     alerts: alertsRepo,
     weather: weatherRepo,
     routes: createRoutesJobRepository(supabaseAdmin),
@@ -100,12 +105,13 @@ export function createContainer(): Container {
     keys: { tomtom: env.TOMTOM_API_KEY, gnews: env.GNEWS_API_KEY, weatherApi: env.WEATHER_API_KEY },
     feeds: { sunstar: env.SUNSTAR_RSS_URL, cebuDailyNews: env.CDN_RSS_URL },
     logger,
-  });
-
-  const verifyToken: VerifyToken = async (token) => {
-    const { data, error } = await supabaseAdmin.auth.getUser(token);
-    return error || !data.user ? null : data.user.id;
   };
 
-  return { services, jobs, verifyToken };
+  // Supabase Auth checks each token once; the answer is then reused for a minute.
+  const verifyToken = cacheVerifiedTokens(async (token) => {
+    const { data, error } = await supabaseAdmin.auth.getUser(token);
+    return error || !data.user ? null : data.user.id;
+  });
+
+  return { services, jobDependencies, verifyToken };
 }

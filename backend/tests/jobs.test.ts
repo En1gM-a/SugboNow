@@ -28,7 +28,7 @@ describe('job list', () => {
       alerts: alertsRepo(),
       weather: { save: vi.fn(), saveRegionalForecast: vi.fn() },
       routes: { listPairs: vi.fn(), listSaved: vi.fn(), save: vi.fn() },
-      trafficFlow: { get: vi.fn(), save: vi.fn() },
+      trafficFlow: { get: vi.fn(), fetchedAt: vi.fn(), save: vi.fn() },
       briefs: { generateAll: vi.fn() },
       keys: {},
       feeds: { sunstar: 'https://feed.example/s', cebuDailyNews: 'https://feed.example/c' },
@@ -95,7 +95,7 @@ describe('traffic flow in the traffic job', () => {
   const noIncidents = async () => [];
 
   it('saves the flow after the alerts', async () => {
-    const flow = { get: vi.fn(async () => null), save: vi.fn(async () => undefined) };
+    const flow = { fetchedAt: vi.fn(async () => null), save: vi.fn(async () => undefined) };
     const job = createIngestTrafficJob({ apiKey: 'key', alerts: alertsRepo(), flow, fetchIncidents: noIncidents, fetchFlow: async () => lines });
     expect(await job.run(now)).toEqual({ status: 'ok', detail: '0 incidents, 0 alerts; traffic flow on 2 road lines', saved: 0 });
     expect(flow.save).toHaveBeenCalledWith(lines, now);
@@ -104,7 +104,7 @@ describe('traffic flow in the traffic job', () => {
   it('keeps flow saved minutes ago, so a second run spends no tiles', async () => {
     const fetchFlow = vi.fn(async () => lines);
     const savedAt = new Date(now.getTime() - 5 * 60_000).toISOString();
-    const flow = { get: vi.fn(async () => ({ area: 'metro_cebu', lines, fetched_at: savedAt })), save: vi.fn() };
+    const flow = { fetchedAt: vi.fn(async () => savedAt), save: vi.fn() };
     const job = createIngestTrafficJob({ apiKey: 'key', alerts: alertsRepo(), flow, fetchIncidents: noIncidents, fetchFlow });
     expect((await job.run(now)).detail).toBe('0 incidents, 0 alerts; traffic flow is still fresh');
     expect(fetchFlow).not.toHaveBeenCalled();
@@ -115,7 +115,7 @@ describe('traffic flow in the traffic job', () => {
     const job = createIngestTrafficJob({
       apiKey: 'key',
       alerts,
-      flow: { get: vi.fn(async () => null), save: vi.fn() },
+      flow: { fetchedAt: vi.fn(async () => null), save: vi.fn() },
       fetchIncidents: async () => [
         { type: 'Feature', geometry: { type: 'Point', coordinates: [123.89, 10.31] }, properties: { id: 'T1', iconCategory: 8, magnitudeOfDelay: 4 } },
       ],

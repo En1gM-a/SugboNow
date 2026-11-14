@@ -6,6 +6,9 @@
 // user opens it that day). Alerts and leave times in GET /api/brief/today are
 // recomputed on every request so they stay current. Building a brief only
 // reads the database, so opening it never calls an outside service.
+//
+// The page asks for it every 5 minutes, so its reads go out together (see
+// buildContext) instead of one after another.
 
 import { getArea } from "../config/areas";
 import type { DailyBriefRow, LocationRef, LocationRow, WeatherSnapshotRow } from "../types";
@@ -67,6 +70,9 @@ interface BriefContext {
   matched: AlertWithPlaces[];
   leaveTimes: LeaveTimeSuggestion[];
   weather: WeatherSnapshotRow | null;
+  // Today's saved brief, when the caller asked to reuse it and there is one.
+  saved: DailyBriefRow | null;
+  // The followed mayor's latest post. Only read when the brief's text is about to be written.
   lguPost: LatestLguPost | null;
 }
 
@@ -138,15 +144,19 @@ export function createBriefService(deps: BriefServiceDeps) {
   const { briefs, alerts, weather, latestLguPost, writer, logger } = deps;
   const now = deps.now ?? (() => new Date());
 
-  async function buildContext(userId: string, at: Date): Promise<BriefContext> {
+  // Reads everything in two rounds, each at once: what depends only on the user,
+  // then the weather, whose area follows from the profile and the places. With
+  // `reuseSaved`, today's saved brief is read in the first round rather than after both.
+  async function buildContext(userId: string, at: Date, reuseSaved: boolean): Promise<BriefContext> {
     const date = manilaDate(at);
     const weekday = manilaWeekday(at);
-    const [profile, locations, schedule, routes, active] = await Promise.all([
+    const [profile, locations, schedule, routes, active, saved] = await Promise.all([
       briefs.getProfile(userId),
       briefs.listLocations(userId),
       briefs.listSchedule(userId),
       briefs.listRoutes(userId),
       alerts.listActive({ now: at, startsBefore: addHours(at, 24), types: DEFAULT_ALERT_TYPES, limit: 300 }),
+      reuseSaved ? briefs.getBrief(userId, date) : null,
     ]);
     // Each trip's road route, following the profile's CCLEX choice (allowed unless it's off).
     const allowCclex = profile?.allow_cclex ?? true;
@@ -193,12 +203,14 @@ export function createBriefService(deps: BriefServiceDeps) {
       })
       .sort((a, b) => a.leaveAt.getTime() - b.leaveAt.getTime());
 
+    // The mayor's post is only quoted in the brief's text, so a brief that is
+    // already written doesn't need it.
     const [snapshot, lguPost] = await Promise.all([
       weather.get(pickWeatherArea(profile?.city, locations)).then((row) => row && weatherAt(row, at)),
-      profile?.subscribed_mayor ? latestLguPost(profile.subscribed_mayor) : Promise.resolve(null),
+      !saved && profile?.subscribed_mayor ? latestLguPost(profile.subscribed_mayor) : null,
     ]);
 
-    return { date, profile, locations, matched, leaveTimes, weather: snapshot, lguPost };
+    return { date, profile, locations, matched, leaveTimes, weather: snapshot, saved, lguPost };
   }
 
   async function save(userId: string, context: BriefContext, at: Date): Promise<DailyBriefRow> {
@@ -216,8 +228,8 @@ export function createBriefService(deps: BriefServiceDeps) {
     // job hasn't yet.
     async getToday(userId: string): Promise<TodayBrief> {
       const at = now();
-      const context = await buildContext(userId, at);
-      const brief = (await briefs.getBrief(userId, context.date)) ?? (await save(userId, context, at));
+      const context = await buildContext(userId, at, true);
+      const brief = context.saved ?? (await save(userId, context, at));
       return { date: context.date, brief, alerts: context.matched, leaveTimes: context.leaveTimes, weather: context.weather };
     },
 
@@ -228,7 +240,7 @@ export function createBriefService(deps: BriefServiceDeps) {
       let failed = 0;
       for (const userId of userIds) {
         try {
-          await save(userId, await buildContext(userId, at), at);
+          await save(userId, await buildContext(userId, at, false), at);
           generated++;
         } catch (error) {
           failed++;

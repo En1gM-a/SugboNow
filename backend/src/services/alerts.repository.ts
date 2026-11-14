@@ -4,6 +4,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AlertRow, AlertSeverity, AlertType, NewAlert } from "../types";
 import { dbError, escapeLike } from "../utils/db";
+import type { Bounds } from "../utils/geo";
 
 export const ALERT_COLUMNS =
   "id, source, type, severity, title, summary, lat, lng, area_name, starts_at, ends_at, source_url, image_url, created_at";
@@ -15,6 +16,8 @@ export interface ActiveAlertsFilter {
   types?: readonly AlertType[];
   severities?: readonly AlertSeverity[];
   area?: string;
+  // Only alerts located inside this box. Leaves out alerts with no location.
+  within?: Bounds;
   limit: number;
 }
 
@@ -78,6 +81,10 @@ export function createAlertsRepository(db: SupabaseClient): AlertsRepository {
       if (filter.types) query = query.in("type", [...filter.types]);
       if (filter.severities) query = query.in("severity", [...filter.severities]);
       if (filter.area) query = query.ilike("area_name", `%${escapeLike(filter.area)}%`);
+      if (filter.within) {
+        const { minLat, maxLat, minLng, maxLng } = filter.within;
+        query = query.gte("lat", minLat).lte("lat", maxLat).gte("lng", minLng).lte("lng", maxLng);
+      }
       const { data, error } = await query
         .order("starts_at", { ascending: false, nullsFirst: false })
         .limit(filter.limit);

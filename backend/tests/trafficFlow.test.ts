@@ -172,3 +172,67 @@ describe('route colors', () => {
     expect(await at('2026-11-12T00:46:00Z')).toBeNull();
   });
 });
+
+describe('the flow kept between requests', () => {
+  const first: TrafficFlowRow = { area: 'metro_cebu', lines: { heavy: [], medium: [], free: [] }, fetched_at: '2026-11-12T00:00:00Z' };
+  const second: TrafficFlowRow = { ...first, fetched_at: '2026-11-12T00:15:00Z' };
+
+  // A database holding `saved`: like the real one, it answers null to a caller
+  // that already holds the flow saved.
+  function setup() {
+    const state = { saved: first as TrafficFlowRow | null, at: Date.parse('2026-11-12T00:01:00Z') };
+    const get = vi.fn(async (heldFetchedAt?: string) => (state.saved && state.saved.fetched_at !== heldFetchedAt ? state.saved : null));
+    return { state, get, service: createTrafficFlowService({ get }, () => new Date(state.at)) };
+  }
+
+  it('serves the flow it holds for 30 seconds without asking the database', async () => {
+    const { state, get, service } = setup();
+    expect(await service.current()).toBe(first);
+    state.at += 29_000;
+    expect(await service.current()).toBe(first);
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it('then asks only for a newer flow, and keeps the one it holds when there is none', async () => {
+    const { state, get, service } = setup();
+    await service.current();
+    state.at += 30_000;
+    expect(await service.current()).toBe(first);
+    expect(get).toHaveBeenLastCalledWith(first.fetched_at);
+
+    state.saved = second;
+    state.at += 30_000;
+    expect(await service.current()).toBe(second);
+    expect(get).toHaveBeenCalledTimes(3);
+  });
+
+  it('shares one read between requests that arrive together', async () => {
+    const { get, service } = setup();
+    const [map, route] = await Promise.all([service.current(), service.current()]);
+    expect(map).toBe(first);
+    expect(route).toBe(first);
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks again after a failed read, and when nothing is saved yet', async () => {
+    const { state, get, service } = setup();
+    get.mockRejectedValueOnce(new Error('db down'));
+    await expect(service.current()).rejects.toThrow('db down');
+    expect(await service.current()).toBe(first);
+
+    const empty = setup();
+    empty.state.saved = null;
+    expect(await empty.service.current()).toBeNull();
+    empty.state.saved = first;
+    empty.state.at += 30_000;
+    expect(await empty.service.current()).toBe(first);
+    expect(state.saved).toBe(first);
+  });
+
+  it('still stops showing a held flow once it is 45 minutes old', async () => {
+    const { state, service } = setup();
+    expect(await service.current()).toBe(first);
+    state.at = Date.parse('2026-11-12T00:46:00Z');
+    expect(await service.current()).toBeNull();
+  });
+});

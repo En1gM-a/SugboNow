@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { findAreaInText, getArea, mentionsCebu } from '../src/config/areas.js';
-import { haversineKm, nearestArea, roundKm } from '../src/utils/geo.js';
+import { boundsAround, distanceToLineM, haversineKm, nearestArea, roundKm, type LatLngPair } from '../src/utils/geo.js';
 import {
   formatClock12,
   formatDateLabel,
@@ -25,6 +25,30 @@ describe('geo', () => {
   it('finds the nearest Metro Cebu area', () => {
     expect(nearestArea({ lat: 10.2449, lng: 123.7962 })).toEqual({ area: getArea('minglanilla'), distanceKm: 0 });
     expect(nearestArea({ lat: 10.318, lng: 123.9 }).area.slug).toBe('cebu_city');
+  });
+
+  it('draws a box around lines that holds everything within the margin of them', () => {
+    const line: LatLngPair[] = [
+      [10.3157, 123.8854],
+      [10.3236, 123.9223],
+    ];
+    const box = boundsAround([line, [[10.2954, 123.9472]]], 100);
+    expect(box.minLat).toBeCloseTo(10.2954 - 0.0009, 4);
+    expect(box.maxLat).toBeCloseTo(10.3236 + 0.0009, 4);
+    expect(box.minLng).toBeCloseTo(123.8854 - 0.00091, 4);
+    expect(box.maxLng).toBeCloseTo(123.9472 + 0.00091, 4);
+
+    // Points 100 m off the line's ends, in each direction, are inside the box.
+    const inside = (lat: number, lng: number) => lat >= box.minLat && lat <= box.maxLat && lng >= box.minLng && lng <= box.maxLng;
+    for (const [lat, lng] of [
+      [10.3157, 123.8854 - 0.00091],
+      [10.3236 + 0.00089, 123.9223],
+      [10.2954 - 0.00089, 123.9472],
+      [10.2954, 123.9472 + 0.00091],
+    ]) {
+      expect(distanceToLineM({ lat, lng }, [...line, [10.2954, 123.9472]])).toBeLessThanOrEqual(100);
+      expect(inside(lat, lng)).toBe(true);
+    }
   });
 });
 

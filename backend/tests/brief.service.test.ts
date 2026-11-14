@@ -94,16 +94,9 @@ function setup(options: { existing?: DailyBriefRow | null; userIds?: string[]; f
   const weather = { get: vi.fn(async () => weatherRow) } as unknown as WeatherRepository;
   const writer: BriefWriter = { name: 'test', write: vi.fn(async (input: BriefInput) => rulesBriefWriter.write(input)) };
   const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
-  const service = createBriefService({
-    briefs,
-    alerts,
-    weather,
-    latestLguPost: async () => ({ officialName: 'Mayor Nestor Archival', caption: 'WALAY KLASE | OCT 23\nAll levels.', postedAt: '2026-10-22T12:00:00Z' }),
-    writer,
-    logger,
-    now: () => now,
-  });
-  return { service, briefs, weather, writer, logger, saved };
+  const latestLguPost = vi.fn(async () => ({ officialName: 'Mayor Nestor Archival', caption: 'WALAY KLASE | OCT 23\nAll levels.', postedAt: '2026-10-22T12:00:00Z' }));
+  const service = createBriefService({ briefs, alerts, weather, latestLguPost, writer, logger, now: () => now });
+  return { service, briefs, weather, writer, logger, saved, latestLguPost };
 }
 
 describe('brief service', () => {
@@ -172,6 +165,27 @@ describe('brief service', () => {
     expect(briefs.saveBrief).not.toHaveBeenCalled();
     expect(writer.write).not.toHaveBeenCalled();
     expect(today.leaveTimes).toHaveLength(1);
+  });
+
+  it('reads the saved brief with the first reads, and the mayor’s post only when it writes the text', async () => {
+    const existing: DailyBriefRow = { id: 'b1', user_id: 'user-1', brief_date: '2026-10-23', content: 'Saved', alert_ids: [], created_at: '', updated_at: '' };
+    const opened = setup({ existing });
+    await opened.service.getToday('user-1');
+    // Asked for before the weather, which has to wait for the profile and places.
+    const order = (mock: unknown) => vi.mocked(mock as () => void).mock.invocationCallOrder[0];
+    expect(order(opened.briefs.getBrief)).toBeLessThan(order(opened.weather.get));
+    expect(opened.briefs.getBrief).toHaveBeenCalledWith('user-1', '2026-10-23');
+    expect(opened.latestLguPost).not.toHaveBeenCalled();
+
+    const firstOpen = setup();
+    await firstOpen.service.getToday('user-1');
+    expect(firstOpen.latestLguPost).toHaveBeenCalledWith('cebu_city');
+
+    // The morning job always writes, so it never looks for a saved brief.
+    const job = setup({ userIds: ['u1'] });
+    await job.service.generateAll(now);
+    expect(job.briefs.getBrief).not.toHaveBeenCalled();
+    expect(job.latestLguPost).toHaveBeenCalledTimes(1);
   });
 
   it('generates briefs for everyone with a trip today and counts failures', async () => {
