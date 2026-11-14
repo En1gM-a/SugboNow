@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AppTabs } from '@/components/landing/AppTabs';
 import { Checks } from '@/components/landing/Checks';
 import { Explore } from '@/components/landing/Explore';
@@ -19,6 +19,14 @@ import { controlSky, releaseSky, type SkyScene } from '@/lib/skyControl';
 import type { TimeName } from '@/lib/time';
 
 /** What the sky does as you move down the page: one day in Cebu, top to bottom. */
+// Sample: the background is a flight over a paper Cebu, in its own chunk. A save-data connection or a small device
+// keeps the photo journey instead.
+const Relief = lazy(() => import('@/components/landing/Relief').then((m) => ({ default: m.Relief })));
+const LITE = (() => {
+  const nav = navigator as Navigator & { connection?: { saveData?: boolean }; deviceMemory?: number };
+  return nav.connection?.saveData === true || (nav.deviceMemory ?? 8) <= 2;
+})();
+
 const SECTION_SKY: Record<string, [TimeName, SkyWeather]> = {
   mornings: ['buntag', 'rain'],
   app: ['buntag', 'clear'],
@@ -108,7 +116,13 @@ export default function LandingPage() {
 
   return (
     <div ref={root} className="lp" data-still={still ? '' : undefined} data-play={play ? '' : undefined} data-pin={layout.pin ? '' : undefined} data-tall={layout.tall ? '' : undefined}>
-      <Journey section={section} away={inScene} />
+      {LITE ? (
+        <Journey section={section} away={inScene} />
+      ) : (
+        <Suspense fallback={<div className="lp-journey" aria-hidden="true" />}>
+          <Relief section={section} away={inScene} still={still} />
+        </Suspense>
+      )}
       <svg className="lp-sprite" aria-hidden="true">
         <defs dangerouslySetInnerHTML={html(SPRITE)} />
       </svg>
@@ -130,7 +144,7 @@ export default function LandingPage() {
           <LandingFooter />
         </div>
       </main>
-      <JourneyNote section={section} away={inScene} />
+      {LITE && <JourneyNote section={section} away={inScene} />}
     </div>
   );
 }
