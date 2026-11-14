@@ -52,8 +52,8 @@ npm --prefix backend test
 
 ### PR & Windows Hygiene (`scripts/ci/check-pr-hygiene.sh`)
 
-- **Branch prefixes:** `frontend/`, `backend/`, `docs/`, `chore/`, `supabase/`, `fix/`, `feat/`, `feature/`, or `sample/` (`<area>/<topic>`).
-- **PR title:** Conventional Commits with a lowercase summary (`type(scope): lowercase summary`).
+- **Branch prefixes:** `frontend/`, `backend/`, `docs/`, `chore/`, `supabase/`, `fix/`, `feat/`, `feature/`, or `sample/` (`<area>/<topic>`); automated `dependabot/` and GitHub `revert-<pr>-<branch>` (`^revert-.+`) branches are also allowed.
+- **PR title:** Conventional Commits with a lowercase summary (`type(scope): lowercase summary`); GitHub `Revert "<original title>"` titles (`^Revert ".+"`) are also allowed.
 - **PR body:** Non-empty, based on `.github/pull_request_template.md`, with all `<!-- ... -->` HTML comments removed (Dependabot PRs are exempt from body checks).
 - **Windows PowerShell 5.1 warning:** Never use `Out-File`, `>`, or `Set-Content` for commit messages or PR bodies (they inject UTF-8 BOM or UTF-16). Use `git commit -m`, Git Bash heredoc `<<'EOF'`, or `[IO.File]::WriteAllText(..., [Text.UTF8Encoding]::new($false))`, and quote backticks and `$` carefully.
 

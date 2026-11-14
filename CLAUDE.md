@@ -93,8 +93,8 @@ Never commit `.env` files, API keys, Supabase service-role keys, tokens, or `nod
 ## Collaboration and GitHub workflow
 
 - Full guidance on Git conventions is in [`docs/git-workflow.md`](docs/git-workflow.md).
-- Always branch from a fresh `origin/main`: `git fetch origin && git switch -c <area>/<topic> origin/main`. Valid branch prefixes are `frontend/`, `backend/`, `docs/`, `chore/`, `supabase/`, `fix/`, `feat/`, `feature/`, and `sample/` (e.g. `frontend/dashboard-layout`, `backend/alerts-route`, `chore/ci-hardening`).
-- PR titles must follow Conventional Commits with a lowercase summary: `type(scope): lowercase summary` (e.g. `feat(frontend): add weather hourly strip`, `chore(ci): enforce hygiene checks`).
+- Always branch from a fresh `origin/main`: `git fetch origin && git switch -c <area>/<topic> origin/main`. Valid branch prefixes are `frontend/`, `backend/`, `docs/`, `chore/`, `supabase/`, `fix/`, `feat/`, `feature/`, and `sample/` (e.g. `frontend/dashboard-layout`, `backend/alerts-route`, `chore/ci-hardening`); automated `dependabot/` and GitHub `revert-<pr>-<branch>` (`^revert-.+`) branches are also permitted by CI.
+- PR titles must follow Conventional Commits with a lowercase summary: `type(scope): lowercase summary` (e.g. `feat(frontend): add weather hourly strip`, `chore(ci): enforce hygiene checks`); GitHub `Revert "<original title>"` titles (`^Revert ".+"`) are also permitted by CI.
 - PR bodies must use `.github/pull_request_template.md`, must not be empty, and must have all `<!-- ... -->` template HTML comments deleted before opening (Dependabot PRs are exempt from body checks).
 - On Windows, avoid UTF-8 BOM (`efbbbf`) from PowerShell 5.1 (`Out-File`, `>`, `Set-Content`); use `git commit -m`, Git Bash heredoc `<<'EOF'`, or UTF-8 without BOM files. Use single quotes or files when messages contain backticks or `$`.
 - Do not push directly to `main` or `dev`.
@@ -110,7 +110,7 @@ Repository automation lives in `.github/`:
 - `dependabot.yml` proposes dependency updates.
 - `CODEOWNERS` requests reviews by area.
 - `rulesets/protect-main.json` documents the branch protection configuration.
-- `scripts/ci/check-pr-hygiene.sh` validates Conventional Commits PR titles, allowed branch prefixes, non-empty PR bodies, and absence of UTF-8 BOM and leftover HTML comments.
+- `scripts/ci/check-pr-hygiene.sh` validates Conventional Commits (and GitHub `Revert "<original title>"`) PR titles, allowed branch prefixes (plus `dependabot/` and `revert-`), non-empty PR bodies, and absence of UTF-8 BOM and leftover HTML comments.
 - `scripts/apply-github-security.ps1` applies repository security settings through GitHub CLI; do not run it unless explicitly asked.
 
 ## Team ownership
@@ -185,14 +185,6 @@ For **each** PR, include:
 - **Recommendation:** merge, needs changes, or needs a teammate's review, and why.
 
 After the per-PR detail, end with a short overall summary: what can merge now, what is blocked, and what is needed from the user. When you take action on PRs, report each one's outcome (merged, approved, rebased, skipped, and why).
-
-## Antigravity and Swarm Setup
-
-- **Native rule file:** [`AGENTS.md`](AGENTS.md) at the repository root provides concise agent and swarm rules discovered natively by Antigravity across the repo and worktrees.
-- **Model configuration:** Both the Antigravity swarm orchestrator (`coordinator`) and all subagents/workers use **`Gemini 4 Hydrogen (XHigh)`** (`gemini-4-hydrogen-xhigh`). Leave `model` unset on `swarm{action:"add"}` to inherit the coordinator's model (or pass `gemini-4-hydrogen-xhigh` explicitly).
-- **Concurrency limit:** Keep at most **5** concurrent subagents so the swarm remains lean and token-efficient.
-- **Workspaces & disjoint ownership:** Author workers modifying files run in `workspace: "share"` with strictly disjoint file ownership; read-only investigators and `verifier` run in `workspace: "inherit"`.
-- **Verifier gate:** Every author worker's commit must pass independent verification by `verifier` (disjoint ownership, builds/tests, zero-warning ESLint, LF line endings, and no UTF-8 BOM) and be landed before killing worker workspaces.
 
 ## Claude Code skills
 

@@ -29,7 +29,7 @@ Branch names must use conventional area prefixes followed by a short, descriptiv
 - `feature/<topic>` — e.g. `feature/road-routes`
 - `sample/<topic>` — e.g. `sample/landing-journey-bg`
 
-Branch names are validated in CI against `^(frontend|backend|docs|chore|supabase|fix|feat|feature|sample)/[a-z0-9-]+$` (automated dependency branches matching `^dependabot/` are also permitted). Branches that do not follow this naming structure will fail CI.
+Branch names are validated in CI against `^(frontend|backend|docs|chore|supabase|fix|feat|feature|sample)/[a-z0-9-]+$` (automated dependency branches matching `^dependabot/` and GitHub Revert branches matching `^revert-.+` are also permitted). Branches that do not follow this naming structure will fail CI.
 
 ### PR Title Format (Conventional Commits)
 
@@ -55,6 +55,7 @@ type: lowercase summary
 - **Why this is enforced:** GitHub uses **Squash and Merge**. The PR title becomes the subject line of the squash commit on `main`. Enforcing this format guarantees a consistent, human-readable commit history and automated changelog generation.
 - **CI enforcement:** Validated by `scripts/ci/check-pr-hygiene.sh` with regex:
   `^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._-]+\))?!?: (?![A-Z]).+`
+  (GitHub Revert PR titles matching `Revert "<original title>"`, i.e. `^Revert ".+"`, are also permitted by CI).
 
 ### PR Body Hygiene and Template Comments
 
@@ -239,17 +240,7 @@ Key architectural rules enforced by ESLint:
 
 This section documents key repository settings managed by repository administrators.
 
-### 1. Enable GitHub Auto-merge
-
-Enable auto-merge on the repository so PRs merge automatically as soon as approvals and required status checks pass:
-
-```bash
-gh api -X PATCH repos/En1gM-a/SugboNow -f allow_auto_merge=true
-```
-
-Once enabled, developers can click "Enable auto-merge" (or run `gh pr merge --auto --squash`) as soon as their PR is ready, avoiding manual follow-up once CI finishes.
-
-### 2. Branch Protection Ruleset (`protect-main.json`)
+### Branch Protection Ruleset (`protect-main.json`)
 
 The repository ruleset (`.github/rulesets/protect-main.json`) configures branch protection for `main`:
 
