@@ -26,7 +26,18 @@ export interface Classification {
 interface Rule extends Classification {
   include: RegExp[];
   exclude?: RegExp[];
+  // Phrases taken out of the text before this rule reads it.
+  without?: RegExp[];
 }
+
+// Ways of saying classes are on that name a suspension while saying it. Read as
+// they stand, "no class suspension" would count as a class suspension.
+const NOT_SUSPENDED: RegExp[] = [
+  /\bno class(es)? suspension\b/i,
+  /\bno suspension of (all )?(face-to-face |f2f |in-person )?classes\b/i,
+  /\b(class(es)? suspension|suspension of (all )?(face-to-face |f2f |in-person )?classes) (is |was |has been )?(now )?lifted\b/i,
+  /\blift(s|ed|ing)? (the )?(class(es)? suspension|suspension of (all )?(face-to-face |f2f |in-person )?classes)\b/i,
+];
 
 // First matching rule wins, so more specific rules come first.
 const RULES: Rule[] = [
@@ -44,9 +55,11 @@ const RULES: Rule[] = [
       /\bwalang pasok\b/i,
     ],
     exclude: [/\bsuspension (rules|guidelines|policy|policies|matrix|protocols?)\b/i],
+    // "Classes suspended in elementary. No class suspension for college." is still a suspension.
+    without: NOT_SUSPENDED,
   },
   {
-    // Other class advisories, e.g. classes resume or continue as scheduled.
+    // Other class advisories, e.g. classes resume, continue as scheduled, or aren't suspended.
     type: "advisory",
     severity: "medium",
     ttlHours: 24,
@@ -55,6 +68,7 @@ const RULES: Rule[] = [
       /\bclasses (will |shall )?(resume|continue)\b/i,
       /\b(resumption|continuation) of (face-to-face )?classes\b/i,
       /\bnaay klase\b/i,
+      ...NOT_SUSPENDED,
     ],
   },
   {
@@ -132,11 +146,17 @@ export function plainText(text: string): string {
   return text.normalize("NFKC");
 }
 
+// The text with every match of the phrases taken out.
+function strip(text: string, phrases: RegExp[]): string {
+  return phrases.reduce((rest, phrase) => rest.replace(new RegExp(phrase.source, "gi"), " "), text);
+}
+
 export function classifyAdvisory(input: string): Classification {
   const text = plainText(input);
   for (const rule of RULES) {
-    if (rule.exclude?.some((pattern) => pattern.test(text))) continue;
-    if (rule.include.some((pattern) => pattern.test(text))) {
+    const read = rule.without ? strip(text, rule.without) : text;
+    if (rule.exclude?.some((pattern) => pattern.test(read))) continue;
+    if (rule.include.some((pattern) => pattern.test(read))) {
       return { type: rule.type, severity: rule.severity, ttlHours: rule.ttlHours };
     }
   }
