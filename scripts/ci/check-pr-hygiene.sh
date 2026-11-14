@@ -11,8 +11,8 @@
 #   1. Rejects UTF-8 BOM (efbbbf) at the start of PR_TITLE or PR_BODY.
 #   2. Rejects empty PR_BODY (skipped for dependabot/ branches).
 #   3. Rejects leftover HTML comments (<!--) in PR_BODY (skipped for dependabot/ branches).
-#   4. Validates HEAD_REF matches conventional prefixes or dependabot/.
-#   5. Validates PR_TITLE matches Conventional Commits format.
+#   4. Validates HEAD_REF matches conventional prefixes, dependabot/, or revert-.
+#   5. Validates PR_TITLE matches Conventional Commits format or Revert "<original title>".
 
 set -euo pipefail
 
@@ -63,13 +63,14 @@ fi
 # 4. HEAD_REF (Branch Name) Check
 # -----------------------------------------------------------------------------
 BRANCH_REGEX='^(frontend|backend|docs|chore|supabase|fix|feat|feature|sample)/[a-z0-9-]+$'
+REVERT_BRANCH_REGEX='^revert-.+'
 
 if [ -z "$HEAD_REF" ]; then
   echo "::error::HEAD_REF environment variable is empty or unset."
   has_error=1
-elif ! [[ "$HEAD_REF" =~ $BRANCH_REGEX ]] && ! [[ "$HEAD_REF" =~ $DEPENDABOT_REGEX ]]; then
+elif ! [[ "$HEAD_REF" =~ $BRANCH_REGEX ]] && ! [[ "$HEAD_REF" =~ $DEPENDABOT_REGEX ]] && ! [[ "$HEAD_REF" =~ $REVERT_BRANCH_REGEX ]]; then
   echo "::error::Branch name '$HEAD_REF' is invalid."
-  echo "::error::Branches must match: $BRANCH_REGEX or start with dependabot/"
+  echo "::error::Branches must match: $BRANCH_REGEX or start with dependabot/ or revert-"
   has_error=1
 fi
 
@@ -77,9 +78,13 @@ fi
 # 5. PR Title Conventional Commits Check
 # -----------------------------------------------------------------------------
 CONVENTIONAL_REGEX='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._-]+\))?!?: (?![A-Z]).+'
+REVERT_TITLE_REGEX='^Revert ".+"'
 
 validate_title() {
   local title="$1"
+  if [[ "$title" =~ $REVERT_TITLE_REGEX ]]; then
+    return 0
+  fi
   if echo "" | grep -P "" >/dev/null 2>&1; then
     printf '%s\n' "$title" | grep -Pq "$CONVENTIONAL_REGEX"
   elif command -v node >/dev/null 2>&1; then
@@ -103,8 +108,8 @@ if [ -z "$PR_TITLE" ]; then
   has_error=1
 elif ! validate_title "$PR_TITLE"; then
   echo "::error::PR title '$PR_TITLE' does not follow Conventional Commits format."
-  echo "::error::Expected pattern: $CONVENTIONAL_REGEX"
-  echo "::error::Examples: feat(traffic): add road alerts, fix: handle null user profile, chore(ci): harden workflows"
+  echo "::error::Expected pattern: $CONVENTIONAL_REGEX or GitHub revert format: Revert \"<original title>\""
+  echo "::error::Examples: feat(traffic): add road alerts, fix: handle null user profile, chore(ci): harden workflows, Revert \"feat: add road alerts\""
   has_error=1
 fi
 
