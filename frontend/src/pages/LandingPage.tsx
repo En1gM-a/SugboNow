@@ -19,13 +19,10 @@ import { controlSky, releaseSky, type SkyScene } from '@/lib/skyControl';
 import type { TimeName } from '@/lib/time';
 
 /** What the sky does as you move down the page: one day in Cebu, top to bottom. */
-// Sample: the background is a flight over a paper Cebu, in its own chunk. A save-data connection or a small device
-// keeps the photo journey instead.
+// Sample: the background is a flight over a paper Cebu, in its own chunk. Lite mode (on by itself for a save-data
+// connection or a weak device) keeps the photo journey instead.
 const Relief = lazy(() => import('@/components/landing/Relief').then((m) => ({ default: m.Relief })));
-const LITE = (() => {
-  const nav = navigator as Navigator & { connection?: { saveData?: boolean }; deviceMemory?: number };
-  return nav.connection?.saveData === true || (nav.deviceMemory ?? 8) <= 2;
-})();
+const ReliefNote = lazy(() => import('@/components/landing/Relief').then((m) => ({ default: m.ReliefNote })));
 
 const SECTION_SKY: Record<string, [TimeName, SkyWeather]> = {
   mornings: ['buntag', 'rain'],
@@ -116,7 +113,7 @@ export default function LandingPage() {
 
   return (
     <div ref={root} className="lp" data-still={still ? '' : undefined} data-play={play ? '' : undefined} data-pin={layout.pin ? '' : undefined} data-tall={layout.tall ? '' : undefined}>
-      {LITE ? (
+      {display.lite ? (
         <Journey section={section} away={inScene} />
       ) : (
         <Suspense fallback={<div className="lp-journey" aria-hidden="true" />}>
@@ -144,7 +141,13 @@ export default function LandingPage() {
           <LandingFooter />
         </div>
       </main>
-      {LITE && <JourneyNote section={section} away={inScene} />}
+      {display.lite ? (
+        <JourneyNote section={section} away={inScene} />
+      ) : (
+        <Suspense fallback={null}>
+          <ReliefNote section={section} away={inScene} />
+        </Suspense>
+      )}
     </div>
   );
 }

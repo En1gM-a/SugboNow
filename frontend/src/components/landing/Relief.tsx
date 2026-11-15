@@ -64,3 +64,16 @@ export function Relief({ section, away, still }: ReliefProps) {
     </div>
   );
 }
+
+/** Names each stop's place as the camera arrives, then leaves after a few seconds, as the photo credits did. */
+export function ReliefNote({ section, away }: Omit<ReliefProps, 'still'>) {
+  const stop = STOPS[Math.max(0, STOPS.findIndex((s) => s.at === section))];
+  return (
+    <div className="lp-j-note-wrap" data-away={away ? '' : undefined} aria-hidden="true">
+      <p key={stop.at} className="lp-j-note">
+        <span className="lp-j-note-title">{stop.title}</span>
+        <span className="lp-j-note-by">{stop.place} · Map data © OpenStreetMap contributors</span>
+      </p>
+    </div>
+  );
+}
