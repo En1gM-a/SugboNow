@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AppTabs } from '@/components/landing/AppTabs';
 import { Checks } from '@/components/landing/Checks';
 import { Explore } from '@/components/landing/Explore';
@@ -19,11 +19,6 @@ import { controlSky, releaseSky, type SkyScene } from '@/lib/skyControl';
 import type { TimeName } from '@/lib/time';
 
 /** What the sky does as you move down the page: one day in Cebu, top to bottom. */
-// Sample: the background is a flight over a paper Cebu, in its own chunk. Lite mode (on by itself for a save-data
-// connection or a weak device) keeps the photo journey instead.
-const Relief = lazy(() => import('@/components/landing/Relief').then((m) => ({ default: m.Relief })));
-const ReliefNote = lazy(() => import('@/components/landing/Relief').then((m) => ({ default: m.ReliefNote })));
-
 const SECTION_SKY: Record<string, [TimeName, SkyWeather]> = {
   mornings: ['buntag', 'rain'],
   app: ['buntag', 'clear'],
@@ -113,13 +108,7 @@ export default function LandingPage() {
 
   return (
     <div ref={root} className="lp" data-still={still ? '' : undefined} data-play={play ? '' : undefined} data-pin={layout.pin ? '' : undefined} data-tall={layout.tall ? '' : undefined}>
-      {display.lite ? (
-        <Journey section={section} away={inScene} />
-      ) : (
-        <Suspense fallback={<div className="lp-journey" aria-hidden="true" />}>
-          <Relief section={section} away={inScene} still={still} />
-        </Suspense>
-      )}
+      <Journey section={section} away={inScene} />
       <svg className="lp-sprite" aria-hidden="true">
         <defs dangerouslySetInnerHTML={html(SPRITE)} />
       </svg>
@@ -141,13 +130,7 @@ export default function LandingPage() {
           <LandingFooter />
         </div>
       </main>
-      {display.lite ? (
-        <JourneyNote section={section} away={inScene} />
-      ) : (
-        <Suspense fallback={null}>
-          <ReliefNote section={section} away={inScene} />
-        </Suspense>
-      )}
+      <JourneyNote section={section} away={inScene} />
     </div>
   );
 }
