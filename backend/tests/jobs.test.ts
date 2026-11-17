@@ -1,3 +1,4 @@
+import type { PostgrestError } from '@supabase/supabase-js';
 import { validate } from 'node-cron';
 import { describe, expect, it, vi } from 'vitest';
 import { CEBU_AREAS } from '../src/config/areas.js';
@@ -10,6 +11,7 @@ import { createIngestWeatherJob } from '../src/jobs/ingestWeather.js';
 import { runJob } from '../src/jobs/scheduler.js';
 import type { WeatherApiForecast } from '../src/integrations/weatherapi.js';
 import type { NewAlert, NewsArticle, TrafficFlowLines } from '../src/types/index.js';
+import { dbError } from '../src/utils/db.js';
 
 const now = new Date('2026-10-22T04:00:00Z');
 const logger = () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() });
@@ -212,5 +214,15 @@ describe('briefs job and runner', () => {
     const job = { name: 'boom', schedule: '* * * * *', description: '', run: async () => { throw new Error('exploded'); } };
     expect(await runJob(job, log, now)).toEqual({ status: 'failed', detail: 'exploded' });
     expect(log.error).toHaveBeenCalled();
+  });
+
+  it('says what the database answered when a job fails on it', async () => {
+    // The routes job kept failing with only "Sign in required." in its log, which hid the reason.
+    const refused = { code: 'PGRST301', message: 'JWT expired', details: '', hint: '' } as PostgrestError;
+    const log = logger();
+    const job = { name: 'routes', schedule: '* * * * *', description: '', run: async () => { throw dbError(refused); } };
+    const detail = 'Sign in required. (PGRST301: JWT expired)';
+    expect(await runJob(job, log, now)).toEqual({ status: 'failed', detail });
+    expect(log.error).toHaveBeenCalledWith('Job routes: failed', expect.objectContaining({ detail }));
   });
 });

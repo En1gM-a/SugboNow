@@ -16,10 +16,22 @@ export async function runJob(job: Job, logger: Logger, now = new Date()): Promis
     log(`Job ${job.name}: ${result.status}`, { detail: result.detail, saved: result.saved, ms: Date.now() - started });
     return result;
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
+    const detail = failureDetail(error);
     logger.error(`Job ${job.name}: failed`, { detail, ms: Date.now() - started });
     return { status: "failed", detail };
   }
+}
+
+// The error's message, then the database's own answer when the error carries one
+// (dbError keeps it as `cause`): "Sign in required. (PGRST301: JWT expired)". A job
+// has no user to sign in, so that message alone hides what the database said.
+function failureDetail(error: unknown): string {
+  if (!(error instanceof Error)) return String(error);
+  const cause = (error as { cause?: { code?: unknown; message?: unknown } }).cause;
+  const answer = [cause?.code, cause?.message].filter(
+    (part): part is string => typeof part === "string" && part !== "" && !error.message.includes(part),
+  );
+  return answer.length > 0 ? `${error.message} (${answer.join(": ")})` : error.message;
 }
 
 export function startScheduler(jobs: Job[], logger: Logger): ScheduledTask[] {

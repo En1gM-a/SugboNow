@@ -26,7 +26,10 @@ export interface NewsFilter {
 }
 
 export interface AlertsRepository {
-  // Not yet ended (ends_at null or in the future) and started before `startsBefore`.
+  // Not yet ended (ends_at null or in the future) and started before `startsBefore`,
+  // newest start first. Every such alert comes back, however many there are:
+  // `limit` is how many each read asks for (at most 1,000, the most Supabase
+  // returns at once), and a read that comes back full is followed by another.
   listActive(filter: ActiveAlertsFilter): Promise<AlertRow[]>;
   // Newest first by publish time (starts_at), whether or not they have ended.
   listNews(filter: NewsFilter): Promise<AlertRow[]>;
@@ -70,19 +73,28 @@ export function dedupeByFingerprint(alerts: NewAlert[]): NewAlert[] {
 export function createAlertsRepository(db: SupabaseClient): AlertsRepository {
   return {
     async listActive(filter) {
-      let query = db
-        .from("alerts")
-        .select(ALERT_COLUMNS)
-        .or(`ends_at.is.null,ends_at.gt.${quoted(filter.now.toISOString())}`)
-        .or(`starts_at.is.null,starts_at.lte.${quoted(filter.startsBefore.toISOString())}`);
-      if (filter.types) query = query.in("type", [...filter.types]);
-      if (filter.severities) query = query.in("severity", [...filter.severities]);
-      if (filter.area) query = query.ilike("area_name", `%${escapeLike(filter.area)}%`);
-      const { data, error } = await query
-        .order("starts_at", { ascending: false, nullsFirst: false })
-        .limit(filter.limit);
-      if (error) throw dbError(error);
-      return (data ?? []) as AlertRow[];
+      const rows: AlertRow[] = [];
+      // One read used to be all: at rush hour more alerts are in effect than it asks
+      // for, and the ones that started longest ago were left out. So read on until
+      // a read comes back short.
+      for (let from = 0; ; from += filter.limit) {
+        let query = db
+          .from("alerts")
+          .select(ALERT_COLUMNS)
+          .or(`ends_at.is.null,ends_at.gt.${quoted(filter.now.toISOString())}`)
+          .or(`starts_at.is.null,starts_at.lte.${quoted(filter.startsBefore.toISOString())}`);
+        if (filter.types) query = query.in("type", [...filter.types]);
+        if (filter.severities) query = query.in("severity", [...filter.severities]);
+        if (filter.area) query = query.ilike("area_name", `%${escapeLike(filter.area)}%`);
+        const { data, error } = await query
+          .order("starts_at", { ascending: false, nullsFirst: false })
+          // Alerts that started together keep one order, so no read repeats or skips one.
+          .order("id")
+          .range(from, from + filter.limit - 1);
+        if (error) throw dbError(error);
+        rows.push(...((data ?? []) as AlertRow[]));
+        if ((data ?? []).length < filter.limit) return rows;
+      }
     },
 
     async listNews(filter) {
