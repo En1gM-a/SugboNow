@@ -1,4 +1,4 @@
-import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
+import { Fragment, lazy, memo, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { Link } from 'react-router-dom';
 import { HAP_ART, MAP_BASE, PINS } from '@/lib/landing/art';
 import { SCENES, type BriefId, type Scene } from '@/lib/landing/data';
@@ -10,6 +10,9 @@ import { html, Ic, Sym, vars, Words } from './parts';
 
 const FILTERS: ExploreFilter[] = ['all', 'Weather', 'Traffic'];
 const LEDE = "SugboNow checks Cebu traffic, weather, floods and your mayor's posts, then tells you when to leave for every trip.";
+// Sample: these happenings step into a live miniature of themselves (diorama/stage.js), loaded on the first visit to one.
+const DIORAMAS = ['flood', 'typhoon', 'bridge', 'sinulog'];
+const SceneDiorama = lazy(() => import('./SceneDiorama'));
 
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
 const tierOf = (amount: number) => (amount < 0.34 ? 0 : amount < 0.67 ? 1 : 2);
@@ -272,6 +275,11 @@ export const Explore = memo(function Explore({ play, getStill, engineRef, onScen
       <div className="lp-hud lp-hud-scene" inert={view !== 'scene'}>
         <div className="lp-scene-wrap">
           <div className="lp-scene-grid">
+            {view === 'scene' && DIORAMAS.includes(scene.id) && (
+              <Suspense fallback={null}>
+                <SceneDiorama id={scene.id} play={play} />
+              </Suspense>
+            )}
             <div className="lp-scene-copy" data-flip={copyFlip}>
               <h2 id="scene-h" className="lp-scene-title" tabIndex={-1} data-rise={copyFlip}>
                 {scene.title.split(' ').map((word, i) => (

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { AppTabs } from '@/components/landing/AppTabs';
 import { Checks } from '@/components/landing/Checks';
 import { Explore } from '@/components/landing/Explore';
+import { Journey, JourneyNote } from '@/components/landing/Journey';
 import { LandingNav } from '@/components/landing/LandingNav';
 import { Faq, FinalCta, HowItWorks, Kinetic, LandingFooter, MadeForCebu } from '@/components/landing/LowerSections';
 import { Mornings } from '@/components/landing/Mornings';
@@ -12,7 +13,7 @@ import { useDisplay } from '@/lib/display';
 import { SPRITE } from '@/lib/landing/art';
 import type { BriefId } from '@/lib/landing/data';
 import type { ExploreEngine } from '@/lib/landing/exploreEngine';
-import { PageMotion, type PageLayout } from '@/lib/landing/pageMotion';
+import { PageMotion, type OpenSky, type PageLayout } from '@/lib/landing/pageMotion';
 import { skyGradient, type SkyWeather } from '@/lib/sky';
 import { controlSky, releaseSky, type SkyScene } from '@/lib/skyControl';
 import type { TimeName } from '@/lib/time';
@@ -39,6 +40,7 @@ export default function LandingPage() {
   const [paused, setPaused] = useState(false);
   const [section, setSection] = useState('top');
   const [layout, setLayout] = useState<PageLayout>({ pin: false, tall: false });
+  const [openSky, setOpenSky] = useState<OpenSky>({ on: false, near: false });
   const [sceneSky, setSceneSky] = useState<SkyScene | null>(null);
   const [brief, setBrief] = useState<{ id: BriefId; flip: number }>({ id: 'rain', flip: 0 });
 
@@ -61,9 +63,14 @@ export default function LandingPage() {
   }, [section, sceneSky, still, clock]);
   const screenSky = useMemo(() => skyGradient(sky.time, sky.weather), [sky.time, sky.weather]);
 
+  // Sample: behind the photos it's today's sky at the real Manila time. It only shows where the page opens up
+  // (pageMotion.ts), so it runs only near those stretches. Inside one of the hero's scenes, that scene's sky plays.
+  const inScene = section === 'top' && sceneSky !== null;
+  const daySky = useMemo<SkyScene>(() => ({ time: clock, weather: 'clear' }), [clock]);
   useEffect(() => {
-    controlSky(sky, paused);
-  }, [sky, paused]);
+    if (inScene && sceneSky) controlSky(sceneSky, paused);
+    else controlSky(daySky, paused || !openSky.near);
+  }, [inScene, sceneSky, paused, daySky, openSky.near]);
   useEffect(() => releaseSky, []);
 
   useLayoutEffect(() => {
@@ -74,6 +81,7 @@ export default function LandingPage() {
       getReduced: () => latest.current.reduced,
       onSection: setSection,
       onLayout: setLayout,
+      onSky: setOpenSky,
     });
     motion.current = made;
     made.start();
@@ -100,7 +108,16 @@ export default function LandingPage() {
   const showBrief = useCallback((id: BriefId) => setBrief((cur) => ({ id, flip: cur.flip + 1 })), []);
 
   return (
-    <div ref={root} className="lp" data-still={still ? '' : undefined} data-play={play ? '' : undefined} data-pin={layout.pin ? '' : undefined} data-tall={layout.tall ? '' : undefined}>
+    <div
+      ref={root}
+      className="lp"
+      data-still={still ? '' : undefined}
+      data-play={play ? '' : undefined}
+      data-pin={layout.pin ? '' : undefined}
+      data-tall={layout.tall ? '' : undefined}
+      data-sky={openSky.on ? '' : undefined}
+    >
+      <Journey section={section} away={inScene} />
       <svg className="lp-sprite" aria-hidden="true">
         <defs dangerouslySetInnerHTML={html(SPRITE)} />
       </svg>
@@ -122,6 +139,7 @@ export default function LandingPage() {
           <LandingFooter />
         </div>
       </main>
+      <JourneyNote section={section} away={inScene || openSky.on} />
     </div>
   );
 }

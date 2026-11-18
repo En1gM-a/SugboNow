@@ -16,6 +16,14 @@ export interface PageLayout {
   tall: boolean;
 }
 
+/** Where the page has almost nothing on it, the photos step aside for the live sky. */
+export interface OpenSky {
+  /** The sky is showing. */
+  on: boolean;
+  /** It's showing or about a screen away, so the sky should be running. */
+  near: boolean;
+}
+
 interface Options {
   root: HTMLElement;
   /** Nothing moves: the device or Profile's setting, or the page's own pause button. */
@@ -24,6 +32,7 @@ interface Options {
   getReduced: () => boolean;
   onSection: (id: string) => void;
   onLayout: (layout: PageLayout) => void;
+  onSky: (sky: OpenSky) => void;
 }
 
 export class PageMotion {
@@ -38,6 +47,7 @@ export class PageMotion {
   private readonly navJeep: HTMLElement | null;
   private readonly pill: HTMLElement | null;
   private readonly kinEls: HTMLElement[];
+  private readonly skyEls: HTMLElement[];
   private readonly stepEls: HTMLElement[];
   private readonly counters: Array<{ node: ChildNode | null; name: ScheduleName }>;
 
@@ -51,6 +61,7 @@ export class PageMotion {
   private section = 'top';
   private pin = false;
   private tall = false;
+  private sky: OpenSky = { on: false, near: false };
   private pillHover: HTMLElement | null = null;
 
   private px: number | null = null;
@@ -97,6 +108,8 @@ export class PageMotion {
     this.navJeep = find('.lp-nav-jeep');
     this.pill = find('.lp-nav-pill');
     this.kinEls = Array.from(root.querySelectorAll<HTMLElement>('.lp-kin-skew'));
+    // The bands of big type, and the last call, which runs on to the end of the page.
+    this.skyEls = Array.from(root.querySelectorAll<HTMLElement>('.lp-kin, .lp-final'));
     this.stepEls = Array.from(root.querySelectorAll<HTMLElement>('.lp-step'));
     this.counters = Array.from(root.querySelectorAll<HTMLElement>('[data-next]')).map((el) => ({
       node: el.firstChild,
@@ -114,6 +127,7 @@ export class PageMotion {
     this.movePill();
     this.updateRoute();
     this.updateProgress();
+    this.updateSky();
     this.syncStill();
     // Web fonts change the widths the nav pill sits on.
     void document.fonts?.ready.then(() => {
@@ -466,6 +480,7 @@ export class PageMotion {
         this.scrollRaf = 0;
         this.updateRoute();
         this.updateProgress();
+        this.updateSky();
         this.feedVelocity();
       });
     };
@@ -499,6 +514,32 @@ export class PageMotion {
     this.railBoost = Math.max(this.railBoost, Math.min(4, Math.abs(v) * 2));
     nudgeSky.wind(Math.abs(v));
     this.kick();
+  }
+
+  /**
+   * The open sky: it shows once the middle of the screen reaches a band of big type or the last call, give or take a
+   * tenth of the screen of empty page around them. It closes a little further out than it opens, so it can't flicker
+   * at the edge.
+   */
+  private updateSky() {
+    const h = window.innerHeight;
+    const margin = h * 0.1;
+    const slack = this.sky.on ? h * 0.08 : 0;
+    const last = this.skyEls.length - 1;
+    let on = false;
+    let near = false;
+    for (let i = 0; i <= last; i++) {
+      const r = this.skyEls[i].getBoundingClientRect();
+      // How far the middle of the screen is from this stretch. The last one runs on to the end of the page.
+      const off = Math.max(r.top - margin - h / 2, i === last ? 0 : h / 2 - r.bottom - margin, 0);
+      if (off <= slack) on = true;
+      if (off < h) near = true;
+    }
+    if (on === this.sky.on && near === this.sky.near) return;
+    // A gust as the sky opens: the clouds rush past, then settle.
+    if (on && !this.sky.on && !this.o.getStill()) nudgeSky.wind(2.4);
+    this.sky = { on, near };
+    this.o.onSky(this.sky);
   }
 
   private updateProgress() {
