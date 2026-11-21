@@ -4,10 +4,11 @@
 //
 // The brief text is a snapshot: written the first time the user opens it that
 // day, and written again on the first open within 2 hours of each trip's leave
-// time. No job writes it: nobody sees a brief before they open the app.
-// shortcut: written on open only, add a scheduled job when briefs are pushed to users. Alerts and leave times in GET /api/brief/today are
-// recomputed on every request so they stay current. Building a brief only
-// reads the database, so opening it never calls an outside service.
+// time. Alerts and leave times in GET /api/brief/today are recomputed on every
+// request so they stay current. Building a brief only reads the database, so
+// opening it never calls an outside service.
+// shortcut: no job writes the brief, since nobody sees it before opening the
+// app; add a scheduled job when briefs are pushed to users.
 
 import { getArea } from "../config/areas";
 import type { DailyBriefRow, LocationRef, LocationRow, WeatherSnapshotRow } from "../types";
@@ -137,6 +138,7 @@ function writerInput(context: BriefContext, now: Date): BriefInput {
     })),
     lguPost: recentPost,
     hasPlaces: context.locations.length > 0,
+    hasTripsToday: context.leaveTimes.length > 0,
   };
 }
 

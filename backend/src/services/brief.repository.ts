@@ -1,6 +1,7 @@
 // Data for building daily briefs (public.daily_briefs plus the user's
-// profile, places and schedule). Uses the service-role client because the
-// brief job runs without a signed-in user; every query filters by user id.
+// profile, places and schedule). Every query filters by user id.
+// shortcut: service-role client left over from the removed brief job, so RLS
+// doesn't back these filters; use the user's client when this wiring changes.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DailyBriefRow, LocationRow, PlaceRouteRow, ProfileRow, ScheduleRow } from "../types";

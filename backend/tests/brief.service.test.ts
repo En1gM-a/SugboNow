@@ -216,9 +216,16 @@ describe('rules brief writer', () => {
       alerts: [],
       lguPost: null,
       hasPlaces: false,
+      hasTripsToday: false,
     });
     expect(text).toBe(
       "Good afternoon! Here's your Cebu brief for Friday, October 23.\n\nAdd your home, school or work and your weekly schedule to get leave-time suggestions.",
     );
+  });
+
+  it('tells a day with no trips apart from one whose trips are over', async () => {
+    const input = { date: new Date('2026-10-22T23:00:00Z'), firstName: null, weather: null, commutes: [], alerts: [], lguPost: null, hasPlaces: true };
+    expect(await rulesBriefWriter.write({ ...input, hasTripsToday: false })).toContain('No trips on your schedule today.');
+    expect(await rulesBriefWriter.write({ ...input, hasTripsToday: true })).toContain('No more trips on your schedule today.');
   });
 });

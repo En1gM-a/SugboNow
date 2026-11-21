@@ -41,6 +41,8 @@ export interface BriefInput {
   alerts: BriefAlert[];
   lguPost: { officialName: string; text: string } | null;
   hasPlaces: boolean;
+  // True when today's schedule had trips, even if they're all over.
+  hasTripsToday: boolean;
 }
 
 export interface BriefWriter {
@@ -64,9 +66,8 @@ function weatherSection(weather: BriefWeather | null): string | null {
 
 function commuteSection(input: BriefInput): string {
   if (input.commutes.length === 0) {
-    return input.hasPlaces
-      ? "No more trips on your schedule today."
-      : "Add your home, school or work and your weekly schedule to get leave-time suggestions.";
+    if (!input.hasPlaces) return "Add your home, school or work and your weekly schedule to get leave-time suggestions.";
+    return input.hasTripsToday ? "No more trips on your schedule today." : "No trips on your schedule today.";
   }
   const lines = input.commutes.map((commute) => {
     const extra = commute.delayMinutes > 0 && commute.topReason ? ` (+${commute.delayMinutes} min: ${commute.topReason})` : "";
