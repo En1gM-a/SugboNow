@@ -42,6 +42,7 @@ export default function LandingPage() {
   const [layout, setLayout] = useState<PageLayout>({ pin: false, tall: false });
   const [openSky, setOpenSky] = useState<OpenSky>({ on: false, near: false });
   const [sceneSky, setSceneSky] = useState<SkyScene | null>(null);
+  const [roadSky, setRoadSky] = useState<SkyScene | null>(null);
   const [brief, setBrief] = useState<{ id: BriefId; flip: number }>({ id: 'rain', flip: 0 });
 
   const still = display.still || paused;
@@ -64,13 +65,14 @@ export default function LandingPage() {
   const screenSky = useMemo(() => skyGradient(sky.time, sky.weather), [sky.time, sky.weather]);
 
   // Sample: behind the photos it's today's sky at the real Manila time. It only shows where the page opens up
-  // (pageMotion.ts), so it runs only near those stretches. Inside one of the hero's scenes, that scene's sky plays.
+  // (pageMotion.ts), so it runs only near those stretches. Inside one of the hero's scenes, that scene's sky plays, and
+  // over the road at the end, the sky of what's happening on it.
   const inScene = section === 'top' && sceneSky !== null;
   const daySky = useMemo<SkyScene>(() => ({ time: clock, weather: 'clear' }), [clock]);
   useEffect(() => {
     if (inScene && sceneSky) controlSky(sceneSky, paused);
-    else controlSky(daySky, paused || !openSky.near);
-  }, [inScene, sceneSky, paused, daySky, openSky.near]);
+    else controlSky(roadSky ?? daySky, paused || !openSky.near);
+  }, [inScene, sceneSky, paused, roadSky, daySky, openSky.near]);
   useEffect(() => releaseSky, []);
 
   useLayoutEffect(() => {
@@ -135,7 +137,7 @@ export default function LandingPage() {
           <MadeForCebu play={play} />
           <Kinetic band="b" />
           <Faq />
-          <FinalCta />
+          <FinalCta play={play} onRoadSky={setRoadSky} />
           <LandingFooter />
         </div>
       </main>

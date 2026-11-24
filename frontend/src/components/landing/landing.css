@@ -1692,3 +1692,90 @@ html:has(.lp)::view-transition-new(root) { animation: none; mix-blend-mode: norm
   100% { opacity: 0; transform: none; }
 }
 @keyframes lp-j-note-still { from { opacity: 1; } to { opacity: 0; } }
+
+/* ---------- The road at the end of the page, in 3D (RoadDiorama.tsx) ----------
+   It runs the whole width of the page under the last call. Its canvas is clear above the rooftops, so the page's own sky
+   is the sky behind it, and the earth under its cut front edge fades into the page. */
+.lp-final { padding-bottom: 30px; }
+.lp-final > .lp-wrap { z-index: 1; }
+/* Each word rises out of its own box, which cuts a wide halo off square. Over the road's brighter skies that shows, and the
+   pool of shade already holds the heading's contrast, so it keeps only the tight part of the halo. */
+.lp[data-sky] .lp-final .lp-h2 { text-shadow: 0 0 1px rgba(5, 10, 24, 0.7), 0 1px 3px rgba(5, 10, 24, 0.55); }
+/* The road brings cloudier skies behind the last call, so its pool of shade is a little deeper, and on a phone wide enough
+   to reach the words at the edges: they keep 4.5:1 in every happening. */
+.lp-final > .lp-wrap::before {
+  inset: -64px -24px -100px;
+  background: radial-gradient(closest-side, rgba(5, 10, 24, 0.57), rgba(5, 10, 24, 0.51) 38%, rgba(5, 10, 24, 0.32) 64%, rgba(5, 10, 24, 0.1) 85%, rgba(5, 10, 24, 0));
+}
+@container (max-width: 899px) {
+  .lp-final > .lp-wrap::before { inset: -60px -110px -100px; }
+}
+.lp-rd { position: relative; display: grid; justify-items: center; gap: 12px; margin-top: -10px; }
+.lp-rd-strip {
+  position: relative;
+  width: 100%;
+  height: clamp(330px, min(41.6cqw, 66vh), 780px);
+  overflow: hidden;
+  overflow: clip;
+  opacity: 0;
+  -webkit-mask-image: linear-gradient(180deg, #000 88%, transparent);
+  mask-image: linear-gradient(180deg, #000 88%, transparent);
+  transition: opacity 900ms ease;
+}
+.lp-rd[data-on] .lp-rd-strip { opacity: 1; }
+.lp-rd-canvas,
+.lp-rd-ghost { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+/* Sideways drags look along the road. Up and down still scroll the page. */
+.lp-rd-canvas { touch-action: pan-y pinch-zoom; cursor: grab; }
+.lp-rd-canvas[data-hot] { cursor: pointer; }
+.lp-rd-canvas[data-drag] { cursor: grabbing; }
+.lp[data-still] .lp-rd-canvas { cursor: default; }
+/* The shot before this one, while it dissolves. */
+.lp-rd-ghost { opacity: 0; pointer-events: none; }
+/* The sky's halo is for words straight on the sky, so not for these. */
+.lp-rd-picks {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  max-width: calc(100% - 32px);
+  padding: 6px;
+  border-radius: 28px;
+  text-shadow: none;
+}
+.lp-rd-pick {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 15px 0 11px;
+  overflow: hidden;
+  border-radius: 999px;
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 100ms var(--ease-out), background-color 150ms ease, color 150ms ease;
+}
+.lp-rd-pick .lp-ico { font-size: 24px; }
+.lp-rd-pick:active { transform: scale(0.97); }
+.lp-rd-pick[aria-pressed="true"] { background: var(--mango); color: #0e1726; }
+@media (hover: hover) {
+  .lp-rd-pick:hover:not([aria-pressed="true"]) { background: var(--line); }
+}
+/* How far through the happening the road is. */
+.lp-rd-fill { position: absolute; inset: 0; z-index: -1; background: rgba(14, 23, 38, 0.16); transform: scaleX(0); transform-origin: 0 50%; }
+.lp[data-still] .lp-rd-fill { display: none; }
+.lp-rd-hint { max-width: calc(100% - 32px); padding: 5px 14px; border-radius: 999px; font-size: 0.82rem; font-weight: 600; line-height: 1.4; text-shadow: none; }
+/* In one row, the buttons sit on the earth under the road, where it fades out. */
+@container (min-width: 900px) {
+  .lp-rd-picks { margin-top: -58px; }
+}
+.lp[data-still] .lp-rd-strip { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .lp-rd-strip { transition: none; }
+}
