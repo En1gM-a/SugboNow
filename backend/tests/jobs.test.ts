@@ -2,7 +2,6 @@ import { validate } from 'node-cron';
 import { describe, expect, it, vi } from 'vitest';
 import { CEBU_AREAS } from '../src/config/areas.js';
 import { buildJobs } from '../src/jobs/index.js';
-import { createGenerateBriefsJob } from '../src/jobs/generateBriefs.js';
 import { createIngestCebuDailyNewsJob, createIngestSunstarJob } from '../src/jobs/ingestLocalNews.js';
 import { createIngestNewsJob } from '../src/jobs/ingestNews.js';
 import { createIngestTrafficJob } from '../src/jobs/ingestTraffic.js';
@@ -23,13 +22,12 @@ function article(title: string, publishedAt = '2026-10-22T03:00:00Z'): NewsArtic
 }
 
 describe('job list', () => {
-  it('has eight jobs with valid Manila cron schedules', () => {
+  it('has seven jobs with valid Manila cron schedules', () => {
     const jobs = buildJobs({
       alerts: alertsRepo(),
       weather: { save: vi.fn(), saveRegionalForecast: vi.fn() },
       routes: { listPairs: vi.fn(), listSaved: vi.fn(), save: vi.fn() },
       trafficFlow: { get: vi.fn(), save: vi.fn() },
-      briefs: { generateAll: vi.fn() },
       keys: {},
       feeds: { sunstar: 'https://feed.example/s', cebuDailyNews: 'https://feed.example/c' },
       logger: logger(),
@@ -42,7 +40,6 @@ describe('job list', () => {
       'ingestCebuDailyNews',
       'ingestPagasa',
       'ingestRoutes',
-      'generateBriefs',
     ]);
     for (const job of jobs) expect(validate(job.schedule), job.name).toBe(true);
   });
@@ -201,12 +198,7 @@ describe('news jobs', () => {
   });
 });
 
-describe('briefs job and runner', () => {
-  it('reports generated briefs', async () => {
-    const job = createGenerateBriefsJob({ generateAll: vi.fn(async () => ({ generated: 3, failed: 1 })) });
-    expect(await job.run(now)).toEqual({ status: 'ok', detail: '3 briefs, 1 failed', saved: 3 });
-  });
-
+describe('job runner', () => {
   it('never throws from runJob', async () => {
     const log = logger();
     const job = { name: 'boom', schedule: '* * * * *', description: '', run: async () => { throw new Error('exploded'); } };
