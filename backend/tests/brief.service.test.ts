@@ -89,15 +89,9 @@ function setup(options: { existing?: DailyBriefRow | null; routes?: PlaceRouteRo
   } as unknown as AlertsRepository;
   const weather = { get: vi.fn(async () => weatherRow) } as unknown as WeatherRepository;
   const writer: BriefWriter = { name: 'test', write: vi.fn(async (input: BriefInput) => rulesBriefWriter.write(input)) };
-  const service = createBriefService({
-    briefs,
-    alerts,
-    weather,
-    latestLguPost: async () => ({ officialName: 'Mayor Nestor Archival', caption: 'WALAY KLASE | OCT 23\nAll levels.', postedAt: '2026-10-22T12:00:00Z' }),
-    writer,
-    now: () => options.at ?? now,
-  });
-  return { service, briefs, weather, writer, saved };
+  const latestLguPost = vi.fn(async () => ({ officialName: 'Mayor Nestor Archival', caption: 'WALAY KLASE | OCT 23\nAll levels.', postedAt: '2026-10-22T12:00:00Z' }));
+  const service = createBriefService({ briefs, alerts, weather, latestLguPost, writer, now: () => options.at ?? now });
+  return { service, briefs, weather, writer, saved, latestLguPost };
 }
 
 describe('brief service', () => {
@@ -176,6 +170,26 @@ describe('brief service', () => {
     const today = await service.getToday('user-1');
     expect(saved).toHaveLength(1);
     expect(today.brief.content).toContain('leave by 6:50 AM');
+  });
+
+  it('reads the saved brief with the first reads, and the mayor’s post only when it writes the text', async () => {
+    const opened = setup({ existing: savedAt('2026-10-22T20:55:00Z') }); // 4:55 AM: still current
+    await opened.service.getToday('user-1');
+    // Asked for before the weather, which has to wait for the profile and places.
+    const order = (mock: unknown) => vi.mocked(mock as () => void).mock.invocationCallOrder[0];
+    expect(order(opened.briefs.getBrief)).toBeLessThan(order(opened.weather.get));
+    expect(opened.briefs.getBrief).toHaveBeenCalledWith('user-1', '2026-10-23');
+    expect(opened.latestLguPost).not.toHaveBeenCalled();
+
+    const firstOpen = setup();
+    await firstOpen.service.getToday('user-1');
+    expect(firstOpen.latestLguPost).toHaveBeenCalledWith('cebu_city');
+
+    // A brief written before the trip’s last 2 hours is written again, so it quotes the post too.
+    const rewritten = setup({ existing: savedAt('2026-10-22T18:00:00Z') });
+    const today = await rewritten.service.getToday('user-1');
+    expect(rewritten.latestLguPost).toHaveBeenCalledWith('cebu_city');
+    expect(today.brief.content).toContain('From Mayor Nestor Archival');
   });
 
   it('keeps an early brief until a trip is 2 hours away, and after the trip is over', async () => {

@@ -9,6 +9,8 @@ This repository ships project-level [Claude Code](https://claude.com/claude-code
 
 Both are third-party skills. `graphify` is optional. `ui-ux-pro-max` is one of the three design skills that frontend work always uses (below).
 
+Skills and tools for performance work were looked at on 2026-11-14 and aren't installed here yet. The list, with a verdict on each, is under "Skills and tools" in [`performance.md`](performance.md).
+
 ## ui-ux-pro-max
 
 The copy in `.claude/skills/` was installed with the older `uipro-cli`. That package is now stale: the CLI is published as [`ui-ux-pro-max-cli`](https://www.npmjs.com/package/ui-ux-pro-max-cli). Frontend developers install the current version in their user folder (below). A skill in your user folder wins over the repo's copy of the same name.

@@ -9,6 +9,9 @@
 // opening it never calls an outside service.
 // shortcut: no job writes the brief, since nobody sees it before opening the
 // app; add a scheduled job when briefs are pushed to users.
+//
+// The page asks for it every 5 minutes, so its reads go out together (see
+// buildContext) instead of one after another.
 
 import { getArea } from "../config/areas";
 import type { DailyBriefRow, LocationRef, LocationRow, WeatherSnapshotRow } from "../types";
@@ -71,6 +74,10 @@ interface BriefContext {
   matched: AlertWithPlaces[];
   leaveTimes: LeaveTimeSuggestion[];
   weather: WeatherSnapshotRow | null;
+  // Today's saved brief when it can be shown as is: null when there is none, or
+  // when a trip is now close enough to write it again (needsRewrite).
+  saved: DailyBriefRow | null;
+  // The followed mayor's latest post. Only read when the brief's text is about to be written.
   lguPost: LatestLguPost | null;
 }
 
@@ -155,15 +162,19 @@ export function createBriefService(deps: BriefServiceDeps) {
   const { briefs, alerts, weather, latestLguPost, writer } = deps;
   const now = deps.now ?? (() => new Date());
 
+  // Reads everything in two rounds, each at once: what depends only on the user,
+  // today's saved brief included, then the weather, whose area follows from the
+  // profile and the places.
   async function buildContext(userId: string, at: Date): Promise<BriefContext> {
     const date = manilaDate(at);
     const weekday = manilaWeekday(at);
-    const [profile, locations, schedule, routes, active] = await Promise.all([
+    const [profile, locations, schedule, routes, active, saved] = await Promise.all([
       briefs.getProfile(userId),
       briefs.listLocations(userId),
       briefs.listSchedule(userId),
       briefs.listRoutes(userId),
       alerts.listActive({ now: at, startsBefore: addHours(at, 24), types: DEFAULT_ALERT_TYPES, limit: 300 }),
+      briefs.getBrief(userId, date),
     ]);
     // Each trip's road route, following the profile's CCLEX choice (allowed unless it's off).
     const allowCclex = profile?.allow_cclex ?? true;
@@ -210,12 +221,16 @@ export function createBriefService(deps: BriefServiceDeps) {
       })
       .sort((a, b) => a.leaveAt.getTime() - b.leaveAt.getTime());
 
+    // A saved brief is shown as is unless a trip is now close (needsRewrite).
+    const current = saved && !needsRewrite(saved, leaveTimes, at) ? saved : null;
+    // The mayor's post is only quoted in the brief's text, so it's read only
+    // when the text is about to be written.
     const [snapshot, lguPost] = await Promise.all([
       weather.get(pickWeatherArea(profile?.city, locations)).then((row) => row && weatherAt(row, at)),
-      profile?.subscribed_mayor ? latestLguPost(profile.subscribed_mayor) : Promise.resolve(null),
+      !current && profile?.subscribed_mayor ? latestLguPost(profile.subscribed_mayor) : null,
     ]);
 
-    return { date, profile, locations, matched, leaveTimes, weather: snapshot, lguPost };
+    return { date, profile, locations, matched, leaveTimes, weather: snapshot, saved: current, lguPost };
   }
 
   async function save(userId: string, context: BriefContext, at: Date): Promise<DailyBriefRow> {
@@ -234,8 +249,7 @@ export function createBriefService(deps: BriefServiceDeps) {
     async getToday(userId: string): Promise<TodayBrief> {
       const at = now();
       const context = await buildContext(userId, at);
-      const saved = await briefs.getBrief(userId, context.date);
-      const brief = saved && !needsRewrite(saved, context.leaveTimes, at) ? saved : await save(userId, context, at);
+      const brief = context.saved ?? (await save(userId, context, at));
       return { date: context.date, brief, alerts: context.matched, leaveTimes: context.leaveTimes, weather: context.weather };
     },
 

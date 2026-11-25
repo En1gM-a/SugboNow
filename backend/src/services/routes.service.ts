@@ -2,12 +2,12 @@
 
 import type { AlertRow, PlaceRouteRow, RequestUser, RouteTraffic } from "../types";
 import { notFound } from "../utils/errors";
-import type { LatLng } from "../utils/geo";
+import { boundsAround, type LatLng } from "../utils/geo";
 import { addHours } from "../utils/time";
 import type { AlertsRepository } from "./alerts.repository";
 import { UPCOMING_HOURS } from "./alerts.service";
 import type { LocationsRepository } from "./locations.repository";
-import { ROUTE_ALERT_TYPES, compareAlerts, isOnRoute } from "./matching.service";
+import { ROUTE_ALERT_M, ROUTE_ALERT_TYPES, compareAlerts, isOnRoute } from "./matching.service";
 import type { PlaceRouteMeta, RoutesRepository } from "./routes.repository";
 import { colorRoute, type TrafficFlowService } from "./trafficFlow.service";
 
@@ -46,11 +46,16 @@ export interface RoutesServiceDeps {
 export function createRoutesService({ routes, locations, alerts, flow, now = () => new Date() }: RoutesServiceDeps) {
   return {
     async between(user: RequestUser, fromId: string, toId: string): Promise<RoutesBetween> {
-      const owned = await locations.findOwned(user, [fromId, toId]);
+      // The places and the routes between them are read together. Asking for the
+      // routes before the places are known to be the user's is safe: Row Level
+      // Security only returns routes that start at one of their own places.
+      const [owned, rows] = await Promise.all([
+        locations.findOwned(user, [fromId, toId]),
+        fromId === toId ? [] : routes.between(user, fromId, toId),
+      ]);
       const from = owned.find((place) => place.id === fromId);
       const to = owned.find((place) => place.id === toId);
       if (!from || !to) throw notFound("Place not found.");
-      const rows = fromId === toId ? [] : await routes.between(user, fromId, toId);
       // A route saved before a place moved is out of date until the job fetches it again.
       const pick = (allowCclex: boolean) =>
         rows.find((row) => row.allow_cclex === allowCclex && routeFitsPlaces(row, from, to)) ?? null;
@@ -58,10 +63,19 @@ export function createRoutesService({ routes, locations, alerts, flow, now = () 
       const withoutCclex = pick(false);
       if (!withCclex && !withoutCclex) return { from: fromId, to: toId, withCclex: null, withoutCclex: null };
 
-      // The same window as GET /api/alerts: active now or starting soon.
+      // The same window as GET /api/alerts: active now or starting soon. Only alerts
+      // inside the box around the two lines are read: an alert on a route is within
+      // ROUTE_ALERT_M of its line, and the box is twice that wide to be safe.
       const current = now();
+      const lines = [withCclex, withoutCclex].flatMap((row) => (row ? [row.line] : []));
       const [active, traffic] = await Promise.all([
-        alerts.listActive({ now: current, startsBefore: addHours(current, UPCOMING_HOURS), types: ROUTE_ALERT_TYPES, limit: 200 }),
+        alerts.listActive({
+          now: current,
+          startsBefore: addHours(current, UPCOMING_HOURS),
+          types: ROUTE_ALERT_TYPES,
+          within: boundsAround(lines, 2 * ROUTE_ALERT_M),
+          limit: 200,
+        }),
         flow.current(),
       ]);
       const onTheWay = (row: PlaceRouteRow | null): RouteOnTheWay | null =>
