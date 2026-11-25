@@ -9,11 +9,15 @@ import { RollNumber } from '@/components/RollNumber';
 import { Card, CardError, timing } from '@/components/today/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Tag } from '@/components/ui/Tag';
+import { useSchedule } from '@/hooks/usePlaces';
 import { TRIP_TIMES } from '@/lib/mockOnly';
+import { nextTripDay } from '@/lib/nextTrip';
 import { USE_MOCKS } from '@/lib/supabaseClient';
 import type { AlertType, BriefTodayResponse } from '@/types/api';
 import { cx, vars } from '@/utils/cx';
 import { formatClock } from '@/utils/format';
+import { TripCover, TripHint } from './TripCover';
+import { UpcomingTrip } from './UpcomingTrip';
 
 const REASON_WORD: Record<AlertType, string> = {
   traffic: 'traffic',
@@ -89,9 +93,48 @@ function TripSkeleton() {
   );
 }
 
+/** No trip left today: the next scheduled one on a later day, or, with no weekly trips at all, the way to add them. */
+function NoTripToday({ i, brief }: { i: number; brief: BriefTodayResponse }) {
+  const schedule = useSchedule();
+
+  if (schedule.isPending) {
+    return (
+      <Card i={i} span="span-7" tone="night" className="trip">
+        <TripSkeleton />
+      </Card>
+    );
+  }
+  const day = schedule.data ? nextTripDay(schedule.data) : null;
+  if (day) return <UpcomingTrip i={i} day={day} brief={brief} />;
+
+  return (
+    <Card i={i} span="span-7" tone="night" className="trip" labelledBy="trip-h">
+      <h2 id="trip-h" className="card-title">
+        Your next trip
+      </h2>
+      {schedule.isError ? (
+        <CardError what="your weekly trips" onRetry={() => void schedule.refetch()} />
+      ) : (
+        <>
+          <div className="empty">
+            <JeepneyArt />
+            <p className="empty-text">Add your weekly trips to get a leave time</p>
+            <Link to="/profile?section=trips" className="btn btn-secondary">
+              Add a trip
+            </Link>
+          </div>
+          {/* For the mouse and touch only: the button above is the same link for everyone else. */}
+          <Link to="/profile?section=trips" className="card-cover" tabIndex={-1} aria-hidden="true" />
+        </>
+      )}
+    </Card>
+  );
+}
+
 /**
  * The next trip (Today, item 3): the page's primary element, a dark glass card. A mango delay chip that opens the
- * reasons, "Leave by 6:55 AM" as number reels at the hero size, the route, the trip chart, then "Later today".
+ * reasons, "Leave by 6:55 AM" as number reels at the hero size, the route, the trip chart, then "Later today". The card
+ * opens the trip on Traffic. Once today's trips are over it shows the next scheduled one.
  */
 export function NextTripCard({ i, brief }: { i: number; brief: UseQueryResult<BriefTodayResponse> }) {
   const [open, setOpen] = useState(false);
@@ -119,33 +162,10 @@ export function NextTripCard({ i, brief }: { i: number; brief: UseQueryResult<Br
   }
 
   const { leaveTimes, alerts } = brief.data;
-  if (leaveTimes.length === 0) {
-    return (
-      <Card i={i} span="span-7" tone="night" className="trip" labelledBy="trip-h">
-        {head}
-        <div className="empty">
-          <JeepneyArt />
-          <p className="empty-text">Add your weekly trips to get a leave time</p>
-          <Link to="/profile?section=trips" className="btn btn-secondary">
-            Add a trip
-          </Link>
-        </div>
-      </Card>
-    );
-  }
-
   const now = Date.now();
   const upcoming = leaveTimes.filter((lt) => new Date(lt.leaveAtIso).getTime() > now - 10 * 60_000);
   const next = upcoming[0];
-  if (!next) {
-    return (
-      <Card i={i} span="span-7" tone="night" className="trip" labelledBy="trip-h">
-        {head}
-        <p className="done-today">No more trips today.</p>
-        <p className="route">Tomorrow&apos;s leave times are ready by 5:30 AM.</p>
-      </Card>
-    );
-  }
+  if (!next) return <NoTripToday i={i} brief={brief.data} />;
 
   const later = upcoming.slice(1);
   const [clock, half] = formatClock(next.leaveAt).split(' ');
@@ -183,9 +203,12 @@ export function NextTripCard({ i, brief }: { i: number; brief: UseQueryResult<Br
         <small>Leave by</small>
         <RollNumber value={clock} delay={t.reel} /> {half}
       </p>
-      <p className="route">
-        {next.title} · {next.origin.label} → {next.destination.label} · arrive {formatClock(next.arriveBy)}
-      </p>
+      <div className="trip-line">
+        <p className="route">
+          {next.title} · {next.origin.label} → {next.destination.label} · arrive {formatClock(next.arriveBy)}
+        </p>
+        <TripHint />
+      </div>
       {USE_MOCKS ? (
         <TripChart />
       ) : (
@@ -206,6 +229,7 @@ export function NextTripCard({ i, brief }: { i: number; brief: UseQueryResult<Br
           </ul>
         </div>
       )}
+      <TripCover tripId={next.scheduleEntryId} title={next.title} />
     </Card>
   );
 }
