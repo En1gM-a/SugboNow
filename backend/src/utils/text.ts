@@ -1,12 +1,6 @@
-// Text helpers for ingested content.
+// Text helpers for ingested content. HTML parsing lives in utils/html.ts.
 
 import { createHash } from "node:crypto";
-import { load } from "cheerio";
-
-// Plain text from an HTML snippet, with entities decoded and spaces collapsed.
-export function htmlToText(html: string): string {
-  return load(html, null, false).root().text().replace(/\s+/g, " ").trim();
-}
 
 // Shortens text to `max` characters at a word boundary when possible.
 export function truncate(text: string, max: number): string {

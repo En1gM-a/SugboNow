@@ -6,7 +6,7 @@ import type { LocationsRepository } from '../src/services/locations.repository.j
 import type { PlaceRouteMeta, RoutePair, RoutesJobRepository, RoutesRepository } from '../src/services/routes.repository.js';
 import { createRoutesService } from '../src/services/routes.service.js';
 import type { AlertRow, AlertType, LocationRow, PlaceRouteRow, TrafficFlowLines } from '../src/types/index.js';
-import { simplifyLine, type LatLngPair } from '../src/utils/geo.js';
+import { simplifyLine, type Bounds, type LatLngPair } from '../src/utils/geo.js';
 import { notFound } from '../src/utils/errors.js';
 import { TEST_USER } from './helpers/testApp.js';
 
@@ -268,6 +268,40 @@ describe('routes service', () => {
     expect(result.withCclex?.alerts.map((a) => a.id)).toEqual(['on the route']);
     expect(result.withCclex?.traffic.map((stretch) => stretch.level)).toEqual(['heavy', null]);
     expect(result.withoutCclex?.traffic).toEqual(result.withCclex?.traffic);
+  });
+
+  it('asks only for alerts inside the box around the two routes', async () => {
+    // The route without CCLEX swings north through Mandaue.
+    const north: LatLngPair[] = [[home.lat, home.lng], [10.33, 123.92], [office.lat, office.lng]];
+    const { svc, alerts } = service([place(home, 'Home'), place(office, 'Office')], [row(true), row(false, { line: north })]);
+    await svc.between(TEST_USER, home.id, office.id);
+
+    const [{ within }] = alerts.listActive.mock.calls[0] as unknown as [{ within: Bounds }];
+    // About 200 m (0.0018°) wider than the lines on every side, and no more than 300 m.
+    expect(within.minLat).toBeLessThan(office.lat - 0.0017);
+    expect(within.minLat).toBeGreaterThan(office.lat - 0.0027);
+    expect(within.maxLat).toBeGreaterThan(10.33 + 0.0017);
+    expect(within.maxLat).toBeLessThan(10.33 + 0.0027);
+    expect(within.minLng).toBeLessThan(home.lng - 0.0017);
+    expect(within.minLng).toBeGreaterThan(home.lng - 0.0028);
+    expect(within.maxLng).toBeGreaterThan(office.lng + 0.0017);
+    expect(within.maxLng).toBeLessThan(office.lng + 0.0028);
+  });
+
+  it('reads the places and the routes at the same time, and nothing more when there is no route yet', async () => {
+    let deliver: (places: LocationRow[]) => void = () => undefined;
+    const locations = { findOwned: vi.fn(() => new Promise<LocationRow[]>((resolve) => (deliver = resolve))) } as unknown as LocationsRepository;
+    const routes: RoutesRepository = { between: vi.fn(async () => []) };
+    const alerts = { listActive: vi.fn(async () => []) };
+    const flow = { current: vi.fn(async () => null) };
+    const svc = createRoutesService({ routes, locations, alerts, flow, now: () => now });
+
+    const reading = svc.between(TEST_USER, home.id, office.id);
+    expect(routes.between).toHaveBeenCalledWith(TEST_USER, home.id, office.id);
+    deliver([place(home, 'Home'), place(office, 'Office')]);
+    expect(await reading).toEqual({ from: home.id, to: office.id, withCclex: null, withoutCclex: null });
+    expect(alerts.listActive).not.toHaveBeenCalled();
+    expect(flow.current).not.toHaveBeenCalled();
   });
 
   it('sends no traffic colors when there is no current flow', async () => {
