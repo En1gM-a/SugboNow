@@ -6,6 +6,7 @@ import { rainAdvice, weatherKind } from '@/lib/weatherKind';
 import type { Weather } from '@/types/api';
 import { vars } from '@/utils/cx';
 import { Card, CardError, timing } from './Card';
+import { CardCover, CardHint } from './CardLink';
 
 const HOUR_LABELS = ['Now', '+1h', '+2h', '+3h', '+4h', '+5h'];
 
@@ -14,7 +15,7 @@ const inHours = (j: number) => (j === 0 ? 'now' : `in ${j} ${j === 1 ? 'hour' : 
 /**
  * Weather now (Today, item 4): the looping live icon, the temperature as a number reel, the condition, one line of
  * advice from the hourly rain chance, and rain bars for the next 6 hours. It reads the user's home city from
- * GET /api/weather/:area, or the brief's weather when the profile has no city.
+ * GET /api/weather/:area, or the brief's weather when the profile has no city. The card opens that area on Weather.
  */
 export function WeatherNowCard({ i, city, fallback }: { i: number; city: string | null | undefined; fallback: Weather | null | undefined }) {
   const query = useWeather(city);
@@ -46,6 +47,8 @@ export function WeatherNowCard({ i, city, fallback }: { i: number; city: string 
 
   const kind = weatherKind(weather.current.iconUrl, weather.current.chanceOfRain);
   const hours = weather.hourly.slice(0, 6);
+  // Weather opens on the user's own city by itself.
+  const to = weather.area.slug === city ? '/weather' : `/weather?area=${encodeURIComponent(weather.area.slug)}`;
 
   return (
     <Card i={i} span="span-5" className="weather-now" labelledBy="wx-h">
@@ -66,7 +69,10 @@ export function WeatherNowCard({ i, city, fallback }: { i: number; city: string 
           <p className="wx-label">{weather.current.condition}</p>
         </div>
       </div>
-      <p className="advice muted small">{rainAdvice(weather.hourly)}</p>
+      <div className="card-line">
+        <p className="advice muted small">{rainAdvice(weather.hourly)}</p>
+        <CardHint text="See forecast" />
+      </div>
       <div className="bars" role="img" aria-label={`Rain chance: ${hours.map((h, j) => `${inHours(j)} ${h.chanceOfRain}%`).join(', ')}`}>
         {hours.map((h, j) => (
           <div key={h.time} className="bar">
@@ -75,6 +81,7 @@ export function WeatherNowCard({ i, city, fallback }: { i: number; city: string 
           </div>
         ))}
       </div>
+      <CardCover to={to} label={`See the forecast for ${weather.area.name}`} />
     </Card>
   );
 }

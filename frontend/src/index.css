@@ -1327,7 +1327,7 @@
     position: relative;
     z-index: 1;
   }
-  .trip:has(.card-cover:active) {
+  .card:has(> .card-cover:active) {
     scale: 0.995;
   }
   /* The leave time on Today: large enough to lead the card without filling it. */
@@ -1346,14 +1346,14 @@
   .trip .skel-hero {
     height: clamp(1.75rem, 4vw, 2.1rem);
   }
-  .trip-line {
+  .card-line {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     justify-content: space-between;
     gap: 0 12px;
   }
-  .trip-hint {
+  .card-hint {
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -1364,24 +1364,24 @@
     transition: color 150ms ease;
     --icon: 12px;
   }
-  .trip-hint .ic {
+  .card-hint .ic {
     transition: transform 150ms var(--ease-out);
   }
-  .trip:has(.card-cover:focus-visible) .trip-hint {
+  .card:has(> .card-cover:focus-visible) .card-hint {
     color: var(--ink);
   }
   @media (hover: hover) {
     .card-cover:hover {
       box-shadow: inset 0 0 0 1.5px var(--line);
     }
-    .trip:has(.card-cover:hover) .trip-hint {
+    .card:has(> .card-cover:hover) .card-hint {
       color: var(--ink);
     }
-    .trip:has(.card-cover:hover) .trip-hint .ic {
+    .card:has(> .card-cover:hover) .card-hint .ic {
       transform: translateX(3px);
     }
   }
-  :root[data-still] .trip-hint .ic {
+  :root[data-still] .card-hint .ic {
     transition: none;
     transform: none !important;
   }

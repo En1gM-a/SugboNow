@@ -7,6 +7,7 @@ import { Expander } from '@/components/Expander';
 import { Icon } from '@/components/icons/Icon';
 import { RollNumber } from '@/components/RollNumber';
 import { Card, CardError, timing } from '@/components/today/Card';
+import { CardCover, CardHint } from '@/components/today/CardLink';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Tag } from '@/components/ui/Tag';
 import { useSchedule } from '@/hooks/usePlaces';
@@ -16,7 +17,6 @@ import { USE_MOCKS } from '@/lib/supabaseClient';
 import type { AlertType, BriefTodayResponse } from '@/types/api';
 import { cx, vars } from '@/utils/cx';
 import { formatClock } from '@/utils/format';
-import { TripCover, TripHint } from './TripCover';
 import { UpcomingTrip } from './UpcomingTrip';
 
 const REASON_WORD: Record<AlertType, string> = {
@@ -203,11 +203,11 @@ export function NextTripCard({ i, brief }: { i: number; brief: UseQueryResult<Br
         <small>Leave by</small>
         <RollNumber value={clock} delay={t.reel} /> {half}
       </p>
-      <div className="trip-line">
+      <div className="card-line">
         <p className="route">
           {next.title} · {next.origin.label} → {next.destination.label} · arrive {formatClock(next.arriveBy)}
         </p>
-        <TripHint />
+        <CardHint text="See on map" />
       </div>
       {USE_MOCKS ? (
         <TripChart />
@@ -229,7 +229,7 @@ export function NextTripCard({ i, brief }: { i: number; brief: UseQueryResult<Br
           </ul>
         </div>
       )}
-      <TripCover tripId={next.scheduleEntryId} title={next.title} />
+      <CardCover to={`/traffic?trip=${encodeURIComponent(next.scheduleEntryId)}`} label={`See ${next.title} on the traffic map`} />
     </Card>
   );
 }

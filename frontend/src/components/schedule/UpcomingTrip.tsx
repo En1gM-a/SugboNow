@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { RollNumber } from '@/components/RollNumber';
 import { Card, timing } from '@/components/today/Card';
+import { CardCover, CardHint } from '@/components/today/CardLink';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Tag } from '@/components/ui/Tag';
 import { useRoutes } from '@/hooks/usePlaces';
@@ -9,7 +10,6 @@ import { rainChanceAt, usualLeaveAt, usualMinutes, type NextTripDay } from '@/li
 import type { BriefTodayResponse } from '@/types/api';
 import { vars } from '@/utils/cx';
 import { formatClock } from '@/utils/format';
-import { TripCover, TripHint } from './TripCover';
 
 /**
  * The next trip on a later day, once today's are over. Its traffic isn't known yet, so it says "Usually leave by", from
@@ -65,12 +65,12 @@ export function UpcomingTrip({
           <RollNumber value={clock} delay={timing(i).reel} /> {half}
         </p>
       )}
-      <div className="trip-line">
+      <div className="card-line">
         <p className="route">
           {trip.title} · {trip.origin.label} → {trip.destination.label}
           {leaveAt && ` · arrive ${formatClock(trip.arriveBy)}`}
         </p>
-        <TripHint />
+        <CardHint text="See on map" />
       </div>
       {facts.length > 0 && <p className="usual tabular-nums">{facts.join(' · ')}</p>}
       <p className="muted small">
@@ -97,7 +97,10 @@ export function UpcomingTrip({
       <Link to="/profile?section=trips" className="btn btn-quiet trip-more">
         See your weekly trips
       </Link>
-      <TripCover tripId={trip.id} title={trip.title} />
+      <CardCover
+        to={`/traffic?trip=${encodeURIComponent(trip.id)}`}
+        label={`See ${trip.title} on the traffic map`}
+      />
     </Card>
   );
 }
