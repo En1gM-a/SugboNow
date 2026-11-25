@@ -64,7 +64,6 @@ export function createContainer(): Container {
         : null;
     },
     writer: createBriefWriter(env.AI_API_KEY),
-    logger,
   });
 
   const services: AppServices = {
@@ -101,7 +100,6 @@ export function createContainer(): Container {
     weather: weatherRepo,
     routes: createRoutesJobRepository(supabaseAdmin),
     trafficFlow: trafficFlowRepo,
-    briefs,
     keys: { tomtom: env.TOMTOM_API_KEY, gnews: env.GNEWS_API_KEY, weatherApi: env.WEATHER_API_KEY },
     feeds: { sunstar: env.SUNSTAR_RSS_URL, cebuDailyNews: env.CDN_RSS_URL },
     logger,

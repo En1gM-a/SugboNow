@@ -2,10 +2,13 @@
 // leave times, and alerts near the user's places, written up by the brief
 // writer and saved to daily_briefs.
 //
-// The brief text is a once-a-day snapshot (05:30 job, or the first time the
-// user opens it that day). Alerts and leave times in GET /api/brief/today are
-// recomputed on every request so they stay current. Building a brief only
-// reads the database, so opening it never calls an outside service.
+// The brief text is a snapshot: written the first time the user opens it that
+// day, and written again on the first open within 2 hours of each trip's leave
+// time. Alerts and leave times in GET /api/brief/today are recomputed on every
+// request so they stay current. Building a brief only reads the database, so
+// opening it never calls an outside service.
+// shortcut: no job writes the brief, since nobody sees it before opening the
+// app; add a scheduled job when briefs are pushed to users.
 //
 // The page asks for it every 5 minutes, so its reads go out together (see
 // buildContext) instead of one after another.
@@ -13,7 +16,6 @@
 import { getArea } from "../config/areas";
 import type { DailyBriefRow, LocationRef, LocationRow, WeatherSnapshotRow } from "../types";
 import { nearestArea } from "../utils/geo";
-import type { Logger } from "../utils/logger";
 import { addHours, manilaDate, manilaWeekday } from "../utils/time";
 import type { AlertsRepository } from "./alerts.repository";
 import { DEFAULT_ALERT_TYPES, type AlertWithPlaces } from "./alerts.service";
@@ -28,7 +30,10 @@ import { weatherAt } from "./weather.service";
 const BRIEF_ALERT_LIMIT = 10;
 const BRIEF_TEXT_ALERT_LIMIT = 5;
 const LGU_POST_MAX_AGE_HOURS = 36;
-const RAIN_CHANCE_THRESHOLD = 60;
+// The same cutoff as the weather alerts (integrations/weatherapi.ts) and the Weather page's advice.
+const RAIN_CHANCE_THRESHOLD = 70;
+// The brief is written again once a trip's leave time is this close.
+const REWRITE_BEFORE_LEAVE_HOURS = 2;
 const DEFAULT_WEATHER_AREA = "cebu_city";
 
 export interface LatestLguPost {
@@ -59,7 +64,6 @@ export interface BriefServiceDeps {
   weather: WeatherRepository;
   latestLguPost: (slug: string) => Promise<LatestLguPost | null>;
   writer: BriefWriter;
-  logger: Logger;
   now?: () => Date;
 }
 
@@ -70,7 +74,8 @@ interface BriefContext {
   matched: AlertWithPlaces[];
   leaveTimes: LeaveTimeSuggestion[];
   weather: WeatherSnapshotRow | null;
-  // Today's saved brief, when the caller asked to reuse it and there is one.
+  // Today's saved brief when it can be shown as is: null when there is none, or
+  // when a trip is now close enough to write it again (needsRewrite).
   saved: DailyBriefRow | null;
   // The followed mayor's latest post. Only read when the brief's text is about to be written.
   lguPost: LatestLguPost | null;
@@ -120,14 +125,17 @@ function writerInput(context: BriefContext, now: Date): BriefInput {
           rain: rainWindow(context.weather, now),
         }
       : null,
-    commutes: context.leaveTimes.map((trip) => ({
-      title: trip.title,
-      destination: trip.destination.label,
-      leaveAt: trip.leaveAt,
-      arriveAt: trip.arriveAt,
-      delayMinutes: trip.delayMinutes,
-      topReason: trip.reasons[0] ? `${trip.reasons[0].title} near your ${trip.reasons[0].nearPlace}` : null,
-    })),
+    // Only the trips still ahead: a brief written in the evening doesn't list the morning's.
+    commutes: context.leaveTimes
+      .filter((trip) => trip.arriveAt > now)
+      .map((trip) => ({
+        title: trip.title,
+        destination: trip.destination.label,
+        leaveAt: trip.leaveAt,
+        arriveAt: trip.arriveAt,
+        delayMinutes: trip.delayMinutes,
+        topReason: trip.reasons[0] ? `${trip.reasons[0].title} near your ${trip.reasons[0].nearPlace}` : null,
+      })),
     alerts: context.matched.slice(0, BRIEF_TEXT_ALERT_LIMIT).map(({ alert, places }) => ({
       type: alert.type,
       severity: alert.severity,
@@ -137,17 +145,27 @@ function writerInput(context: BriefContext, now: Date): BriefInput {
     })),
     lguPost: recentPost,
     hasPlaces: context.locations.length > 0,
+    hasTripsToday: context.leaveTimes.length > 0,
   };
 }
 
+// True when a trip still ahead is within 2 hours of its leave time and the saved text is from before then.
+function needsRewrite(brief: DailyBriefRow, trips: LeaveTimeSuggestion[], at: Date): boolean {
+  const writtenAt = Date.parse(brief.updated_at);
+  return trips.some((trip) => {
+    const from = addHours(trip.leaveAt, -REWRITE_BEFORE_LEAVE_HOURS);
+    return at >= from && at < trip.arriveAt && writtenAt < from.getTime();
+  });
+}
+
 export function createBriefService(deps: BriefServiceDeps) {
-  const { briefs, alerts, weather, latestLguPost, writer, logger } = deps;
+  const { briefs, alerts, weather, latestLguPost, writer } = deps;
   const now = deps.now ?? (() => new Date());
 
   // Reads everything in two rounds, each at once: what depends only on the user,
-  // then the weather, whose area follows from the profile and the places. With
-  // `reuseSaved`, today's saved brief is read in the first round rather than after both.
-  async function buildContext(userId: string, at: Date, reuseSaved: boolean): Promise<BriefContext> {
+  // today's saved brief included, then the weather, whose area follows from the
+  // profile and the places.
+  async function buildContext(userId: string, at: Date): Promise<BriefContext> {
     const date = manilaDate(at);
     const weekday = manilaWeekday(at);
     const [profile, locations, schedule, routes, active, saved] = await Promise.all([
@@ -156,7 +174,7 @@ export function createBriefService(deps: BriefServiceDeps) {
       briefs.listSchedule(userId),
       briefs.listRoutes(userId),
       alerts.listActive({ now: at, startsBefore: addHours(at, 24), types: DEFAULT_ALERT_TYPES, limit: 300 }),
-      reuseSaved ? briefs.getBrief(userId, date) : null,
+      briefs.getBrief(userId, date),
     ]);
     // Each trip's road route, following the profile's CCLEX choice (allowed unless it's off).
     const allowCclex = profile?.allow_cclex ?? true;
@@ -203,14 +221,16 @@ export function createBriefService(deps: BriefServiceDeps) {
       })
       .sort((a, b) => a.leaveAt.getTime() - b.leaveAt.getTime());
 
-    // The mayor's post is only quoted in the brief's text, so a brief that is
-    // already written doesn't need it.
+    // A saved brief is shown as is unless a trip is now close (needsRewrite).
+    const current = saved && !needsRewrite(saved, leaveTimes, at) ? saved : null;
+    // The mayor's post is only quoted in the brief's text, so it's read only
+    // when the text is about to be written.
     const [snapshot, lguPost] = await Promise.all([
       weather.get(pickWeatherArea(profile?.city, locations)).then((row) => row && weatherAt(row, at)),
-      !saved && profile?.subscribed_mayor ? latestLguPost(profile.subscribed_mayor) : null,
+      !current && profile?.subscribed_mayor ? latestLguPost(profile.subscribed_mayor) : null,
     ]);
 
-    return { date, profile, locations, matched, leaveTimes, weather: snapshot, saved, lguPost };
+    return { date, profile, locations, matched, leaveTimes, weather: snapshot, saved: current, lguPost };
   }
 
   async function save(userId: string, context: BriefContext, at: Date): Promise<DailyBriefRow> {
@@ -224,31 +244,15 @@ export function createBriefService(deps: BriefServiceDeps) {
   }
 
   return {
-    // Today's brief for the user, creating it on first open if the morning
-    // job hasn't yet.
+    // Today's brief for the user, written on first open, and again when a
+    // trip is close (needsRewrite).
     async getToday(userId: string): Promise<TodayBrief> {
       const at = now();
-      const context = await buildContext(userId, at, true);
+      const context = await buildContext(userId, at);
       const brief = context.saved ?? (await save(userId, context, at));
       return { date: context.date, brief, alerts: context.matched, leaveTimes: context.leaveTimes, weather: context.weather };
     },
 
-    // Morning job: a fresh brief for every user with a trip today.
-    async generateAll(at = now()): Promise<{ generated: number; failed: number }> {
-      const userIds = await briefs.listUserIdsWithScheduleOn(manilaWeekday(at));
-      let generated = 0;
-      let failed = 0;
-      for (const userId of userIds) {
-        try {
-          await save(userId, await buildContext(userId, at, false), at);
-          generated++;
-        } catch (error) {
-          failed++;
-          logger.warn("Could not generate brief", { userId, error: error instanceof Error ? error.message : String(error) });
-        }
-      }
-      return { generated, failed };
-    },
   };
 }
 
