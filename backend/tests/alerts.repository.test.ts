@@ -7,6 +7,8 @@ import { createAlertsRepository } from '../src/services/alerts.repository.js';
 function savedAlerts(count: number) {
   const saved = Array.from({ length: count }, (_, index) => ({ id: `alert-${index}` }));
   const reads: Array<[number, number]> = [];
+  // The box filters asked for, as [column, 'gte' or 'lte', value].
+  const box: Array<[string, string, number]> = [];
   const query: Record<string, unknown> = {
     range(from: number, to: number) {
       reads.push([from, to]);
@@ -14,7 +16,13 @@ function savedAlerts(count: number) {
     },
   };
   for (const filter of ['select', 'or', 'in', 'ilike', 'order']) query[filter] = () => query;
-  return { db: { from: () => query } as unknown as SupabaseClient, saved, reads };
+  for (const op of ['gte', 'lte']) {
+    query[op] = (column: string, value: number) => {
+      box.push([column, op, value]);
+      return query;
+    };
+  }
+  return { db: { from: () => query } as unknown as SupabaseClient, saved, reads, box };
 }
 
 describe('alerts in effect', () => {
@@ -34,5 +42,14 @@ describe('alerts in effect', () => {
     const { db, reads } = savedAlerts(183);
     expect(await createAlertsRepository(db).listActive(filter)).toHaveLength(183);
     expect(reads).toEqual([[0, 199]]);
+  });
+
+  it('keeps the box around a trip on every read', async () => {
+    const { db, reads, box } = savedAlerts(217);
+    const within = { minLat: 10.25, maxLat: 10.4, minLng: 123.85, maxLng: 124 };
+    expect(await createAlertsRepository(db).listActive({ ...filter, within })).toHaveLength(217);
+    const oneRead = [['lat', 'gte', 10.25], ['lat', 'lte', 10.4], ['lng', 'gte', 123.85], ['lng', 'lte', 124]];
+    expect(reads).toHaveLength(2);
+    expect(box).toEqual([...oneRead, ...oneRead]);
   });
 });
