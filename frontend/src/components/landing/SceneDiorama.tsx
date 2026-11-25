@@ -7,7 +7,7 @@ interface SceneDioramaProps {
   play: boolean;
 }
 
-/** Sample, not for merging: a live miniature of the happening, in the open space above its copy. */
+/** A live miniature of the happening, in the open space above its copy. */
 export default function SceneDiorama({ id, play }: SceneDioramaProps) {
   const box = useRef<HTMLDivElement>(null);
   const stage = useRef<Stage | null>(null);

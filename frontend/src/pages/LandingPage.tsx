@@ -64,7 +64,7 @@ export default function LandingPage() {
   }, [section, sceneSky, still, clock]);
   const screenSky = useMemo(() => skyGradient(sky.time, sky.weather), [sky.time, sky.weather]);
 
-  // Sample: behind the photos it's today's sky at the real Manila time. It only shows where the page opens up
+  // Behind the photos it's today's sky at the real Manila time. It only shows where the page opens up
   // (pageMotion.ts), so it runs only near those stretches. Inside one of the hero's scenes, that scene's sky plays, and
   // over the road at the end, the sky of what's happening on it.
   const inScene = section === 'top' && sceneSky !== null;

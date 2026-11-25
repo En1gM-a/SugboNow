@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { vars } from '@/components/landing/parts';
 
 /**
- * Sample, not for merging: the landing page's background as one day of what slows Cebu down, in real photographs.
+ * The landing page's background as one day of what slows Cebu down, in real photographs.
  * Each section has one photo fixed behind it. The next photo's top edge rides up the screen with its section, so
  * wherever you stop scrolling each photo is whole, and it pushes in slowly while its section passes. Without scroll
  * timelines, or with motion off, the photo changes with the section instead. Where the page has almost nothing on it

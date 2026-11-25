@@ -10,7 +10,7 @@ import { html, Ic, Sym, vars, Words } from './parts';
 
 const FILTERS: ExploreFilter[] = ['all', 'Weather', 'Traffic'];
 const LEDE = "SugboNow checks Cebu traffic, weather, floods and your mayor's posts, then tells you when to leave for every trip.";
-// Sample: these happenings step into a live miniature of themselves (diorama/stage.js), loaded on the first visit to one.
+// These happenings step into a live miniature of themselves (diorama/stage.js), loaded on the first visit to one.
 const DIORAMAS = ['flood', 'typhoon', 'bridge', 'sinulog'];
 const SceneDiorama = lazy(() => import('./SceneDiorama'));
 

@@ -1,4 +1,4 @@
-// Sample: one diorama at a time on a transparent canvas, for the hero's happenings. It follows the kit's mountWorld
+// One diorama at a time on a transparent canvas, for the hero's happenings. It follows the kit's mountWorld
 // (world.js): the same fixed camera, fitted to the world's declared bounds, 30 frames a second at most, and no drawing
 // while it's off screen. It drops mountWorld's white backdrop and finish pass so the scene's own sky shows around the
 // diorama, and it lights each world to match its happening's sky.
