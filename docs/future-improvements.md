@@ -16,11 +16,13 @@ The code references were checked on 2026-11-06 against `main`, after #49 landed.
 
 ## 2. Map zoom and place search
 
+**Partly done (branch `frontend/place-search`):** the pin picker on Profile and Welcome has a search. It looks through a built-in list of Cebu areas, landmarks and streets in the browser, so it calls no outside service (see "Place list" in `docs/data-sources.md`). **Still to do:** scroll-wheel zoom, a search on the Traffic and rain maps, and house numbers, which the list doesn't have. The notes below are kept for that.
+
 **Asked for:**
 - Every map zooms with the scroll wheel.
 - Users can type an address or a place and the map moves there, so they don't have to pan around the whole map to find it.
 
-**Today:** there are three maps: Traffic, Weather's rain map, and the pin picker on Welcome and Profile. They all use `useMapOptions()` in `frontend/src/components/map/maps.tsx`, which sets `scrollWheelZoom: false`. None of them has a search.
+**Today:** there are three maps: Traffic, Weather's rain map, and the pin picker on Welcome and Profile. They all use `useMapOptions()` in `frontend/src/components/map/maps.tsx`, which sets `scrollWheelZoom: false`. Only the pin picker has a search.
 
 **Settle first:**
 - **Scroll trap:** scroll zoom can trap page scrolling while the pointer is over a map. Common fixes are zooming with Ctrl or ⌘ plus scroll (with a short hint), or zooming only after the map has been clicked.

@@ -1,7 +1,8 @@
-// Add or edit a saved place: kind, name, address and a map pin for its coordinates.
+// Add or edit a saved place: kind, name, address and a map pin for its coordinates, with a search that moves the pin.
 
 import { useState, type FormEvent } from 'react';
 import { Field, SelectField } from '@/components/auth/Field';
+import { PlaceSearch } from '@/components/locations/PlaceSearch';
 import { LazyPinDropMap } from '@/components/map/LazyMaps';
 import { Button } from '@/components/ui/Button';
 import { Segmented } from '@/components/ui/Segmented';
@@ -9,9 +10,13 @@ import { useFormErrors } from '@/hooks/useFormErrors';
 import { useAreas, useProfile } from '@/hooks/useProfile';
 import { fieldError } from '@/lib/apiClient';
 import { CEBU_CENTER, KIND_META, KINDS } from '@/lib/places';
+import { placeAddress, type PlaceResult } from '@/lib/placeSearch';
 import type { Location, LocationInput, LocationKind } from '@/types/api';
 
 type FieldName = 'label' | 'addressText';
+/** How close the map zooms in on what was chosen. */
+const TOWN_ZOOM = 14;
+const RESULT_ZOOM: Record<PlaceResult['kind'], number> = { area: 15, landmark: 17, street: 17 };
 const ORDER: readonly FieldName[] = ['label', 'addressText'];
 
 interface PlaceFormProps {
@@ -37,7 +42,9 @@ export function PlaceForm({ idBase, initial, kinds = KINDS, defaultKind = kinds[
   const [address, setAddress] = useState(initial?.addressText ?? defaultAddress);
   // Null until the user moves it: the pin starts at their city (handoff: signup.md).
   const [moved, setMoved] = useState<{ lat: number; lng: number } | null>(initial ? { lat: initial.lat, lng: initial.lng } : null);
-  const [jump, setJump] = useState(0);
+  const [jump, setJump] = useState({ count: 0, zoom: TOWN_ZOOM });
+  // The address the search last filled in, so a new result may replace it but never what the user typed.
+  const [filled, setFilled] = useState('');
   const [serverError, setServerError] = useState<unknown>(null);
   const [saving, setSaving] = useState(false);
 
@@ -73,6 +80,19 @@ export function PlaceForm({ idBase, initial, kinds = KINDS, defaultKind = kinds[
     setKind(next);
   }
 
+  function jumpTo(at: { lat: number; lng: number }, zoom: number) {
+    setMoved({ lat: at.lat, lng: at.lng });
+    setJump((j) => ({ count: j.count + 1, zoom }));
+  }
+
+  function pickResult(place: PlaceResult) {
+    jumpTo(place, RESULT_ZOOM[place.kind]);
+    if (address.trim() && address !== filled) return;
+    const next = placeAddress(place).slice(0, 200);
+    setAddress(next);
+    setFilled(next);
+  }
+
   const pinError = fieldError(serverError, 'lat') ?? fieldError(serverError, 'lng');
 
   return (
@@ -99,27 +119,28 @@ export function PlaceForm({ idBase, initial, kinds = KINDS, defaultKind = kinds[
         error={shown.addressText ?? fieldError(serverError, 'addressText')}
       />
       <div className="field">
-        <SelectField
-          id={`${idBase}-jump`}
-          label="Pin on the map"
-          value=""
-          hint="Tap the map or drag the pin to the exact spot."
-          onChange={(e) => {
-            const area = areas.data?.find((a) => a.slug === e.target.value);
-            if (!area) return;
-            setMoved({ lat: area.lat, lng: area.lng });
-            setJump((n) => n + 1);
-          }}
-        >
-          <option value="">Jump to a town</option>
-          {(areas.data ?? []).map((a) => (
-            <option key={a.slug} value={a.slug}>
-              {a.name}
-            </option>
-          ))}
-        </SelectField>
+        <div className="place-find">
+          <PlaceSearch id={`${idBase}-search`} near={pin} onPick={pickResult} />
+          <SelectField
+            id={`${idBase}-jump`}
+            label="Or jump to a town"
+            value=""
+            onChange={(e) => {
+              const area = areas.data?.find((a) => a.slug === e.target.value);
+              if (area) jumpTo(area, TOWN_ZOOM);
+            }}
+          >
+            <option value="">Choose a town</option>
+            {(areas.data ?? []).map((a) => (
+              <option key={a.slug} value={a.slug}>
+                {a.name}
+              </option>
+            ))}
+          </SelectField>
+        </div>
+        <p className="field-hint">Then tap the map or drag the pin to the exact spot.</p>
         {/* The user's city can arrive after the map opens, so counting it as a jump brings the map to the pin. */}
-        <LazyPinDropMap lat={pin.lat} lng={pin.lng} kind={kind} jump={jump + (home ? 1 : 0)} onChange={(lat, lng) => setMoved({ lat, lng })} />
+        <LazyPinDropMap lat={pin.lat} lng={pin.lng} kind={kind} jump={jump.count + (home ? 1 : 0)} jumpZoom={jump.zoom} onChange={(lat, lng) => setMoved({ lat, lng })} />
         {pinError && <p className="field-err">{pinError}</p>}
       </div>
       <div className="form-actions">
