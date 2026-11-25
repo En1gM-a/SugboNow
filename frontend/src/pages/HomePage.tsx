@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'rea
 import { flushSync } from 'react-dom';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Field, PasswordField, SelectField } from '@/components/auth/Field';
+import { SignOutDialog } from '@/components/auth/SignOutDialog';
 import { CountUp } from '@/components/CountUp';
 import { GoogleLogo } from '@/components/icons/GoogleLogo';
 import { LiveIcon } from '@/components/LiveIcon';
@@ -518,6 +519,7 @@ export default function HomePage() {
   const [destination, setDestination] = useState<string | null>(null);
   // Stays on through the ride, when saving has already filled the profile in.
   const [setup, setSetup] = useState(false);
+  const [askingSignOut, setAskingSignOut] = useState(false);
 
   useEffect(() => {
     // Coming here from inside the app (after sign-out): move focus to the form's title.
@@ -634,7 +636,7 @@ export default function HomePage() {
 
   function handleSetupSignOut() {
     setSetup(false);
-    void signOut();
+    return signOut();
   }
 
   async function handleReset(email: string): Promise<string | null> {
@@ -747,10 +749,13 @@ export default function HomePage() {
               googleReturn={googleReturn}
               onRetryCheck={() => void profile.refetch()}
               onFinishSetup={handleFinishSetup}
-              onSignOut={handleSetupSignOut}
+              onSignOut={() => setAskingSignOut(true)}
             />
           </div>
         </main>
+        <SignOutDialog open={askingSignOut} onClose={() => setAskingSignOut(false)} signOut={handleSetupSignOut}>
+          What you typed here won&apos;t be saved. Sign in again any time to finish.
+        </SignOutDialog>
       </div>
     </EntranceContext.Provider>
   );

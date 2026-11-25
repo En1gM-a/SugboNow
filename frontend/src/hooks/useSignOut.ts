@@ -9,6 +9,6 @@ export function useSignOut() {
   return useCallback(() => {
     pages.forget();
     resetBell();
-    void signOut();
+    return signOut();
   }, [signOut]);
 }
