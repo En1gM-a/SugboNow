@@ -196,7 +196,7 @@ export const LAMPS = [
 export async function createSet(scene, mats, breathe) {
   const rnd = seeded(7), lit = [];
   const solid = bakeAlong(12, (W, root) => {
-    const { box, cylinder, group, line } = W;
+    const { box, cylinder, group } = W;
     // Sidewalks, curbs and the ground behind.
     for (const z of [-3.8, 3.8]) {
       box(END * 2, 0.3, 1.6, '#c4c8cf', 0, STEP - 0.15, z);
@@ -355,7 +355,7 @@ export async function createSet(scene, mats, breathe) {
 
   await breathe();
   // Palms, rain trees and one fire tree: jointed, so the wind can bend them.
-  const plants = cast(mats.people, (W, root) => {
+  const plants = cast(mats.people, (W) => {
     const { box, ball, group } = W, rng = seeded(5), list = [];
     const palm = (x, z, h) => {
       const base = group(x, 0.06, z), joints = [], fronds = [];

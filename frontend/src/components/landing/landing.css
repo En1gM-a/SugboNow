@@ -1759,11 +1759,13 @@ html:has(.lp)::view-transition-new(root) { animation: none; mix-blend-mode: norm
   font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
-  transition: transform 100ms var(--ease-out), background-color 150ms ease, color 150ms ease;
+  transition: transform 100ms var(--ease-out), background-color 150ms ease, color 150ms ease, opacity 150ms ease;
 }
 .lp-rd-pick .lp-ico { font-size: 24px; }
 .lp-rd-pick:active { transform: scale(0.97); }
 .lp-rd-pick[aria-pressed="true"] { background: var(--mango); color: #0e1726; }
+/* Until the road is built there's nothing to jump to, so they don't answer a press. */
+.lp-rd-pick:disabled { opacity: 0.55; pointer-events: none; }
 @media (hover: hover) {
   .lp-rd-pick:hover:not([aria-pressed="true"]) { background: var(--line); }
 }

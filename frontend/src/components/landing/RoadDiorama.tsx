@@ -93,7 +93,7 @@ export const RoadDiorama = memo(function RoadDiorama({ play, onSky }: RoadDioram
       <div ref={strip} className="lp-rd-strip" aria-hidden="true" />
       <div className="lp-rd-picks lp-night" role="group" aria-label="What happens on the road">
         {ROAD_SCENES.map((scene, i) => (
-          <button key={scene.id} type="button" className="lp-rd-pick" aria-pressed={i === at} onClick={() => stage.current?.go(i)}>
+          <button key={scene.id} type="button" className="lp-rd-pick" aria-pressed={i === at} disabled={state !== 'on'} onClick={() => stage.current?.go(i)}>
             {i === at && <span ref={fill} className="lp-rd-fill" aria-hidden="true" />}
             <Sym href={scene.icon} />
             {scene.label}

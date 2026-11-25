@@ -157,7 +157,7 @@ export function createScenes({ scene, mats, kinds, glow }) {
       for (const z of [-0.36, 0.36]) box(0.3, 0.66, 0.06, '#4b5a75', 0, 0.33, z, g);
     }
   }, festa);
-  const festival = stage((W, root) => {
+  const festival = stage((W) => {
     const skirt = new THREE.CylinderGeometry(0.2, 0.46, 0.66, 10), paint = (color) => new THREE.MeshBasicMaterial({ color });
     const dancers = [];
     for (let r = 0; r < 9; r++) for (let k = 0; k < 4; k++) {
