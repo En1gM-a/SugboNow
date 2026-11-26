@@ -1,9 +1,11 @@
 import { memo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { JEEP_BODY, KIN_A, KIN_B, ROAD, ROUTE_JEEP, WHEEL } from '@/lib/landing/art';
+import { JEEP_BODY, KIN_A, KIN_B, ROUTE_JEEP, WHEEL } from '@/lib/landing/art';
 import { TOWNS } from '@/lib/landing/data';
+import type { SkyScene } from '@/lib/skyControl';
 import { cx } from '@/utils/cx';
 import { html, Ic, RiseWords, ScrollText, vars } from './parts';
+import { RoadDiorama } from './RoadDiorama';
 
 /** A band of big moving type between sections. It's decoration: everything it says is said elsewhere. */
 export const Kinetic = memo(function Kinetic({ band }: { band: 'a' | 'b' }) {
@@ -123,7 +125,7 @@ export const Faq = memo(function Faq() {
   );
 });
 
-export const FinalCta = memo(function FinalCta() {
+export const FinalCta = memo(function FinalCta({ play, onRoadSky }: { play: boolean; onRoadSky: (sky: SkyScene | null) => void }) {
   return (
     <section className="lp-final" id="start" aria-labelledby="final-h">
       <div className="lp-wrap">
@@ -141,7 +143,7 @@ export const FinalCta = memo(function FinalCta() {
           </Link>
         </div>
       </div>
-      <div className="lp-road" aria-hidden="true" dangerouslySetInnerHTML={html(ROAD)} />
+      <RoadDiorama play={play} onSky={onRoadSky} />
     </section>
   );
 });

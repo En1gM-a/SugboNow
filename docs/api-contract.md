@@ -41,6 +41,9 @@ The frontend mirrors these shapes in `frontend/src/types/api.ts`.
 - JSON in and out. Field names are camelCase.
 - Every endpoint except `/api/health` needs the user's Supabase access token:
   `Authorization: Bearer <access_token>`. Missing or invalid tokens get `401`.
+  The API asks Supabase Auth about a token once, then trusts it for up to 60
+  seconds (never past its expiry). So a token revoked by signing out can still
+  be accepted for up to a minute.
 - Errors use one shape. `details` appears on validation errors, one entry per field:
 
   ```json
@@ -239,7 +242,7 @@ freshness), never the browser.
 | `travelMinutes` | Typical car travel time for the route (TomTom's historic traffic), not live traffic. |
 | `line` | `[lat, lng]` points along the roads, simplified to at most 300. |
 | `traffic` | The same route in stretches by current traffic, in order from `from` to `to`; each stretch starts where the last one ended. `level` is `heavy` (red), `medium` (yellow) or `free` (green), from TomTom's speed on that road in the route's direction (see `GET /api/traffic-flow`), or `null` where TomTom has no speed for the road. Empty when there's no current traffic data: then draw `line`. |
-| `alerts` | Active and upcoming `traffic`, `closure` and `flood` alerts within 100 m of this route's line, most important first, as Alert objects without `nearPlaces`. On My commute these are the only traffic alerts to show, on the map and in the list. |
+| `alerts` | Active and upcoming `traffic`, `closure` and `flood` alerts within 100 m of this route's line, most important first, as Alert objects without `nearPlaces`. On My commute these are the only traffic alerts to show, on the map and in the list. Taken from the newest 200 such alerts around the two routes. |
 
 - Show `withCclex` or `withoutCclex` by the profile's `allowCclex`. When the one you need is `null`, show only the two places and a note that the road route is still being found, with no line.
 - Routes are fetched only for pairs a trip or the usual commute uses, within about 30 minutes of saving them, and again when a place moves or the route is a week old. Other pairs stay `null`. `traffic` and `alerts` are worked out on every request, so they stay current.
@@ -265,6 +268,7 @@ never the browser.
 | `updatedAt` | When TomTom's speeds were fetched. `null`, with empty lists, when there's no current data: before the first fetch, or when the last one is over 45 minutes old (the job doesn't run overnight). |
 
 - A two-way road has a line for each direction, and the two overlap. Draw `free`, then `medium`, then `heavy`, so the slower direction shows on top.
+- The API keeps the flow it last read and looks for a newer one at most every 30 seconds, so a new flow can show up to 30 seconds after the job saves it. The same goes for `traffic` in `GET /api/routes`.
 
 ## Alerts
 

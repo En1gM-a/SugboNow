@@ -16,16 +16,15 @@ The code references were checked on 2026-11-06 against `main`, after #49 landed.
 
 ## 2. Map zoom and place search
 
-**Partly done (branch `frontend/place-search`):** the pin picker on Profile and Welcome has a search. It looks through a built-in list of Cebu areas, landmarks and streets in the browser, so it calls no outside service (see "Place list" in `docs/data-sources.md`). **Still to do:** scroll-wheel zoom, a search on the Traffic and rain maps, and house numbers, which the list doesn't have. The notes below are kept for that.
+**Partly done:** every map zooms with the scroll wheel, and the pin picker on Profile and Welcome has a search. The search looks through a built-in list of Cebu areas, landmarks and streets in the browser, so it calls no outside service (see "Place list" in `docs/data-sources.md`). **Still to do:** a search on the Traffic and rain maps, and house numbers, which the list doesn't have. The notes below are kept for that.
 
 **Asked for:**
 - Every map zooms with the scroll wheel.
 - Users can type an address or a place and the map moves there, so they don't have to pan around the whole map to find it.
 
-**Today:** there are three maps: Traffic, Weather's rain map, and the pin picker on Welcome and Profile. They all use `useMapOptions()` in `frontend/src/components/map/maps.tsx`, which sets `scrollWheelZoom: false`. Only the pin picker has a search.
+**Today:** there are three maps: Traffic, Weather's rain map, and the pin picker on Welcome and Profile. They all use `useMapOptions()` in `frontend/src/components/map/maps.tsx`, which sets `scrollWheelZoom: true`. So that a page can't trap your scrolling, `WheelZoom` in the same file pauses the wheel zoom while the page is scrolling and for 400 ms after. A scroll that carries a map under the pointer keeps scrolling the page. Only the pin picker has a search.
 
 **Settle first:**
-- **Scroll trap:** scroll zoom can trap page scrolling while the pointer is over a map. Common fixes are zooming with Ctrl or ⌘ plus scroll (with a short hint), or zooming only after the map has been clicked.
 - **A first search with no outside service:** `GET /api/areas` already returns each town's name and coordinates, so a search box can jump the map to a town. Streets, barangays and landmarks need a geocoding service.
 - **A geocoding service needs a decision:**
   - The docs disagree: `docs/handoffs/signup.md` says the browser must not call one, while `docs/api-contract.md` says the frontend geocodes addresses.
