@@ -15,6 +15,16 @@ describe('classifyAdvisory', () => {
     expect(kind('𝗖𝗟𝗔𝗦𝗦 𝗔𝗗𝗩𝗜𝗦𝗢𝗥𝗬 | 𝗢𝗖𝗧 𝟭𝟲 Face-to-face classes shall continue as scheduled')).toBe('advisory/medium');
   });
 
+  it('reads "no class suspension" and a lifted suspension as classes being on', () => {
+    expect(kind('NO CLASS SUSPENSION: classes will continue tomorrow, November 15')).toBe('advisory/medium');
+    expect(kind('No class suspension in Cebu City on Monday, says mayor')).toBe('advisory/medium');
+    expect(kind('Mayor: no suspension of classes on Friday despite the rain')).toBe('advisory/medium');
+    expect(kind('Class suspension lifted. Face-to-face classes resume tomorrow.')).toBe('advisory/medium');
+    expect(kind('Mayor lifts class suspension in Cebu City')).toBe('advisory/medium');
+    // A suspension for some levels is still a suspension.
+    expect(kind('Classes suspended in elementary and high school. No class suspension for college.')).toBe('advisory/high');
+  });
+
   it('does not treat news about suspension rules as a suspension', () => {
     expect(kind('Cebu drafts unified class suspension rules amid fluctuating air quality')).toBe('news/low');
   });

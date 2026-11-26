@@ -1,8 +1,8 @@
+import type { PostgrestError } from '@supabase/supabase-js';
 import { validate } from 'node-cron';
 import { describe, expect, it, vi } from 'vitest';
 import { CEBU_AREAS } from '../src/config/areas.js';
 import { buildJobs } from '../src/jobs/index.js';
-import { createGenerateBriefsJob } from '../src/jobs/generateBriefs.js';
 import { createIngestCebuDailyNewsJob, createIngestSunstarJob } from '../src/jobs/ingestLocalNews.js';
 import { createIngestNewsJob } from '../src/jobs/ingestNews.js';
 import { createIngestTrafficJob } from '../src/jobs/ingestTraffic.js';
@@ -10,6 +10,7 @@ import { createIngestWeatherJob } from '../src/jobs/ingestWeather.js';
 import { runJob } from '../src/jobs/scheduler.js';
 import type { WeatherApiForecast } from '../src/integrations/weatherapi.js';
 import type { NewAlert, NewsArticle, TrafficFlowLines } from '../src/types/index.js';
+import { dbError } from '../src/utils/db.js';
 
 const now = new Date('2026-10-22T04:00:00Z');
 const logger = () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() });
@@ -23,13 +24,12 @@ function article(title: string, publishedAt = '2026-10-22T03:00:00Z'): NewsArtic
 }
 
 describe('job list', () => {
-  it('has eight jobs with valid Manila cron schedules', () => {
+  it('has seven jobs with valid Manila cron schedules', () => {
     const jobs = buildJobs({
       alerts: alertsRepo(),
       weather: { save: vi.fn(), saveRegionalForecast: vi.fn() },
       routes: { listPairs: vi.fn(), listSaved: vi.fn(), save: vi.fn() },
-      trafficFlow: { get: vi.fn(), save: vi.fn() },
-      briefs: { generateAll: vi.fn() },
+      trafficFlow: { get: vi.fn(), fetchedAt: vi.fn(), save: vi.fn() },
       keys: {},
       feeds: { sunstar: 'https://feed.example/s', cebuDailyNews: 'https://feed.example/c' },
       logger: logger(),
@@ -42,7 +42,6 @@ describe('job list', () => {
       'ingestCebuDailyNews',
       'ingestPagasa',
       'ingestRoutes',
-      'generateBriefs',
     ]);
     for (const job of jobs) expect(validate(job.schedule), job.name).toBe(true);
   });
@@ -95,7 +94,7 @@ describe('traffic flow in the traffic job', () => {
   const noIncidents = async () => [];
 
   it('saves the flow after the alerts', async () => {
-    const flow = { get: vi.fn(async () => null), save: vi.fn(async () => undefined) };
+    const flow = { fetchedAt: vi.fn(async () => null), save: vi.fn(async () => undefined) };
     const job = createIngestTrafficJob({ apiKey: 'key', alerts: alertsRepo(), flow, fetchIncidents: noIncidents, fetchFlow: async () => lines });
     expect(await job.run(now)).toEqual({ status: 'ok', detail: '0 incidents, 0 alerts; traffic flow on 2 road lines', saved: 0 });
     expect(flow.save).toHaveBeenCalledWith(lines, now);
@@ -104,7 +103,7 @@ describe('traffic flow in the traffic job', () => {
   it('keeps flow saved minutes ago, so a second run spends no tiles', async () => {
     const fetchFlow = vi.fn(async () => lines);
     const savedAt = new Date(now.getTime() - 5 * 60_000).toISOString();
-    const flow = { get: vi.fn(async () => ({ area: 'metro_cebu', lines, fetched_at: savedAt })), save: vi.fn() };
+    const flow = { fetchedAt: vi.fn(async () => savedAt), save: vi.fn() };
     const job = createIngestTrafficJob({ apiKey: 'key', alerts: alertsRepo(), flow, fetchIncidents: noIncidents, fetchFlow });
     expect((await job.run(now)).detail).toBe('0 incidents, 0 alerts; traffic flow is still fresh');
     expect(fetchFlow).not.toHaveBeenCalled();
@@ -115,7 +114,7 @@ describe('traffic flow in the traffic job', () => {
     const job = createIngestTrafficJob({
       apiKey: 'key',
       alerts,
-      flow: { get: vi.fn(async () => null), save: vi.fn() },
+      flow: { fetchedAt: vi.fn(async () => null), save: vi.fn() },
       fetchIncidents: async () => [
         { type: 'Feature', geometry: { type: 'Point', coordinates: [123.89, 10.31] }, properties: { id: 'T1', iconCategory: 8, magnitudeOfDelay: 4 } },
       ],
@@ -201,16 +200,21 @@ describe('news jobs', () => {
   });
 });
 
-describe('briefs job and runner', () => {
-  it('reports generated briefs', async () => {
-    const job = createGenerateBriefsJob({ generateAll: vi.fn(async () => ({ generated: 3, failed: 1 })) });
-    expect(await job.run(now)).toEqual({ status: 'ok', detail: '3 briefs, 1 failed', saved: 3 });
-  });
-
+describe('job runner', () => {
   it('never throws from runJob', async () => {
     const log = logger();
     const job = { name: 'boom', schedule: '* * * * *', description: '', run: async () => { throw new Error('exploded'); } };
     expect(await runJob(job, log, now)).toEqual({ status: 'failed', detail: 'exploded' });
     expect(log.error).toHaveBeenCalled();
+  });
+
+  it('says what the database answered when a job fails on it', async () => {
+    // The routes job kept failing with only "Sign in required." in its log, which hid the reason.
+    const refused = { code: 'PGRST301', message: 'JWT expired', details: '', hint: '' } as PostgrestError;
+    const log = logger();
+    const job = { name: 'routes', schedule: '* * * * *', description: '', run: async () => { throw dbError(refused); } };
+    const detail = 'Sign in required. (PGRST301: JWT expired)';
+    expect(await runJob(job, log, now)).toEqual({ status: 'failed', detail });
+    expect(log.error).toHaveBeenCalledWith('Job routes: failed', expect.objectContaining({ detail }));
   });
 });

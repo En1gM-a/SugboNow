@@ -10,7 +10,13 @@ export interface DbErrorMessages {
   unique?: string;
 }
 
+// The database's own answer stays on the error as `cause`. The message is written
+// for the person using the app, so the cause is what tells a log what went wrong.
 export function dbError(error: PostgrestError, messages: DbErrorMessages = {}): Error {
+  return Object.assign(apiError(error, messages), { cause: error });
+}
+
+function apiError(error: PostgrestError, messages: DbErrorMessages): Error {
   switch (error.code) {
     case "23503": // foreign_key_violation
       return conflict(messages.foreignKey ?? "This record is still in use.");
@@ -28,7 +34,7 @@ export function dbError(error: PostgrestError, messages: DbErrorMessages = {}): 
     case "PGRST303": // JWT claims invalid, e.g. expired
       return unauthorized();
     default:
-      return Object.assign(new Error(`Database error: ${error.message}`), { cause: error });
+      return new Error(`Database error: ${error.message}`);
   }
 }
 

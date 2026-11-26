@@ -5,12 +5,13 @@
 //   npm run job -- ingestWeather
 
 import { createContainer } from "../src/container";
+import { buildJobs } from "../src/jobs";
 import { runJob } from "../src/jobs/scheduler";
 import { logger } from "../src/utils/logger";
 
 async function main(): Promise<number> {
   const name = process.argv[2];
-  const { jobs } = createContainer();
+  const jobs = buildJobs(createContainer().jobDependencies);
 
   if (!name || name === "list") {
     console.log("Jobs:");
