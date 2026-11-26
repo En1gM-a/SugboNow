@@ -65,6 +65,12 @@ This page sells the product instead of being used every day, so a few rules are 
 - **`<motion>`, "Nothing is triggered by scrolling" and the timing limits:** the map tours the happenings by itself every
   3.5 seconds, the Mornings rail and the bands of big type keep moving, scrolling speed feeds the wind and the type's
   lean, and vehicles drive along the road. The sky walks through one day as you scroll, and each happening has its own.
+- **The road at the end:** the last section ends in one Cebu road in 3D, the whole width of the page
+  (`components/landing/RoadDiorama.tsx`, `lib/landing/diorama/road/`). It plays seven happenings (clear, rush hour,
+  festival, heavy rain, flood, bagyo, road works), 8 seconds each, dissolves between them, and sets the page's sky while
+  it's on screen. Buttons jump to any of them, a sideways drag looks along the road, and a tap makes a vehicle hop. three.js
+  loads only when the road is near, and without WebGL the drawn road shows instead. It shows kinds of happenings and makes
+  no claim about a real event, so it needs no source.
 - **`<icons>`, "Where they move":** more live icons loop here, and the jeepney is on screen without a press.
 - **`<layout>`:** it has its own floating nav instead of the app shell, and the little phone screens use text under
   0.75rem. They are drawings, hidden from screen readers.
