@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Field, SelectField } from '@/components/auth/Field';
+import { SignOutDialog } from '@/components/auth/SignOutDialog';
 import { Icon, type IconName } from '@/components/icons/Icon';
 import { Page } from '@/components/layout/Page';
 import { PlaceForm } from '@/components/locations/PlaceForm';
@@ -362,13 +363,15 @@ function DisplaySection() {
 
 function SignOutSection() {
   const signOut = useSignOut();
+  const [asking, setAsking] = useState(false);
   return (
     <div className="signout">
       <p className="muted">You can sign back in any time. Your places and trips stay saved.</p>
-      <Button variant="secondary" onClick={signOut}>
+      <Button variant="secondary" onClick={() => setAsking(true)}>
         <Icon name="sign-out" />
         Sign out
       </Button>
+      <SignOutDialog open={asking} onClose={() => setAsking(false)} signOut={signOut} />
     </div>
   );
 }

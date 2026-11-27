@@ -2,6 +2,7 @@ import { AnimatePresence } from 'motion/react';
 import * as m from 'motion/react-m';
 import { useState } from 'react';
 import { NavLink, useLocation, useOutlet } from 'react-router-dom';
+import { SignOutDialog } from '@/components/auth/SignOutDialog';
 import { Icon } from '@/components/icons/Icon';
 import { useOnline } from '@/hooks/useBrowser';
 import { useBrief } from '@/hooks/useFeeds';
@@ -88,13 +89,14 @@ export function AppShell() {
   const location = useLocation();
   const { lite, still } = useDisplay();
   const signOut = useSignOut();
+  const [leaving, setLeaving] = useState(false);
 
   // Still mode keeps only a short fade (120 ms); Lite mode drops the blur.
   const leave = still ? { opacity: 0 } : { opacity: 0, scale: 0.985, ...(lite ? {} : { filter: 'blur(8px)' }) };
 
   return (
     <div className="app">
-      <NavRail onSignOut={signOut} />
+      <NavRail onSignOut={() => setLeaving(true)} />
       <div className="shell">
         <Header />
         <OfflineBanner />
@@ -107,6 +109,7 @@ export function AppShell() {
         </main>
       </div>
       <TabBar />
+      <SignOutDialog open={leaving} onClose={() => setLeaving(false)} signOut={signOut} />
     </div>
   );
 }

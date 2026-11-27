@@ -2520,6 +2520,48 @@
     overflow-y: auto;
     overscroll-behavior: contain;
   }
+  /* A question to answer before something happens, like signing out. Solid, so the page never shows through the words. */
+  .confirm {
+    position: fixed;
+    inset: 0;
+    width: min(400px, calc(100% - 32px));
+    max-height: calc(100svh - 32px);
+    margin: auto;
+    padding: 0;
+    overflow-y: auto;
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    background: var(--glass-solid);
+    box-shadow: var(--glass-shadow);
+    color: var(--ink);
+    animation: card-again 200ms var(--ease-out) backwards;
+  }
+  .confirm::backdrop {
+    background: rgba(6, 10, 20, 0.5);
+  }
+  .confirm-inner {
+    display: grid;
+    gap: 8px;
+    padding: 22px;
+  }
+  .confirm-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    line-height: 1.3;
+    text-wrap: balance;
+  }
+  .confirm-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .confirm-actions .btn {
+    flex: 1 1 auto;
+    min-height: 48px;
+    padding: 0 14px;
+    white-space: nowrap;
+  }
   .pick-list {
     display: grid;
   }
@@ -4070,6 +4112,7 @@
 }
 :root[data-still] .skel,
 :root[data-still] .peek-sheet,
+:root[data-still] .confirm,
 :root[data-still] .profile-screen {
   animation: none;
 }
@@ -4080,6 +4123,7 @@
 @media (prefers-reduced-motion: reduce) {
   .skel,
   .peek-sheet,
+  .confirm,
   .profile-screen {
     animation: none;
   }
