@@ -1703,6 +1703,106 @@
     translate: 0 -50%;
     --icon: 16px;
   }
+  /* The search and the town list over a place's pin map: side by side where there's room. */
+  .place-find {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+    gap: 10px 14px;
+  }
+  .place-search-box {
+    position: relative;
+    min-width: 0;
+  }
+  .place-search-box > .ic {
+    position: absolute;
+    top: 50%;
+    left: 13px;
+    color: var(--muted);
+    pointer-events: none;
+    translate: 0 -50%;
+    --icon: 18px;
+  }
+  .field .place-search-box input {
+    padding-inline: 40px 46px;
+    text-overflow: ellipsis;
+  }
+  .place-search-box input::placeholder {
+    color: var(--muted);
+    opacity: 1;
+  }
+  .place-search-clear {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 13px;
+    color: var(--muted);
+    cursor: pointer;
+    transition:
+      color 150ms ease,
+      transform 100ms var(--ease-out);
+    --icon: 16px;
+  }
+  .place-search-clear:active {
+    transform: scale(0.97);
+  }
+  /* Solid, so the map under it never shows through the names. */
+  .place-search-list {
+    position: absolute;
+    z-index: 5;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    max-height: 264px;
+    padding: 6px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--glass-solid);
+    box-shadow: var(--glass-shadow);
+  }
+  .place-search-list[hidden] {
+    display: none;
+  }
+  .place-search-note {
+    padding: 12px 14px;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .place-search-option {
+    display: grid;
+    align-content: center;
+    min-height: 48px;
+    padding: 6px 10px;
+    border-radius: 11px;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+    line-height: 1.3;
+  }
+  .place-search-option b {
+    font-size: 0.92rem;
+    font-weight: 700;
+  }
+  .place-search-option span {
+    color: var(--muted);
+    font-size: 0.82rem;
+  }
+  .place-search-option[aria-selected="true"] {
+    background: var(--chip);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  @media (hover: hover) {
+    .place-search-option:hover {
+      background: var(--chip);
+    }
+    .place-search-clear:hover {
+      color: var(--ink);
+    }
+  }
   .field-hint {
     font-size: 0.85rem;
     color: var(--muted);

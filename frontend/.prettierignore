@@ -3,3 +3,4 @@ dist
 coverage
 package-lock.json
 public/mockServiceWorker.js
+src/data/cebuPlaces.json
