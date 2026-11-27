@@ -1315,11 +1315,79 @@
     margin-top: 8px;
     color: var(--muted);
   }
-  .done-today {
-    margin-top: 12px;
-    font-size: 1.45rem;
-    font-weight: 800;
-    letter-spacing: -0.015em;
+  /* A link over a whole card; the card's own buttons sit above it. */
+  .card-cover {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    transition: box-shadow 150ms ease;
+  }
+  .trip .btn,
+  .trip .delay-chip {
+    position: relative;
+    z-index: 1;
+  }
+  .card:has(> .card-cover:active) {
+    scale: 0.995;
+  }
+  /* The leave time on Today: large enough to lead the card without filling it. */
+  .trip .big,
+  .trip .skel-hero {
+    margin-top: 10px;
+  }
+  .trip .big {
+    font-size: clamp(1.75rem, 4vw, 2.1rem);
+    letter-spacing: -0.02em;
+  }
+  .trip .big small {
+    font-size: 0.95rem;
+    vertical-align: 0.15em;
+  }
+  .trip .skel-hero {
+    height: clamp(1.75rem, 4vw, 2.1rem);
+  }
+  .card-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0 12px;
+  }
+  .card-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: color 150ms ease;
+    --icon: 12px;
+  }
+  .card-hint .ic {
+    transition: transform 150ms var(--ease-out);
+  }
+  .card:has(> .card-cover:focus-visible) .card-hint {
+    color: var(--ink);
+  }
+  @media (hover: hover) {
+    .card-cover:hover {
+      box-shadow: inset 0 0 0 1.5px var(--line);
+    }
+    .card:has(> .card-cover:hover) .card-hint {
+      color: var(--ink);
+    }
+    .card:has(> .card-cover:hover) .card-hint .ic {
+      transform: translateX(3px);
+    }
+  }
+  :root[data-still] .card-hint .ic {
+    transition: none;
+    transform: none !important;
+  }
+  .trip-more {
+    justify-self: start;
+    margin-top: 4px;
   }
   .usual {
     margin-top: 10px;
