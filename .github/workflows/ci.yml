@@ -3,7 +3,6 @@ name: CI
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
-    branches: [main, dev]
   push:
     branches: [main, dev]
 
@@ -13,7 +12,7 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # NOTE: the job names "frontend" and "backend" are the required status checks
 # in .github/rulesets/protect-main.json. If you rename a job, update the ruleset too.
@@ -26,6 +25,17 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && format('refs/pull/{0}/head', github.event.pull_request.number) || '' }}
+          fetch-depth: 0
+      - name: Merge latest base branch
+        if: github.event_name == 'pull_request'
+        working-directory: .
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags origin "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+          git -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" merge --no-edit "origin/${BASE_REF}"
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
@@ -43,6 +53,17 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && format('refs/pull/{0}/head', github.event.pull_request.number) || '' }}
+          fetch-depth: 0
+      - name: Merge latest base branch
+        if: github.event_name == 'pull_request'
+        working-directory: .
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags origin "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+          git -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" merge --no-edit "origin/${BASE_REF}"
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
@@ -79,6 +100,17 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && format('refs/pull/{0}/head', github.event.pull_request.number) || '' }}
+          fetch-depth: 0
+      - name: Merge latest base branch
+        if: github.event_name == 'pull_request'
+        working-directory: .
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags origin "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+          git -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" merge --no-edit "origin/${BASE_REF}"
       - name: Bootstrap auth schema and mock pg_cron extension
         run: |
           CONTAINER_ID=$(docker ps --filter "ancestor=postgres:15-alpine" --format "{{.ID}}" | head -n 1)

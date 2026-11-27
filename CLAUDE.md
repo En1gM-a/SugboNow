@@ -98,7 +98,7 @@ Never commit `.env` files, API keys, Supabase service-role keys, tokens, or `nod
 - PR bodies must use `.github/pull_request_template.md`, must not be empty, and must have all `<!-- ... -->` template HTML comments deleted before opening (Dependabot PRs are exempt from body checks).
 - On Windows, avoid UTF-8 BOM (`efbbbf`) from PowerShell 5.1 (`Out-File`, `>`, `Set-Content`); use `git commit -m`, Git Bash heredoc `<<'EOF'`, or UTF-8 without BOM files. Use single quotes or files when messages contain backticks or `$`.
 - Do not push directly to `main` or `dev`.
-- Update feature branches with `git fetch origin && git merge origin/main` (or GitHub's **Update branch** button), and delete local branches after merge (`git fetch --prune`).
+- Update feature branches with `git fetch origin && git merge origin/main` (or GitHub's **Update branch** button) when resolving conflicts or pulling needed changes from `main` (skip updating unrelated approved PRs so approvals are not dismissed), and delete local branches after merge (`git fetch --prune`).
 - Always run linters before pushing: `npm --prefix frontend run lint` and `npm --prefix backend run lint`. ESLint runs with `--max-warnings=0` and forbids explicit `any` and cross-boundary imports (e.g. frontend importing from backend). Prettier configs and `npm --prefix <app> run format` / `format:check` scripts are configured, **not enforced in CI yet** — do **not** run `format` repo-wide on unrelated PRs before the dedicated formatting PR.
 - Open a pull request, wait for the `frontend` and `backend` CI checks (which validate PR hygiene, run zero-warning ESLint, builds, and backend tests), and obtain a teammate approval before squash-merging.
 - Preserve unrelated working-tree changes. Check `git status` before starting work.
@@ -179,7 +179,7 @@ For **each** PR, include:
 - **Link, title, author, branch → base, draft status, last updated.**
 - **What it changes:** a few sentences in plain language, plus the files or areas touched (`frontend/`, `backend/`, `supabase/`, `docs/`, `.github/`). For dependency PRs, list every package with its from → to version and flag major-version bumps.
 - **CI:** the result of the `frontend` and `backend` checks, with failures named.
-- **Mergeability:** mergeable, behind `main`, or conflicting (name the conflicting files), and whether the `protect-main` ruleset still blocks it (needs a non-author approval, up-to-date branch, resolved threads).
+- **Mergeability:** mergeable, behind `main`, or conflicting (name the conflicting files), and whether the `protect-main` ruleset still blocks it (needs a non-author approval, passing required checks, no merge conflicts, resolved threads).
 - **Review state:** approvals, requested changes, and open review comments.
 - **Dependencies and risks:** PRs that must merge first (for example, a migration before the code that uses it), breaking changes, database or security impact.
 - **Recommendation:** merge, needs changes, or needs a teammate's review, and why.

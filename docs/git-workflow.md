@@ -124,7 +124,10 @@ git pull --ff-only origin main
 
 The repository uses **Squash and Merge** on GitHub and enforces **Required Linear History** (`required_linear_history: true`). Because every PR squashes into a single commit on merge, updating your PR branch by merging `origin/main` still keeps `main`'s commit history strictly linear without rewriting branch history or force-pushing.
 
-- **Update your branch by merging `origin/main`:**
+> [!NOTE]
+> Non-conflicting PRs do **not** need to click **Update branch** after unrelated merges to `main` (`strict_required_status_checks_policy: false`), because updating a branch pushes a new commit that dismisses existing approvals (`dismiss_stale_reviews_on_push: true`). Instead, update your branch only when resolving merge conflicts or pulling in changes you depend on, and click **Re-run all jobs** in GitHub Actions if you want to re-verify an approved PR against a newer `main` (CI automatically merges the live base branch inside the runner before running checks).
+
+- **When you need to resolve conflicts or pull changes from `origin/main`:**
 
 ```bash
 git fetch origin
@@ -263,7 +266,7 @@ The repository ruleset (`.github/rulesets/protect-main.json`) configures branch 
     {
       "type": "required_status_checks",
       "parameters": {
-        "strict_required_status_checks_policy": true,
+        "strict_required_status_checks_policy": false,
         "required_status_checks": [
           { "context": "frontend" },
           { "context": "backend" }
@@ -274,4 +277,4 @@ The repository ruleset (`.github/rulesets/protect-main.json`) configures branch 
 }
 ```
 
-These rules protect `main` and `dev` by requiring at least one non-author approval on the latest push, passing `frontend` and `backend` CI checks on an up-to-date branch (`strict_required_status_checks_policy: true`), linear commit history via Squash and Merge, and resolved review threads. Repository administrators apply or update this ruleset with [`scripts/apply-github-security.ps1`](../scripts/apply-github-security.ps1).
+These rules protect `main` and `dev` by requiring at least one non-author approval on the latest push, passing `frontend` and `backend` CI checks (where CI automatically merges the live base branch inside the runner without dismissing existing approvals, keeping `strict_required_status_checks_policy: false` so unrelated PRs do not domino `BEHIND`), linear commit history via Squash and Merge, and resolved review threads. Repository administrators apply or update this ruleset with [`scripts/apply-github-security.ps1`](../scripts/apply-github-security.ps1).
