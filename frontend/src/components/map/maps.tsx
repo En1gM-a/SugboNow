@@ -45,14 +45,37 @@ const OSM_CREDIT = '&copy; <a href="https://www.openstreetmap.org/copyright">Ope
 const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
 const round5 = (n: number) => Math.round(n * 1e5) / 1e5;
 
-/** The options every map shares. Still mode turns off Leaflet's own zoom and fade animations. */
+/** The options every map shares. The scroll wheel zooms (see WheelZoom). Still mode turns off Leaflet's own zoom and fade animations. */
 function useMapOptions() {
   const { still } = useDisplay();
-  return { preferCanvas: true, scrollWheelZoom: false, attributionControl: false, zoomAnimation: !still, fadeAnimation: !still, markerZoomAnimation: !still, className: 'map-fill' };
+  return { preferCanvas: true, scrollWheelZoom: true, attributionControl: false, zoomAnimation: !still, fadeAnimation: !still, markerZoomAnimation: !still, className: 'map-fill' };
 }
 
 function Tiles({ credit = OSM_CREDIT }: { credit?: string }) {
   return <TileLayer url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" attribution={credit} maxZoom={19} />;
+}
+
+/**
+ * The scroll wheel zooms the map, except while the page itself is scrolling: a scroll that carries the map under the
+ * pointer keeps scrolling the page instead of getting stuck zooming the map.
+ */
+function WheelZoom() {
+  const map = useMap();
+  useEffect(() => {
+    let settle = 0;
+    const onScroll = () => {
+      map.scrollWheelZoom.disable();
+      window.clearTimeout(settle);
+      settle = window.setTimeout(() => map.scrollWheelZoom.enable(), 400);
+    };
+    // Capture hears the app's own scrolling panels too, not just the window.
+    document.addEventListener('scroll', onScroll, { capture: true, passive: true });
+    return () => {
+      document.removeEventListener('scroll', onScroll, { capture: true });
+      window.clearTimeout(settle);
+    };
+  }, [map]);
+  return null;
 }
 
 /** Leaflet only tracks the window; this also covers a tab or sheet changing the map's size. */
@@ -209,6 +232,7 @@ export function AlertsMap({
         <Tiles credit={`${OSM_CREDIT} · Traffic data &copy; TomTom`} />
         <AttributionControl prefix={false} position={creditPosition} />
         <AutoResize />
+        <WheelZoom />
         <FitBounds points={points} bottomInset={bottomInset} />
         {selected && <FlyTo target={[selected.lat as number, selected.lng as number]} />}
         {flowLevels && <TrafficLines lines={flowLevels} weight={3} opacity={0.8} />}
@@ -295,6 +319,7 @@ export function WeatherMap({ areas, hour, selected, onSelect, center = [10.31, 1
         <Tiles />
         <AttributionControl prefix={false} />
         <AutoResize />
+        <WheelZoom />
         <KeepInView target={chosen ? [chosen.area.lat, chosen.area.lng] : null} />
         {areas.map((w, i) => (
           <Marker
@@ -316,10 +341,10 @@ function ClickToPin({ onPick }: { onPick: (lat: number, lng: number) => void }) 
   return null;
 }
 
-function Recenter({ lat, lng, jump }: { lat: number; lng: number; jump: number }) {
+function Recenter({ lat, lng, jump, zoom }: { lat: number; lng: number; jump: number; zoom: number }) {
   const map = useMap();
   useEffect(() => {
-    if (jump > 0) map.setView([lat, lng], 14, { animate: !getDisplay().still });
+    if (jump > 0) map.setView([lat, lng], zoom, { animate: !getDisplay().still });
     // Only when the form asks to jump, not every time the pin moves.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jump, map]);
@@ -333,14 +358,16 @@ interface PinDropMapProps {
   onChange: (lat: number, lng: number) => void;
   /** Raise it to move the map to the pin, e.g. after choosing a town. */
   jump?: number;
+  /** How close that move zooms in: a street needs to be nearer than a town. */
+  jumpZoom?: number;
   className?: string;
 }
 
 /**
- * Tap the map or drag the pin to set a place's coordinates. The browser must not call a geocoding service, so this is
- * how a place gets its spot. For keyboard users: pan with the arrow keys, then "Put the pin at the map's center".
+ * Tap the map or drag the pin to set a place's coordinates. PlaceForm's search moves it too, from a built-in list of
+ * places: the browser must not call a geocoding service. For keyboard users: pan with the arrow keys, then "Put the pin at the map's center".
  */
-export function PinDropMap({ lat, lng, kind, onChange, jump = 0, className }: PinDropMapProps) {
+export function PinDropMap({ lat, lng, kind, onChange, jump = 0, jumpZoom = 14, className }: PinDropMapProps) {
   const [map, setMap] = useState<L.Map | null>(null);
   const options = useMapOptions();
   return (
@@ -350,8 +377,9 @@ export function PinDropMap({ lat, lng, kind, onChange, jump = 0, className }: Pi
           <Tiles />
           <AttributionControl prefix={false} />
           <AutoResize />
+          <WheelZoom />
           <ClickToPin onPick={onChange} />
-          <Recenter lat={lat} lng={lng} jump={jump} />
+          <Recenter lat={lat} lng={lng} jump={jump} zoom={jumpZoom} />
           <Marker
             position={[lat, lng]}
             icon={placeIcon(kind, 'Pinned place')}

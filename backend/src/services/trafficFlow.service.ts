@@ -8,6 +8,9 @@ import type { TrafficFlowRepository } from "./trafficFlow.repository";
 // The traffic job runs every 15 minutes, 05:00–22:45. Older flow means the job
 // stopped or it's night, and old traffic mustn't pass for current.
 const STALE_AFTER_MS = 45 * 60_000;
+// How long the flow last read is served before the database is asked for a newer
+// one. A page asks for the map and a route together, and that is one read.
+const RECHECK_MS = 30_000;
 // How far the road under a route can be from the route's line (both are simplified).
 const MATCH_M = 20;
 // A route is colored in stretches of at most this length.
@@ -26,11 +29,35 @@ interface FlowSegment {
 }
 
 export function createTrafficFlowService(repo: Pick<TrafficFlowRepository, "get">, now: () => Date = () => new Date()) {
+  // The flow last read, kept for as long as this process lives. Its lines are
+  // about 400 KB and only change when the traffic job saves new ones, so the
+  // database is asked for them again only when it holds a newer flow.
+  let held: TrafficFlowRow | null = null;
+  let checkedAt = Number.NEGATIVE_INFINITY;
+  let reading: Promise<TrafficFlowRow | null> | null = null;
+
+  // Requests arriving together share one read.
+  function saved(): Promise<TrafficFlowRow | null> {
+    if (now().getTime() - checkedAt < RECHECK_MS) return Promise.resolve(held);
+    reading ??= repo
+      .get(held?.fetched_at)
+      .then((newer) => {
+        // No answer while holding a flow means that flow is still the one saved.
+        if (newer) held = newer;
+        checkedAt = now().getTime();
+        return held;
+      })
+      .finally(() => {
+        reading = null;
+      });
+    return reading;
+  }
+
   return {
-    // The latest flow, or null when there's none recent enough to show.
-    // shortcut: reads the whole Metro Cebu snapshot on every call; cache it per fetched_at if routes get slow.
+    // The latest flow, or null when there's none recent enough to show. The same
+    // object comes back until a newer flow is saved.
     async current(): Promise<TrafficFlowRow | null> {
-      const row = await repo.get();
+      const row = await saved();
       return row && now().getTime() - Date.parse(row.fetched_at) <= STALE_AFTER_MS ? row : null;
     },
   };

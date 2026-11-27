@@ -44,6 +44,13 @@ export const queries = {
       staleTime: STALE.forever,
       select: (d) => d.sources,
     }),
+  // A static file of this app, not the API: the places the map search looks through. Imported here only when it's used.
+  cebuPlaces: () =>
+    queryOptions({
+      queryKey: ['cebu-places'],
+      queryFn: () => import('./placeSearch').then((mod) => mod.loadPlaceIndex()),
+      staleTime: STALE.forever,
+    }),
   locations: () =>
     queryOptions({ queryKey: ['locations'], queryFn: () => apiFetch<LocationsResponse>('/locations'), staleTime: STALE.forever }),
   schedule: () =>
