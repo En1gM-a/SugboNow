@@ -116,3 +116,17 @@ page's alerts have no single point.
 - Only the headline, a short snippet (≤ 300 characters), the image URL and the
   link are stored; the app always links back to the source.
 - Comments and commenters' data from Facebook are never stored.
+
+## Place list (OpenStreetMap)
+
+- The pin picker's search uses `frontend/src/data/cebuPlaces.json`: the names and coordinates of Cebu's
+  areas, landmarks and streets. It's a static file of the frontend. The browser downloads it from our
+  own site the first time someone uses the search, and typing calls nothing.
+- It isn't a job. A developer refreshes it by hand with `node scripts/build-places.mjs` from `frontend/`,
+  which asks the [Overpass API](https://overpass-api.de) six questions (no key). It's often busy; the
+  script waits and retries, and a cache folder (`node scripts/build-places.mjs <folder>`) keeps what it
+  already has.
+- The data is © OpenStreetMap contributors under the ODbL. The map under the search credits it.
+- OpenStreetMap has boundaries for Cebu City, Mandaue, Lapu-Lapu and a few towns. Elsewhere the town is
+  the nearest town's point, and the barangay is shown as "near …" and left out of the saved address.
+- It has no house numbers.
