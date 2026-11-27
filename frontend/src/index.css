@@ -3790,6 +3790,26 @@
   .span-3 {
     grid-column: span 3;
   }
+  /* Beside the taller "Now" card, the hours fill their card's height instead of leaving its bottom empty. */
+  .hours-card {
+    grid-template-rows: auto minmax(0, 1fr);
+    align-content: stretch;
+  }
+  .hours {
+    grid-auto-columns: 84px;
+  }
+  .hour {
+    align-content: space-evenly;
+    height: 100%;
+    font-size: 0.9rem;
+  }
+  .hour .wi {
+    font-size: 46px;
+  }
+  .hour b {
+    font-size: 1.3rem;
+    line-height: 1.2;
+  }
 }
 
 @media (min-width: 900px) {
