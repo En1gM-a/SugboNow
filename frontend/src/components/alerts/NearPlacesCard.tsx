@@ -5,9 +5,16 @@ import { AllClearArt } from '@/components/EmptyArt';
 import { Card, CardError, timing } from '@/components/today/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
 import type { BriefTodayResponse } from '@/types/api';
+import { cx } from '@/utils/cx';
 import { AlertRow } from './AlertRow';
 
-/** Near your places (Today, item 6): the top 3 alerts as compact rows, then the way to the traffic map. */
+/** GET /api/brief/today sends at most this many alerts (docs/api-contract.md), so there may be more than it lists. */
+const MOST_ALERTS = 10;
+
+/**
+ * Near your places (Today, item 6): every alert the brief sends, as compact rows that open it on the traffic map. More
+ * than three scroll inside the card, so a long list doesn't push the page around.
+ */
 export function NearPlacesCard({ i, brief }: { i: number; brief: UseQueryResult<BriefTodayResponse> }) {
   const t = timing(i);
   const title = (
@@ -38,30 +45,31 @@ export function NearPlacesCard({ i, brief }: { i: number; brief: UseQueryResult<
   }
 
   const { alerts } = brief.data;
-  const top = alerts.slice(0, 3);
 
   return (
     <Card i={i} span="span-5" id="near-places" className="near" labelledBy="near-h">
       <div className="card-head">
         {title}
         <span className="muted small tabular-nums">
+          {alerts.length >= MOST_ALERTS ? 'Top ' : ''}
           {alerts.length} {alerts.length === 1 ? 'alert' : 'alerts'}
         </span>
       </div>
-      {top.length === 0 ? (
+      {alerts.length === 0 ? (
         <div className="empty">
           <AllClearArt />
           <p className="empty-text">All clear near your places. Ingat sa dalan!</p>
         </div>
       ) : (
-        <ul className="rows">
-          {top.map((alert, j) => {
+        <ul className={cx('rows', alerts.length > 3 && 'near-list')} aria-labelledby="near-h">
+          {alerts.map((alert, j) => {
             const near = alert.nearPlaces?.[0];
             return (
               <AlertRow
                 key={alert.id}
                 alert={alert}
-                j={j}
+                j={Math.min(j, 5)}
+                to={`/traffic?view=all&alert=${encodeURIComponent(alert.id)}`}
                 detail={
                   near ? (
                     <>

@@ -17,6 +17,11 @@ export function useAlerts(q: AlertsQuery = {}) {
   return useQuery({ ...queries.alerts(q), placeholderData: keepPreviousData, select: (d) => d.alerts });
 }
 
+/** One alert by id, for a link to one the list doesn't have. An alert that has ended is a 404. */
+export function useAlert(id: string | null, enabled: boolean) {
+  return useQuery({ ...queries.alert(id ?? ''), enabled: enabled && Boolean(id) });
+}
+
 export function useNews(limit = 20, area?: string, enabled = true) {
   return useQuery({ ...queries.news(limit, area), placeholderData: keepPreviousData, select: (d) => d.articles, enabled });
 }

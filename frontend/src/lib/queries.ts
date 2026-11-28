@@ -3,6 +3,7 @@
 
 import { queryOptions } from '@tanstack/react-query';
 import type {
+  Alert,
   AlertsQuery,
   AlertsResponse,
   AreasResponse,
@@ -95,6 +96,12 @@ export const queries = {
       refetchInterval: STALE.alerts,
     });
   },
+  alert: (id: string) =>
+    queryOptions({
+      queryKey: ['alert', id],
+      queryFn: () => apiFetch<Alert>(`/alerts/${encodeURIComponent(id)}`),
+      staleTime: STALE.alerts,
+    }),
   news: (limit = 20, area?: string) => {
     const params = new URLSearchParams({ limit: String(limit) });
     if (area) params.set('area', area);

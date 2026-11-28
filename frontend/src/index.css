@@ -1461,7 +1461,30 @@
 
   /* Alert rows */
   .near {
+    display: flex;
+    flex-direction: column;
     scroll-margin-top: 14px;
+  }
+  /* Four alerts or more: the list fills the card's height (the brief beside it sets it) and scrolls. At its shortest it
+     shows three and a half rows, so it's clear there are more. */
+  .near-list {
+    flex: 1 1 0;
+    align-content: start;
+    min-height: 290px;
+    margin-inline: -8px;
+    padding-inline: 8px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  /* Wide enough that most titles fit on one or two lines, so the rows are shorter. */
+  @media (min-width: 1200px) {
+    .near-list {
+      min-height: 256px;
+    }
+  }
+  .near .see-all {
+    align-self: flex-start;
   }
   .rows {
     display: grid;
@@ -2614,6 +2637,16 @@
     transition:
       background-color 150ms ease,
       transform 100ms var(--ease-out);
+  }
+  .row-link {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+  }
+  .row-caret {
+    color: var(--muted);
+    --icon: 14px;
+  }
+  .link-note {
+    margin-top: 6px;
   }
   .row-btn:active {
     transform: scale(0.99);

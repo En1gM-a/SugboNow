@@ -23,9 +23,10 @@ import { Switch } from '@/components/ui/Switch';
 import { Tag } from '@/components/ui/Tag';
 import { useMediaQuery } from '@/hooks/useBrowser';
 import { useHeldList } from '@/hooks/useFeedList';
-import { useAlerts, useBrief, useTrafficFlow } from '@/hooks/useFeeds';
+import { useAlert, useAlerts, useBrief, useTrafficFlow } from '@/hooks/useFeeds';
 import { useLocations, useRoutes, useSchedule } from '@/hooks/usePlaces';
 import { useProfile, useUpdateProfile } from '@/hooks/useProfile';
+import { ApiError } from '@/lib/apiClient';
 import { getDisplay } from '@/lib/display';
 import type { Alert, AlertType, LeaveTime, RoutesResponse, Severity } from '@/types/api';
 import { cx, vars } from '@/utils/cx';
@@ -510,10 +511,33 @@ function AllCebuView({ wide }: { wide: boolean }) {
   const { visible, newCount, showNew } = useHeldList(alerts.data, `${params.get('type') ?? ''}|${params.get('severity') ?? ''}`, alerts.isSuccess && !alerts.isPlaceholderData);
   const filterCount = types.length + severities.length;
 
+  // A link from Today (/traffic?view=all&alert=…) opens with that alert selected and first in the list, so its details
+  // are beside the map. One the list doesn't have is fetched by itself.
+  const linkedId = params.get('alert');
+  const listed = linkedId ? alerts.data?.find((a) => a.id === linkedId) : undefined;
+  const lookup = useAlert(linkedId, alerts.isSuccess && !alerts.isPlaceholderData && !listed);
+  const linked = listed ?? (linkedId ? lookup.data : undefined);
+  const shown = useMemo(() => (linked ? [linked, ...visible.filter((a) => a.id !== linked.id)] : visible), [linked, visible]);
+  const openedLink = useRef<string | null>(null);
+  useEffect(() => {
+    // Once per link: after that the selection is the user's.
+    if (!linked || openedLink.current === linked.id) return;
+    openedLink.current = linked.id;
+    select(linked.id);
+  }, [linked, select]);
+
+  let linkNote = '';
+  if (linkedId && !linked && lookup.isError) {
+    linkNote = lookup.error instanceof ApiError && lookup.error.status === 404 ? 'That alert has ended, so it’s no longer on the map.' : 'Couldn’t load that alert. The others are below.';
+  } else if (linked && selected === linked.id && (linked.lat === null || linked.lng === null)) {
+    linkNote = `This alert covers ${linked.areaName ?? 'all of Metro Cebu'}, so it has no single spot on the map.`;
+  }
+
   function setFilter(key: 'type' | 'severity', values: string[]) {
     const next = new URLSearchParams(params);
     if (values.length) next.set(key, values.join(','));
     else next.delete(key);
+    next.delete('alert');
     setParams(next, { replace: true, preventScrollReset: true });
     select(null);
   }
@@ -536,7 +560,7 @@ function AllCebuView({ wide }: { wide: boolean }) {
       map={
         <LazyAlertsMap
           label={hasFlow ? 'Map of alerts across Metro Cebu, colored by severity, over roads colored by traffic' : 'Map of alerts across Metro Cebu, colored by severity'}
-          alerts={visible}
+          alerts={shown}
           flow={flow.data}
           selectedId={selected}
           onSelect={select}
@@ -555,7 +579,7 @@ function AllCebuView({ wide }: { wide: boolean }) {
         wide={wide}
         i={3}
         id="list-h"
-        title={alerts.data ? `${visible.length} ${visible.length === 1 ? 'alert' : 'alerts'}` : 'Alerts'}
+        title={alerts.data ? `${shown.length} ${shown.length === 1 ? 'alert' : 'alerts'}` : 'Alerts'}
         aside={
           wide ? undefined : (
             <button type="button" className="chip" aria-haspopup="dialog" onClick={() => setFiltersOpen(true)}>
@@ -566,11 +590,16 @@ function AllCebuView({ wide }: { wide: boolean }) {
         }
       >
         <NewPill count={newCount} onClick={showNew} />
+        {linkNote && (
+          <p className="muted small link-note" role="status">
+            {linkNote}
+          </p>
+        )}
         {alerts.isPending ? (
           <RowsSkeleton />
         ) : alerts.isError ? (
           <CardError what="the alerts" onRetry={() => void alerts.refetch()} />
-        ) : visible.length === 0 ? (
+        ) : shown.length === 0 ? (
           <div className="empty">
             <p className="empty-text">Nothing matches these filters.</p>
             <Button variant="secondary" onClick={clearFilters}>
@@ -579,7 +608,7 @@ function AllCebuView({ wide }: { wide: boolean }) {
           </div>
         ) : (
           <ul className={cx('rows', alerts.isPlaceholderData && 'is-stale')}>
-            {visible.map((alert, j) => (
+            {shown.map((alert, j) => (
               <AlertRow
                 key={alert.id}
                 ref={rowRef(alert.id)}

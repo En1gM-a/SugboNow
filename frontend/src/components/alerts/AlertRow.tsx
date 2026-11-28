@@ -1,8 +1,10 @@
 import { useId, type ReactNode, type Ref } from 'react';
+import { Link } from 'react-router-dom';
 import { Expander } from '@/components/Expander';
 import { Icon } from '@/components/icons/Icon';
 import { LiveIcon } from '@/components/LiveIcon';
 import { SeverityBadge } from '@/components/ui/Tag';
+import { preloadRoute } from '@/lib/nav';
 import { alertKind } from '@/lib/weatherKind';
 import type { Alert, AlertSource, AlertType, Severity } from '@/types/api';
 import { cx, vars } from '@/utils/cx';
@@ -88,6 +90,8 @@ interface AlertRowProps {
   detail: ReactNode;
   /** Its place in the card's entrance (rows enter 50 ms apart). */
   j?: number;
+  /** Makes the row a link: to the alert on the Traffic map. */
+  to?: string;
   /** Makes the row a button: the map and the list stay in sync through it. */
   onSelect?: () => void;
   selected?: boolean;
@@ -101,7 +105,7 @@ interface AlertRowProps {
 }
 
 /** An alert: its live icon, title, one line of detail and severity chip. */
-export function AlertRow({ alert, detail, j = 0, onSelect, selected = false, expands = true, previewed = false, onPreview, ref }: AlertRowProps) {
+export function AlertRow({ alert, detail, j = 0, to, onSelect, selected = false, expands = true, previewed = false, onPreview, ref }: AlertRowProps) {
   const panel = useId();
   const body = (
     <>
@@ -116,6 +120,18 @@ export function AlertRow({ alert, detail, j = 0, onSelect, selected = false, exp
     </>
   );
 
+  if (to) {
+    const preload = () => preloadRoute('/traffic');
+    return (
+      <li ref={ref} className="row-pick e-row" style={vars({ '--j': j })}>
+        <Link to={to} className="row row-btn row-link" onPointerEnter={preload} onFocus={preload} onTouchStart={preload}>
+          {body}
+          <Icon name="caret-right" className="row-caret" />
+          <span className="sr-only">Show on the traffic map</span>
+        </Link>
+      </li>
+    );
+  }
   if (!onSelect) {
     return (
       <li ref={ref} className="row e-row" style={vars({ '--j': j })}>
